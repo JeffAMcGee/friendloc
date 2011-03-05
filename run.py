@@ -10,6 +10,7 @@ module, you're doing something wrong.
 import logging
 import sys
 import getopt
+import pdb
 
 import beanstalkc
 import maroon
@@ -20,6 +21,7 @@ from localcrawl.gisgraphy import GisgraphyResource
 from maroon import *
 from localcrawl.models import *
 from peek import *
+from graph import *
 from localcrawl.utils import *
 
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +45,11 @@ if len(sys.argv)>1:
             kwargs['end']=a
         else:
             assert False, "unhandled option"
-    locals()[sys.argv[1]](*args,**kwargs)
+    try:
+        locals()[sys.argv[1]](*args,**kwargs)
+    except:
+        logging.exception("command failed")
+        pdb.post_mortem()
 else:
     gisgraphy = GisgraphyResource()
     twitter = twitter.TwitterResource()

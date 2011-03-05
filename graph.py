@@ -5,6 +5,7 @@ import sys
 import random
 import logging
 import math
+import simplejson
 from collections import defaultdict
 from datetime import datetime as dt
 from operator import itemgetter
@@ -18,6 +19,7 @@ import numpy
 
 from settings import settings
 import localcrawl.twitter as twitter
+import localcrawl.gisgraphy as gisgraphy
 from localcrawl.models import *
 from maroon import ModelCache
 from peek import _tri_users_dict_set
@@ -63,6 +65,64 @@ def dist_histogram():
     ax = fig.add_subplot(111)
     ax.hist(dists,bins=100)
     fig.savefig('../www/hist.png')
+
+
+def tpu_hist(path=None):
+    counts = defaultdict(int)
+    for t in _read_json(path):
+        counts[t['user']['id']]+=1
+    fig = plt.figure(figsize=(12,12))
+    ax = fig.add_subplot(111)
+    ax.hist(counts.values(),
+            bins=xrange(1000),
+            log=True,
+            histtype='step',
+            #cumulative=True,
+            )
+    ax.set_xscale('log')
+    fig.savefig('../www/tpu_us_hist.png')
+
+
+def diff_gnp_gps(path=None):
+    gis = gisgraphy.GisgraphyResource()
+    names = {}
+    latlngs = defaultdict(list)
+    for t in _read_json(path):
+        uid = t['user']['id']
+        if 'coordinates' not in t: continue
+        lng,lat = t['coordinates']['coordinates']
+        latlngs[uid].append(dict(lng=lng,lat=lat))
+        names[uid] = t['user']['location']
+    dists = []
+    for uid,spots in latlngs.iteritems():
+        if len(spots)<2: continue
+        if _coord_in_miles(spots[0],spots[1])>30: continue
+        gnp = gis.twitter_loc(names[uid])
+        if not gnp: continue
+        if gnp.population>5000000: continue
+        dist = _coord_in_miles(gnp.to_d(),spots[0])
+        dists.append(dist)
+        if dist>100:
+            d = gnp.to_d()
+            d['uid'] = uid
+            d['spot'] = spots[0]
+            d['claim'] = names[uid]
+            print simplejson.dumps(d)
+    fig = plt.figure(figsize=(18,12))
+    ax = fig.add_subplot(111)
+    ax.hist(dists,
+            bins=xrange(200), #[2**i for i in xrange(15)],
+            #log=True,
+            #normed =True,
+            histtype='step',
+            cumulative=True,
+            )
+    ax.set_xlabel('miles between location and tweet')
+    ax.set_ylabel('number of users in bin')
+    #ax.set_xscale('log')
+    fig.savefig('../www/diff_gnp_gps.png')
+    print len(dists)
+
 
 
 def user_stddev(path=None):
@@ -332,7 +392,10 @@ def find_tris(fake=False):
 
 
 def _coord_params(p1, p2):
-    return (69.1*(p1['lat']-p2['lat']), 60.4*(p1['lng']-p2['lng']))
+    "estimate the distance between two points in miles"
+    mlat = 69.1
+    mlng = mlat*math.cos((p1['lat']+p2['lat'])*math.pi/360)
+    return (mlat*(p1['lat']-p2['lat']), mlng*(p1['lng']-p2['lng']))
 
 
 def _coord_angle(p, p1, p2):
@@ -356,9 +419,9 @@ def tri_users():
         print json.dumps(small)
 
 
-def _read_json(path):
-    for l in open(path):
-        yield simplejson.loads(l)
+def _read_json(path=None):
+    file = open(path) if path else sys.stdin
+    return (simplejson.loads(l) for l in file)
 
 
 def tri_legs(out_path='tri_hou.png',tris_path="tris",users_path="tri_users.json"):
