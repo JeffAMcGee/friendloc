@@ -12,7 +12,7 @@ BUFFER_DEFAULT = 1000
 class SplitProcess(object):
     def __init__(self, label="proc", slaves=8, buffer_size=0, 
             log_path="logs", log_level=None):
-        self.slave_id = None
+        self.slave_id = -1
         self.halting = multiprocessing.Event()
         self._proc_label = label
         self._log_path = log_path
@@ -36,21 +36,24 @@ class SplitProcess(object):
         pass
         
     def run_procs(self):
-        self._start_slaves()
+        slaves = self._start_slaves()
         self._setup_logging(self._proc_label)
-        try:
-            jobs = self.produce()
-            return self.consume(self._do_async(jobs))
-        except:
-            logging.exception("exception caused HALT")
+        jobs = self.produce()
+        result = self.consume(self._do_async(jobs))
+        for slave in slaves:
+            slave.join()
+        return result
 
     def _start_slaves(self):
+        procs =[]
         for slave_id in xrange(self._slaves):
             p = multiprocessing.Process(
                 target = SplitProcess._run_slave,
                 args = [self,slave_id],
             )
             p.start()
+            procs.append(p)
+        return procs
 
     def _run_slave(self,slave_id):
         #when this method starts, we are running in a new process!
@@ -60,13 +63,17 @@ class SplitProcess(object):
             logging.warn("thread %d began",slave_id)
             while True:
                 try:
-                    task = self._todo.get(True,1)
+                    task = self._todo.get(True,.1)
+                    logging.debug("slave %d read %r",slave_id,task)
                 except Queue.Empty:
                     if not self.halting.is_set():
                         continue
                     logging.warn("thread %d finished",slave_id)
                     return
-                self._done.put(self.map(task))
+                result = self.map(task)
+                if result is not None:
+                    logging.debug("slave %d wrote %r",slave_id,result)
+                self._done.put(result)
                 self._todo.task_done()
         except:
             logging.exception("exception killed thread")
@@ -82,10 +89,11 @@ class SplitProcess(object):
             fmt = logging.Formatter(logging.BASIC_FORMAT, None)
             file_hdlr.setFormatter(fmt)
             root.addHandler(file_hdlr)
-            file_hdlr.setLevel(logging.INFO)
+            file_hdlr.setLevel(self._log_level)
         hdlr = logging.StreamHandler()
         root.addHandler(hdlr)
-        hdlr.setLevel(logging.WARNING)
+        hdlr.setLevel(self._log_level)
+        root.setLevel(logging.DEBUG)
 
     def _do_async(self,jobs):
         logging.warn("started producing jobs")
@@ -108,24 +116,8 @@ class SplitProcess(object):
  
     def run_single(self):
         self._setup_logging('single')
-        return self.consume(self.map(d) for d in self.produce())
-
-class TestSplitProc(SplitProcess):
-    def produce(self):
-        import time
-        for x in xrange(10):
-            time.sleep(3)
-            yield x
-
-    def map(self,item):
-        return item+1
-
-    def consume(self,items):
-        return sum(items)
-
-
-if __name__ == '__main__':
-    tsp = TestSplitProc(slaves=2)
-    print tsp.run_single()
-    tsp._log_level=logging.INFO
-    print tsp.run_procs()
+        try:
+            return self.consume(self.map(d) for d in self.produce())
+        except:
+            logging.exception("exception caused HALT")
+            pdb.post_mortem()
