@@ -20,6 +20,7 @@ class SplitProcess(object):
     Caveats:
     * Subclasses of SplitProcess must be pickleable.
     * The order that results get to consume is undefined.
+    * map() must return one and only one item for every item it is given.
     * I am worried that under certain conditions not all of the results
       get passed to consume.  You could make self._done a JoinableQueue .
     """

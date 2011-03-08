@@ -3,10 +3,18 @@ import time
 import os
 import sys
 import random
+import math
 import logging
 from collections import defaultdict
 from datetime import datetime as dt
 from operator import itemgetter
+
+import numpy
+
+try:
+    import simplejson as json
+except:
+    import json
 
 from settings import settings
 import localcrawl.twitter as twitter
@@ -37,6 +45,8 @@ def read_gis_locs(path=None):
 def noisy(ray,scale):
     return ray+numpy.random.normal(0.0,scale,len(ray))
 
+def median_2d(spots):
+    return [numpy.median(x) for x in zip(*spots)]
 
 def triangle_set(strict=True):
     Model.database = connect('houtx_user')
@@ -75,16 +85,21 @@ def split_tri_counts(counts_path):
     return (edges[:third],edges[2*third:3*third],edges[third:2*third])
 
 
-def _coord_params(p1, p2):
-    "estimate the distance between two points in miles"
+def _coord_delta(p1,p2):
+    """estimate the distance between two points in miles - points can be 
+    (lng,lat) tuple or dict(lng=lng,lat=lat)"""
+    points = [
+            (p['lng'],p['lat']) if isinstance(p, dict) else p
+            for p in (p1,p2)]
+    lng,lat=zip(*points)
     mlat = 69.1
-    mlng = mlat*math.cos((p1['lat']+p2['lat'])*math.pi/360)
-    return (mlat*(p1['lat']-p2['lat']), mlng*(p1['lng']-p2['lng']))
+    mlng = mlat*math.cos(sum(lat)*math.pi/360)
+    return (mlat*(lat[0]-lat[1]), mlng*(lng[0]-lng[1]))
 
 
 def coord_angle(p, p1, p2):
     "find the angle between rays from p to p1 and p2, return None if p in (p1,p2)"
-    vs = [_coord_params(p,x) for x in (p1,p2)]
+    vs = [_coord_delta(p,x) for x in (p1,p2)]
     mags = [numpy.linalg.norm(v) for v in vs]
     if any(m==0 for m in mags):
         return math.pi
@@ -93,10 +108,10 @@ def coord_angle(p, p1, p2):
 
 
 def coord_in_miles(p1, p2):
-    return math.hypot(*_coord_params(p1,p2))
+    return math.hypot(*_coord_delta(p1,p2))
 
 
 def read_json(path=None):
     file = open(path) if path else sys.stdin
-    return (simplejson.loads(l) for l in file)
+    return (json.loads(l) for l in file)
 

@@ -18,7 +18,7 @@ settings = SettingsBunch(
 )
 
 try:
-    from settings_prod import settings as s
-except:
     from settings_dev import settings as s
-settings.update(s)
+    settings.update(s)
+except:
+    pass
