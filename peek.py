@@ -12,10 +12,7 @@ from settings import settings
 import localcrawl.twitter as twitter
 from localcrawl.models import *
 from maroon import ModelCache
-
-
-def all_users():
-    return User.get_all()
+from utils import *
 
 
 def print_locs(start='T',end='U'):
@@ -43,11 +40,6 @@ def count_recent():
             tweets = sum(1 for r in g if as_int_id(r['id'])>min_int_id)
             print "%d\t%s"%(tweets,user_d['id'])
          
-
-def grouper(n, iterable, fillvalue=None):
-    "grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx"
-    args = [iter(iterable)] * n
-    return itertools.izip_longest(*args, fillvalue=fillvalue)
 
 
 def count_sn(path):
@@ -87,13 +79,8 @@ def krishna_export(start=[2010],end=None):
                     print>>f,"%d %s %s"%(ts,t['_id'],t['uid'])
 
 
-def _tri_users_dict_set(users_path):
-    users = dict((int(d['id']),d) for d in _read_json(users_path))
-    return users,set(users)
-
-
 def find_ats(users_path="hou_tri_users"):
-    users, uids = _tri_users_dict_set(users_path)
+    users, uids = tri_users_dict_set(users_path)
     for line in sys.stdin:
         d = json.loads(line)
         if d.get('ats'):
@@ -104,7 +91,7 @@ def find_ats(users_path="hou_tri_users"):
 
 
 def print_tri_counts(users_path="hou_tri_users"):
-    users, uids = _tri_users_dict_set(users_path)
+    users, uids = tri_users_dict_set(users_path)
     edges = ModelCache(Edges)
     data = []
     for uid,user in users.iteritems():
@@ -122,7 +109,7 @@ def print_tri_counts(users_path="hou_tri_users"):
             )
         all = (sets['mfrd']|sets['mfol'])&(sets['yfrd']|sets['yfol'])
         d = dict(
-            dist = _coord_in_miles(user,users[your_id]),
+            dist = coord_in_miles(user,users[your_id]),
             all = len(all),
             rfriend = 1 if your_id in sets['mfol'] else 0 
         )

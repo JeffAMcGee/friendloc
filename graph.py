@@ -23,18 +23,11 @@ import localcrawl.gisgraphy as gisgraphy
 from localcrawl.models import *
 from maroon import ModelCache
 from peek import _tri_users_dict_set
-
-
-def _read_gis_locs(path=None):
-    for u in _read_json(path or "hou_tri_users"):
-        yield u['lng'],u['lat']
-
-def _noisy(ray,scale):
-    return ray+numpy.random.normal(0.0,scale,len(ray))
+from utils import *
 
 def plot_tweets():
     #usage: peek.py print_locs| peek.py plot_tweets
-    locs = _read_gis_locs()
+    locs = read_gis_locs()
     mid_x,mid_y = (-95.4,29.8)
     box = settings.local_box
     lngs,lats = zip(*[
@@ -45,7 +38,7 @@ def plot_tweets():
     fig = plt.figure(figsize=(18,18))
     ax = fig.add_subplot(111)
     cmap = LinearSegmentedColormap.from_list("gray_map",["#c0c0c0","k"])
-    ax.plot(_noisy(lngs,.005),_noisy(lats,.005),',',
+    ax.plot(noisy(lngs,.005),noisy(lats,.005),',',
             color='k',
             alpha=.2,
             )
@@ -69,7 +62,7 @@ def dist_histogram():
 
 def tpu_hist(path=None):
     counts = defaultdict(int)
-    for t in _read_json(path):
+    for t in read_json(path):
         counts[t['user']['id']]+=1
     fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(111)
@@ -87,7 +80,7 @@ def diff_gnp_gps(path=None):
     gis = gisgraphy.GisgraphyResource()
     names = {}
     latlngs = defaultdict(list)
-    for t in _read_json(path):
+    for t in read_json(path):
         uid = t['user']['id']
         if 'coordinates' not in t: continue
         lng,lat = t['coordinates']['coordinates']
@@ -96,11 +89,11 @@ def diff_gnp_gps(path=None):
     dists = []
     for uid,spots in latlngs.iteritems():
         if len(spots)<2: continue
-        if _coord_in_miles(spots[0],spots[1])>30: continue
+        if coord_in_miles(spots[0],spots[1])>30: continue
         gnp = gis.twitter_loc(names[uid])
         if not gnp: continue
         if gnp.population>5000000: continue
-        dist = _coord_in_miles(gnp.to_d(),spots[0])
+        dist = coord_in_miles(gnp.to_d(),spots[0])
         dists.append(dist)
         if dist>100:
             d = gnp.to_d()
@@ -144,23 +137,10 @@ def user_stddev(path=None):
 
 
 
-def _triangle_set(strict=True):
-    Model.database = connect('houtx_user')
-    users = Model.database.paged_view('_all_docs',include_docs=True,endkey="_")
-    for row in users:
-        user = row['doc']
-        if user['prot'] or user['prob']==.5:
-            continue
-        if user['frdc']>2000 and user['folc']>2000:
-            continue
-        if strict and (user['prob']==0 or user['gnp'].get('pop',0)>1000000):
-            continue
-        yield user
-
 
 def graph_edges(users_path="hou_tri_users", ats_path="hou_ats"):
-    users, uids = _tri_users_dict_set(users_path)
-    ats,ated = _parse_ats(ats_path)
+    users, uids = tri_users_dict_set(users_path)
+    ats,ated = parse_ats(ats_path)
     counts = dict(non=[],frd=[],fol=[],rfrd=[],at=[],ated=[],conv=[])
     for u in users:
         obj = Edges.get_id(int(u))
@@ -179,7 +159,7 @@ def graph_edges(users_path="hou_tri_users", ats_path="hou_ats"):
         for k,v in sets.iteritems():
             if not v: continue
             others = random.sample(v,1)
-            dists = [_coord_in_miles(users[u],users[other]) for other in others]
+            dists = [coord_in_miles(users[u],users[other]) for other in others]
             counts[k].extend(dists)
     fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(111)
@@ -197,28 +177,6 @@ def graph_edges(users_path="hou_tri_users", ats_path="hou_ats"):
     ax.set_ylabel('count of users')
     fig.savefig('../www/edges.png')
 
-
-def _parse_ats(ats_path):
-    ats =defaultdict(lambda: defaultdict(int))
-    ated =defaultdict(lambda: defaultdict(int))
-    for line in open(ats_path):
-        uid,at = [int(i) for i in line.strip().split('\t')]
-        ats[uid][at]+=1
-        ated[at][uid]+=1
-    return ats,ated
-
-
-def mainstream_edges(edges):
-    return [ e for e in edges
-        if 47<=e['lmfrd']+e['lmfol']<=300
-        if 101<=e['lyfrd']+e['lyfol']<=954
-        ]
-
-
-def split_tri_counts(counts_path):
-    edges = list(mainstream_edges(_read_json(counts_path)))
-    third = len(edges)/3
-    return (edges[:third],edges[2*third:3*third],edges[third:2*third])
 
 
 def graph_thickness(counts_path="tri_counts"):
@@ -301,7 +259,7 @@ def graph_tri_count_label(counts_path="tri_counts",label='mfan',me='mfol',you='y
     last_bin=0
     dist_ratio = [
         (d['dist'], 1.0*len(set(d[me]).intersection(d[you]))/d['all'])
-        for d in mainstream_edges(_read_json(counts_path))
+        for d in mainstream_edges(read_json(counts_path))
         if d['all']
     ]
     for bin in [.2,.4,.6,.8,1]:
@@ -351,7 +309,7 @@ def bar_graph(counts_path="tri_counts"):
 
 
 def count_friends(users_path="hou_tri_users"):
-    users, uids = _tri_users_dict_set(users_path)
+    users, uids = tri_users_dict_set(users_path)
     logging.info("looking at %d users",len(users))
     fols = []
     frds = []
@@ -370,7 +328,7 @@ def count_friends(users_path="hou_tri_users"):
 
 def find_tris(fake=False):
     Edges.database = connect("houtx_edges")
-    uids = set(int(d['_id']) for d in _triangle_set())
+    uids = set(int(d['_id']) for d in triangle_set())
     logging.info("looking at %d users",len(uids))
     edges = {}
     for uid in uids:
@@ -391,37 +349,13 @@ def find_tris(fake=False):
                     print " ".join(str(id) for id in (me, friend, amigo))
 
 
-def _coord_params(p1, p2):
-    "estimate the distance between two points in miles"
-    mlat = 69.1
-    mlng = mlat*math.cos((p1['lat']+p2['lat'])*math.pi/360)
-    return (mlat*(p1['lat']-p2['lat']), mlng*(p1['lng']-p2['lng']))
-
-
-def _coord_angle(p, p1, p2):
-    "find the angle between rays from p to p1 and p2, return None if p in (p1,p2)"
-    vs = [_coord_params(p,x) for x in (p1,p2)]
-    mags = [numpy.linalg.norm(v) for v in vs]
-    if any(m==0 for m in mags):
-        return math.pi
-    cos = numpy.dot(*vs)/mags[0]/mags[1]
-    return math.acos(min(cos,1))*180/math.pi
-
-
-def _coord_in_miles(p1, p2):
-    return math.hypot(*_coord_params(p1,p2))
-
 
 def tri_users():
-    for user in _triangle_set():
+    for user in triangle_set():
         small = user['gnp']
         small['id'] = user['_id']
         print json.dumps(small)
 
-
-def _read_json(path=None):
-    file = open(path) if path else sys.stdin
-    return (simplejson.loads(l) for l in file)
 
 
 def tri_legs(out_path='tri_hou.png',tris_path="tris",users_path="tri_users.json"):
@@ -431,7 +365,7 @@ def tri_legs(out_path='tri_hou.png',tris_path="tris",users_path="tri_users.json"
         def user_find(id):
             return users[id].geonames_place.to_d()
     else:
-        users = dict((d['id'],d) for d in _read_json(users_path))
+        users = dict((d['id'],d) for d in read_json(users_path))
         def user_find(id):
             return users[id]
 
@@ -445,9 +379,9 @@ def tri_legs(out_path='tri_hou.png',tris_path="tris",users_path="tri_users.json"
         if len(ys)%10000 ==0:
             logging.info("read %d",len(ys))
         tri = [user_find(id) for id in line.split()]
-        dy,dx = sorted([_coord_in_miles(tri[0],tri[x]) for x in (1,2)])
-        #dy,dx = [_coord_in_miles(tri[0],tri[x]) for x in (1,2)]
-        angle = _coord_angle(*tri)
+        dy,dx = sorted([coord_in_miles(tri[0],tri[x]) for x in (1,2)])
+        #dy,dx = [coord_in_miles(tri[0],tri[x]) for x in (1,2)]
+        angle = coord_angle(*tri)
         if dx<70 and dy<70:
             if angle>90:
                 dx,dy=dy,dx
@@ -457,7 +391,7 @@ def tri_legs(out_path='tri_hou.png',tris_path="tris",users_path="tri_users.json"
                 distinct+=1
             ys.append(dy)
             xs.append(dx)
-            zs.append(_coord_in_miles(tri[1],tri[2]))
+            zs.append(coord_in_miles(tri[1],tri[2]))
     logging.info("read %d triangles",len(ys))
     print obtuse,distinct
     fig = plt.figure(figsize=(18,18))
