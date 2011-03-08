@@ -10,6 +10,19 @@ BUFFER_DEFAULT = 1000
 
 
 class SplitProcess(object):
+    """
+    Take a set of tasks and split it up to several processors.
+
+    To use SplitProcess, make a subclass and override produce and map.  Then,
+    create an instance and call run().  Run effectively does this:
+        return self.consume(self.map(self.produce()))
+
+    Caveats:
+    * Subclasses of SplitProcess must be pickleable.
+    * The order that results get to consume is undefined.
+    * I am worried that under certain conditions not all of the results
+      get passed to consume.  You could make self._done a JoinableQueue .
+    """
     def __init__(self, label="proc", slaves=8, buffer_size=0, 
             log_path="logs", log_level=None):
         self.slave_id = -1
@@ -27,15 +40,17 @@ class SplitProcess(object):
         """generator that returns a stream of objects to act on"""
         raise NotImplementedError
 
-    def map(self,item):
-        """process one item and return a result"""
+    def map(self,items):
+        """generator that processes items from produce"""
         raise NotImplementedError
 
     def consume(self,items):
         """Process each of the results from map.  Items is an iterator. """
-        pass
+        for item in items:
+            pass
         
-    def run_procs(self):
+    def run(self):
+        ""
         slaves = self._start_slaves()
         self._setup_logging(self._proc_label)
         jobs = self.produce()
@@ -61,16 +76,7 @@ class SplitProcess(object):
         self._setup_logging("%s_%d"%(self._proc_label,slave_id))
         try:
             logging.warn("thread %d began",slave_id)
-            while True:
-                try:
-                    task = self._todo.get(True,.1)
-                    logging.debug("slave %d read %r",slave_id,task)
-                except Queue.Empty:
-                    if not self.halting.is_set():
-                        continue
-                    logging.warn("thread %d finished",slave_id)
-                    return
-                result = self.map(task)
+            for result in self.map(self._todo_iter()):
                 if result is not None:
                     logging.debug("slave %d wrote %r",slave_id,result)
                 self._done.put(result)
@@ -78,6 +84,19 @@ class SplitProcess(object):
         except:
             logging.exception("exception killed thread")
             self._todo.task_done()
+
+    def _todo_iter(self):
+        "generator that gets items from self.todo"
+        while True:
+            try:
+                task = self._todo.get(True,.1)
+                logging.debug("slave %d read %r",self.slave_id,task)
+                yield task
+            except Queue.Empty:
+                if not self.halting.is_set():
+                    continue
+                logging.warn("thread %d finished",self.slave_id)
+                return
 
     def _setup_logging(self, label):
         if self._log_level is None:
@@ -96,6 +115,7 @@ class SplitProcess(object):
         root.setLevel(logging.DEBUG)
 
     def _do_async(self,jobs):
+        "put jobs on self._todo and yield results from self._done"
         logging.warn("started producing jobs")
         running = True
         while running:
@@ -115,9 +135,10 @@ class SplitProcess(object):
                     pass
  
     def run_single(self):
+        "run the job without multiprocessing for testing and debuging"
         self._setup_logging('single')
         try:
-            return self.consume(self.map(d) for d in self.produce())
+            return self.consume(self.map(self.produce()))
         except:
             logging.exception("exception caused HALT")
             pdb.post_mortem()

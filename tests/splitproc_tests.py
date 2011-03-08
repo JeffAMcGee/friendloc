@@ -8,6 +8,8 @@ import logging
 import time
 from splitproc import SplitProcess
 
+from maroon import *
+
 class AdderSplitProc(SplitProcess):
     def __init__(self, delay, **kwargs):
         SplitProcess.__init__(self, **kwargs)
@@ -18,8 +20,9 @@ class AdderSplitProc(SplitProcess):
             time.sleep(self.delay)
             yield x
 
-    def map(self,item):
-        return item+1
+    def map(self,items):
+        for item in items:
+            yield item+1
 
     def consume(self,items):
         return sum(items)
@@ -40,7 +43,7 @@ class TestSplitProc(unittest.TestCase):
 
     def _run_test(self,**kwargs):
         asp = AdderSplitProc(**kwargs)
-        result = asp.run_procs()
+        result = asp.run()
         self.assertEqual(55, result)
 
 
