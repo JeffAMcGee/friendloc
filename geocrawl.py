@@ -78,7 +78,9 @@ class GeoLookup(SplitProcess):
         for amigo in users:
             place = self.gis.twitter_loc(amigo.location)
             #ignore states and regions with more than 5 million people
-            if( not place or place.feature_code=="ADM1"
+            if( amigo.protected
+                    or not place
+                    or place.feature_code=="ADM1"
                     or place.population>5000000):
                 for k,s in sets.iteritems():
                     s.discard(amigo._id)
