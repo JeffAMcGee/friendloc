@@ -22,7 +22,6 @@ import localcrawl.twitter as twitter
 import localcrawl.gisgraphy as gisgraphy
 from localcrawl.models import *
 from maroon import ModelCache
-from peek import _tri_users_dict_set
 from utils import *
 
 def plot_tweets():
@@ -93,6 +92,7 @@ def diff_gnp_gps(path=None):
         gnp = gis.twitter_loc(names[uid])
         if not gnp: continue
         if gnp.population>5000000: continue
+        if gnp.feature_code>"ADM1": continue
         dist = coord_in_miles(gnp.to_d(),spots[0])
         dists.append(dist)
         if dist>100:
