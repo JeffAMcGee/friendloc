@@ -48,21 +48,14 @@ class GeoLookup(SplitProcess):
         for user_d in users:
             self.twitter.sleep_if_needed()
             user = User(from_dict=user_d)
-
             try:
-                tweets = self.twitter.user_timeline(user._id)
+                self.save_neighbors(user)
+                user.attempt_save()
             except Unauthorized:
-                yield None
-                continue
-            Tweet.database.bulk_save_models(tweets)
-
-            self.save_neighbors(user)
-            user.save()
-            yield None
+                pass
 
     def save_neighbors(self,user):
-        edges = self.twitter.get_edges(user._id)
-        edges.attempt_save()
+        edges, tweets = self.save_user_data(user._id)
         frds = set(edges.friends)
         fols = set(edges.followers)
         sets = dict(
@@ -75,6 +68,7 @@ class GeoLookup(SplitProcess):
                 sets[k] = set(random.sample(s,33))
         uids = list(itertools.chain(*sets.values()))
         users = self.twitter.user_lookup(user_ids=uids)
+        amigos = []
         for amigo in users:
             place = self.gis.twitter_loc(amigo.location)
             #ignore states and regions with more than 5 million people
@@ -86,15 +80,24 @@ class GeoLookup(SplitProcess):
                     s.discard(amigo._id)
                 continue
             amigo.geonames_place = place
-            amigo.attempt_save()
+            amigos.append(amigo)
+        User.database.bulk_save_models(amigos)
+
+        #pick a [friend,rfriend,follower] and store their info
         for k,s in sets.iteritems():
             if s:
                 group = list(s)
                 random.shuffle(group)
                 setattr(user,k,group)
-                #for each of the three types, get the edges for one of them
-                edges = self.twitter.get_edges(group[0])
-                edges.attempt_save()
+                self.save_user_data(group[0])
+
+    def save_user_data(self,uid):
+        edges = self.twitter.get_edges(uid)
+        edges.attempt_save()
+
+        tweets = self.twitter.user_timeline(uid)
+        Tweet.database.bulk_save_models(tweets)
+        return edges, tweets
 
 
 if __name__ == '__main__':
