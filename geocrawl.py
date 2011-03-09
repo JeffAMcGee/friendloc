@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import sys
 import numpy
+import random
+import itertools
 
 import maroon
 from restkit.errors import Unauthorized
@@ -41,10 +43,10 @@ class GeoLookup(SplitProcess):
     def map(self,users):
         self.twitter = TwitterResource()
         self.gis = GisgraphyResource()
-        Model.database = maroon.MongoDB(name=self.db_name)
+        maroon.Model.database = maroon.MongoDB(name=self.db_name)
 
         for user_d in users:
-            twitter.sleep_if_needed()
+            self.twitter.sleep_if_needed()
             user = User(from_dict=user_d)
 
             try:
@@ -64,25 +66,33 @@ class GeoLookup(SplitProcess):
         frds = set(edges.friends)
         fols = set(edges.followers)
         sets = dict(
-            rfrds = frds&fols,
-            jfrds = frds-fols, # "just friends"
-            jfols = fols-frds,
+            rfriends = frds&fols,
+            just_friends = frds-fols,
+            just_followers = fols-frds,
             )
         for k,s in sets.iteritems():
             if len(s)>33:
                 sets[k] = set(random.sample(s,33))
-        uids = sets['rfrds']|sets['jfrds']|sets['jfols']
+        uids = list(itertools.chain(*sets.values()))
         users = self.twitter.user_lookup(user_ids=uids)
         for amigo in users:
-            place = gisgraphy.twitter_loc(amigo.location)
-            if not place:
+            place = self.gis.twitter_loc(amigo.location)
+            #ignore states and regions with more than 5 million people
+            if( not place or place.feature_code=="ADM1"
+                    or place.population>5000000):
                 for k,s in sets.iteritems():
                     s.discard(amigo._id)
                 continue
             amigo.geonames_place = place
             amigo.attempt_save()
         for k,s in sets.iteritems():
-            user[k] = list(s)
+            if s:
+                group = list(s)
+                random.shuffle(group)
+                setattr(user,k,group)
+                #for each of the three types, get the edges for one of them
+                edges = self.twitter.get_edges(group[0])
+                edges.attempt_save()
 
 
 if __name__ == '__main__':
