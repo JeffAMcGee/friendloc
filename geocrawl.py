@@ -3,6 +3,7 @@ import sys
 import numpy
 import random
 import itertools
+import logging
 
 import maroon
 from restkit.errors import Unauthorized
@@ -14,6 +15,7 @@ from localcrawl.gisgraphy import GisgraphyResource
 from splitproc import SplitProcess
 import utils
 
+
 class GeoLookup(SplitProcess):
     def __init__(self,path,db_name,**kwargs):
         SplitProcess.__init__(self, **kwargs)
@@ -22,14 +24,19 @@ class GeoLookup(SplitProcess):
 
     def produce(self):
         users = {}
-        for t in utils.read_json(self.path):
+        logging.info("started produce")
+        for i,t in enumerate(utils.read_json(self.path)):
+            if i%1000 ==0:
+                logging.debug("tweet %r"%t)
             uid = t['user']['id']
             if 'coordinates' not in t: continue
             if uid not in users:
                 users[uid] = t['user']
                 users[uid]['locs'] = []
             users[uid]['locs'].append(t['coordinates']['coordinates'])
+        logging.info("sending users")
         for uid,user in users.iteritems():
+            logging.debug("considering uid %d"%uid)
             spots = user['locs']
             if len(spots)<2: continue
             if user['followers_count']==0 and user['friends_count']==0: continue
@@ -43,7 +50,10 @@ class GeoLookup(SplitProcess):
     def map(self,users):
         self.twitter = TwitterResource()
         self.gis = GisgraphyResource()
-        maroon.Model.database = maroon.MongoDB(name=self.db_name)
+        maroon.Model.database = maroon.TeeDB(
+            'logs/geocrawl_%d.json'%self.slave_id,
+            maroon.MongoDB(name=self.db_name)
+            )
 
         for user_d in users:
             self.twitter.sleep_if_needed()
@@ -53,6 +63,7 @@ class GeoLookup(SplitProcess):
                 user.attempt_save()
             except Unauthorized:
                 pass
+            yield None
 
     def save_neighbors(self,user):
         edges, tweets = self.save_user_data(user._id)
@@ -70,14 +81,12 @@ class GeoLookup(SplitProcess):
         users = self.twitter.user_lookup(user_ids=uids)
         amigos = []
         for amigo in users:
+            if not amigo or amigo.protected: continue
             place = self.gis.twitter_loc(amigo.location)
             #ignore states and regions with more than 5 million people
-            if( amigo.protected
-                    or not place
+            if (    not place
                     or place.feature_code=="ADM1"
                     or place.population>5000000):
-                for k,s in sets.iteritems():
-                    s.discard(amigo._id)
                 continue
             amigo.geonames_place = place
             amigos.append(amigo)
@@ -85,8 +94,9 @@ class GeoLookup(SplitProcess):
 
         #pick a [friend,rfriend,follower] and store their info
         for k,s in sets.iteritems():
-            if s:
-                group = list(s)
+            saved = s.intersection(amigos)
+            if saved:
+                group = list(saved)
                 random.shuffle(group)
                 setattr(user,k,group)
                 self.save_user_data(group[0])
@@ -101,5 +111,6 @@ class GeoLookup(SplitProcess):
 
 
 if __name__ == '__main__':
-    proc = GeoLookup(sys.argv[0])
-    proc.run_single()
+    path = sys.argv[1] if len(sys.argv)>1 else None
+    proc = GeoLookup(path, "bde_tmp", log_level=logging.INFO)
+    proc.run()
