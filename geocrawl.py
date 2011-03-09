@@ -24,12 +24,14 @@ class GeoLookup(SplitProcess):
 
     def produce(self):
         users = {}
-        logging.info("started produce")
+        db = maroon.MongoDB(name=self.db_name)
+        old_users = db.User.find({'mloc':{'$exists':1}}, {'_id':1})
+        old_uids = set(user['_id'] for user in old_users)
         for i,t in enumerate(utils.read_json(self.path)):
-            if i%1000 ==0:
-                logging.debug("tweet %r"%t)
+            if i%10000 ==0:
+                logging.info("read %d tweets"%i)
             uid = t['user']['id']
-            if 'coordinates' not in t: continue
+            if 'coordinates' not in t or uid in old_uids: continue
             if uid not in users:
                 users[uid] = t['user']
                 users[uid]['locs'] = []
@@ -94,7 +96,8 @@ class GeoLookup(SplitProcess):
 
         #pick a [friend,rfriend,follower] and store their info
         for k,s in sets.iteritems():
-            saved = s.intersection(amigos)
+
+            saved = s.intersection(a._id for a in amigos)
             if saved:
                 group = list(saved)
                 random.shuffle(group)
@@ -112,5 +115,5 @@ class GeoLookup(SplitProcess):
 
 if __name__ == '__main__':
     path = sys.argv[1] if len(sys.argv)>1 else None
-    proc = GeoLookup(path, "bde_tmp", log_level=logging.INFO)
+    proc = GeoLookup(path, "geo", log_level=logging.INFO)
     proc.run()
