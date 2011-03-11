@@ -6,7 +6,7 @@ import itertools
 import logging
 
 import maroon
-from restkit.errors import Unauthorized
+from restkit.errors import Unauthorized, ResourceNotFound
 
 from localcrawl.models import Edges, User, Tweet
 from localcrawl.twitter import TwitterResource
@@ -27,6 +27,7 @@ class GeoLookup(SplitProcess):
         db = maroon.MongoDB(name=self.db_name)
         old_users = db.User.find({'mloc':{'$exists':1}}, {'_id':1})
         old_uids = set(user['_id'] for user in old_users)
+        logging.info("old_uids %d",len(old_uids))
         for i,t in enumerate(utils.read_json(self.path)):
             if i%10000 ==0:
                 logging.info("read %d tweets"%i)
@@ -36,7 +37,7 @@ class GeoLookup(SplitProcess):
                 users[uid] = t['user']
                 users[uid]['locs'] = []
             users[uid]['locs'].append(t['coordinates']['coordinates'])
-        logging.info("sending users")
+        logging.info("sending up to %d users"%len(users))
         for uid,user in users.iteritems():
             logging.debug("considering uid %d"%uid)
             spots = user['locs']
@@ -63,8 +64,10 @@ class GeoLookup(SplitProcess):
             try:
                 self.save_neighbors(user)
                 user.attempt_save()
+            except ResourceNotFound:
+                logging.info("ResourceNotFound for %d",user._id)
             except Unauthorized:
-                pass
+                logging.info("Unauthorized for %d",user._id)
             yield None
 
     def save_neighbors(self,user):
