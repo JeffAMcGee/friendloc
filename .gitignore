@@ -16,8 +16,6 @@ data
 
 *.in
 *.out
-maroon
-localcrawl
 
 settings_dev.py
 settings_prod.py

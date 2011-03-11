@@ -1,0 +1,7 @@
+
+settings = dict(
+    consumer_key = 'This',
+    consumer_secret = 'is',
+    token_key = "top",
+    token_secret = "secret!",
+)
