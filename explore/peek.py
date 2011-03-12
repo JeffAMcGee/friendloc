@@ -8,11 +8,12 @@ from collections import defaultdict
 from datetime import datetime as dt
 from operator import itemgetter
 
-from settings import settings
-import localcrawl.twitter as twitter
-from localcrawl.models import *
 from maroon import ModelCache
-from utils import *
+
+from settings import settings
+import base.twitter as twitter
+from base.models import *
+from base.utils import *
 
 
 def print_locs(start='T',end='U'):

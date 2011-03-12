@@ -1,7 +1,4 @@
 import itertools
-import time
-import os
-import sys
 import random
 import logging
 import math
@@ -18,11 +15,11 @@ from matplotlib.transforms import Bbox
 import numpy
 
 from settings import settings
-import localcrawl.twitter as twitter
-import localcrawl.gisgraphy as gisgraphy
-from localcrawl.models import *
+import base.twitter as twitter
+import base.gisgraphy as gisgraphy
+from base.models import *
 from maroon import ModelCache
-from utils import *
+from base.utils import *
 
 def plot_tweets():
     #usage: peek.py print_locs| peek.py plot_tweets

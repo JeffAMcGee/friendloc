@@ -18,9 +18,9 @@ import beanstalkc
 from settings import settings
 from scoredict import Scores, BUCKETS, log_score, DONE
 import lookup
-import twitter
-from models import *
-from utils import grouper, couch, mongo, in_local_box
+import base.twitter
+from base.models import *
+from base.utils import grouper, couch, mongo, in_local_box
 
 def design_sync(type):
     "sync the documents in _design"

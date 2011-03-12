@@ -14,10 +14,10 @@ import maroon
 from maroon import *
 from restkit import ResourceNotFound
 
-from models import Edges, User, Tweet, LookupJobBody
-from twitter import TwitterResource
 from settings import settings
-from gisgraphy import GisgraphyResource, in_local_box
+from base.models import Edges, User, Tweet, LookupJobBody
+from base.twitter import TwitterResource
+from base.gisgraphy import GisgraphyResource, in_local_box
 from procs import LocalProc, create_slaves
 from scoredict import Scores, log_score, BUCKETS
 import scoredict

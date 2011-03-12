@@ -15,10 +15,10 @@ import Queue
 import maroon
 from maroon import *
 
-from models import User, Tweet
-from twitter import TwitterResource
+from base.models import User, Tweet
+from base.twitter import TwitterResource
 from settings import settings
-from gisgraphy import GisgraphyResource
+from base.gisgraphy import GisgraphyResource
 from procs import LocalProc, create_slaves
 
 

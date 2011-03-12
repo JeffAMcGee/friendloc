@@ -8,12 +8,11 @@ import logging
 import maroon
 from restkit.errors import Unauthorized, ResourceNotFound
 
-from localcrawl.models import Edges, User, Tweet
-from localcrawl.twitter import TwitterResource
-from localcrawl.gisgraphy import GisgraphyResource
-
-from splitproc import SplitProcess
-import utils
+from base.models import Edges, User, Tweet
+from base.twitter import TwitterResource
+from base.gisgraphy import GisgraphyResource
+from base.splitproc import SplitProcess
+import base.utils
 
 
 class GeoLookup(SplitProcess):

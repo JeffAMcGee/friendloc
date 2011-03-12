@@ -7,7 +7,7 @@ from multiprocessing import Process
 
 from settings import settings
 from maroon import CouchDB, MongoDB, TeeDB
-from models import *
+from base.models import *
 
 
 class LocalProc(object):

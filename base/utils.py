@@ -17,9 +17,9 @@ except:
     import json
 
 from settings import settings
-import localcrawl.twitter as twitter
-from localcrawl.models import *
-from maroon import ModelCache
+import twitter as twitter
+from models import *
+from maroon import ModelCache, CouchDB, MongoDB
 
 
 def all_users():
@@ -31,6 +31,16 @@ def grouper(n, iterable, fillvalue=None):
     args = [iter(iterable)] * n
     return itertools.izip_longest(*args, fillvalue=fillvalue)
 
+def couch(name):
+    return CouchDB(settings.couchdb_root+name,True)
+
+def mongo(name):
+    return MongoDB(name=name)
+
+
+def in_local_box(place):
+    box = settings.local_box
+    return all(box[d][0]<place[d]<box[d][1] for d in ('lat','lng'))
 
 def tri_users_dict_set(users_path):
     users = dict((int(d['id']),d) for d in _read_json(users_path))
@@ -115,3 +125,7 @@ def read_json(path=None):
     file = open(path) if path else sys.stdin
     return (json.loads(l) for l in file)
 
+def peek(iterable):
+    it = iter(iterable)
+    first = it.next()
+    return first, itertools.chain([first],it)
