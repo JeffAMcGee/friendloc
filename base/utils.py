@@ -1,6 +1,7 @@
 import itertools
 import time
 import os
+import errno
 import sys
 import random
 import math
@@ -81,6 +82,12 @@ def parse_ats(ats_path):
         ated[at][uid]+=1
     return ats,ated
 
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as ex:
+        if ex.errno!=errno.EEXIST:
+            raise
 
 def mainstream_edges(edges):
     return [ e for e in edges

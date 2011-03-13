@@ -124,6 +124,20 @@ class Tweet(TwitterModel):
             ats = from_dict['entities']['user_mentions']
             self.mentions = [at['id'] for at in ats ]
 
+    @classmethod
+    def by_date(cls,start=None,end=None):
+        if settings.db == 'couch':
+            startkey=start.timetuple()[0:6] if start else None
+            endkey=end.timetuple()[0:6] if end else None
+            tweets = cls.database.paged_view( 'tweet/date', include_docs=True, startkey=start, endkey=end)
+            return (Tweet(from_dict=t['doc']) for t in tweets)
+        else:
+            q = {}
+            if start: q['$gte']=start
+            if end: q['$lt']=end
+            tweets = Tweet.database.Tweet.find({'ca':q})
+            return (Tweet(from_dict=t) for t in tweets)
+
 
 class Edges(TwitterModel):
     # I only store the first 5000 friends and followers

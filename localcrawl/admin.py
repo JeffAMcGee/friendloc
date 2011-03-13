@@ -20,7 +20,8 @@ from scoredict import Scores, BUCKETS, log_score, DONE
 import lookup
 import base.twitter
 from base.models import *
-from base.utils import grouper, couch, mongo, in_local_box
+from maroon import Model
+from base.utils import grouper, couch, mongo, in_local_box, read_json
 
 def design_sync(type):
     "sync the documents in _design"
@@ -95,6 +96,12 @@ def export_mongo():
                 if field in d and isinstance(d[field],list):
                     d[field] = [int(u) for u in d[field][:5000]]
             print json.dumps(d)
+
+
+def import_mongo(cls_name,path=None):
+    Cls = globals()[cls_name]
+    for g in grouper(100,read_json(path)):
+        Cls.bulk_save(Cls(from_dict=d) for d in g if d)
 
 
 def pick_locals(path=None):

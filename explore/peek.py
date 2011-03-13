@@ -59,25 +59,24 @@ def count_sn(path):
     print "lost:%d found:%d"%(lost,found)
 
 
-def krishna_export(start=[2010],end=None):
+def krishna_export(start=settings.min_tweet_id,end=None):
     "export the tweets for Krishna's crawler"
-    view = Model.database.paged_view(
-            'tweet/date',
-            include_docs=True,
-            startkey=start,
-            endkey=end
-        )
-    for k,g in itertools.groupby(view,itemgetter('key')):
-        path = os.path.join(*(str(x) for x in k))
+    settings.pdb()
+    q = {}
+    if start: q['$gte']=start
+    if end: q['$lt']=end
+    tweets = Tweet.find({'_id':q} if q else None, sort='_id')
+    for day,group in itertools.groupby(tweets,lambda t: t.created_at.date()):
+        path = os.path.join(*(str(x) for x in day.timetuple()[0:3]))
         mkdir_p(os.path.dirname(path))
         with open(path,'w') as f:
-            for t in (row['doc'] for row in g):
-                ts = int(time.mktime(dt(*t['ca']).timetuple()))
-                if t['ats']:
-                    for at in t['ats']:
-                        print>>f,"%d %s %s %s"%(ts,t['_id'],t['uid'],at)
+            for t in group:
+                ts = int(time.mktime(t.created_at.timetuple()))
+                if t.mentions:
+                    for at in t.mentions:
+                        print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
                 else:
-                    print>>f,"%d %s %s"%(ts,t['_id'],t['uid'])
+                    print>>f,"%d %d %d"%(ts,t._id,t.user_id)
 
 
 def find_ats(users_path="hou_tri_users"):
