@@ -1,6 +1,6 @@
-from restkit import OAuthFilter, request, Resource, TConnectionManager
+from restkit import OAuthFilter, request, Resource, Manager
 import restkit
-import restkit.util.oauth2 as oauth
+import restkit.oauth2 as oauth
 import json
 import time
 import logging
@@ -25,11 +25,11 @@ class TwitterResource(Resource):
                 secret=settings.token_secret)
         url = "http://api.twitter.com/1/"
         auth = OAuthFilter('*', consumer, token)
-        mgr = TConnectionManager()
+        mgr = Manager()
         Resource.__init__(self,
                 url,
                 filters=[auth],
-                conn_manager=mgr,
+                manager=mgr,
                 client_opts={'timeout':30}
         )
         self.remaining = 10000

@@ -1,7 +1,7 @@
 import json
 import re
 
-from restkit import OAuthFilter, request, Resource, TConnectionManager
+from restkit import OAuthFilter, request, Resource, Manager
 from restkit.errors import RequestFailed
 
 from settings import settings
@@ -14,7 +14,7 @@ class GisgraphyResource(Resource):
     def __init__(self):
         Resource.__init__(self,
                 settings.gisgraphy_url,
-                conn_manager = TConnectionManager(),
+                manager = Manager(),
                 client_opts={'timeout':30},
         )
 
