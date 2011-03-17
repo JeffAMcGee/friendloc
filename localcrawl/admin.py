@@ -13,7 +13,10 @@ import pdb
 from couchdbkit import ResourceNotFound, BulkSaveError
 import restkit.errors
 from couchdbkit.loaders import FileSystemDocsLoader
-import beanstalkc
+try:
+    import beanstalkc
+except:
+    pass
 
 from settings import settings
 from scoredict import Scores, BUCKETS, log_score, DONE

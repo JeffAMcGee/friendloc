@@ -12,7 +12,10 @@ import sys
 import getopt
 import pdb
 
-import beanstalkc
+try:
+    import beanstalkc
+except:
+    beanstalkc = None
 import maroon
 
 from settings import settings
@@ -56,7 +59,5 @@ else:
     gisgraphy = GisgraphyResource()
     twitter = twitter.TwitterResource()
     Model.database = mongo(settings.region)
-    try:
+    if beanstalkc:
         stalk = beanstalkc.Connection()
-    except:
-        pass

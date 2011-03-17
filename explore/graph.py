@@ -3,6 +3,7 @@ import random
 import logging
 import math
 import simplejson
+import re
 from collections import defaultdict
 from datetime import datetime as dt
 from operator import itemgetter
@@ -20,6 +21,70 @@ import base.gisgraphy as gisgraphy
 from base.models import *
 from maroon import ModelCache
 from base.utils import *
+
+
+def graph_hist(data,path,kind="sum",normed=False,bins=None,**kwargs):
+    if not isinstance(data,dict):
+        data = {"":data}
+
+    hargs = {}
+    if kind == 'power':
+        ax.set_xscale('log')
+        hargs['log']=True
+    elif kind == 'linear':
+        pass
+    else:
+        hargs['cumulative']=True
+
+    fig = plt.figure(figsize=(12,18))
+    ax = fig.add_subplot(111)
+    for key,ray in data.iteritems():
+        if isinstance(key,tuple):
+            for k,v in zip(['label','color','linestyle'],key):
+                hargs[k] = v
+        else:
+            hargs['label'] = key
+        ax.hist(ray,
+            histtype='step',
+            bins=bins,
+            normed=normed,
+            **hargs
+            )
+    if normed:
+        ax.set_ylim(0,1)
+    elif 'ylim' in kwargs:
+        ax.set_ylim(0,kwargs['ylim'])
+    ax.set_xlabel(kwargs.get('xlabel'))
+    ax.set_ylabel(kwargs.get('ylabel'))
+    fig.savefig('../www/'+path)
+
+
+def geo_users():
+    return User.find({'mloc':{'$exists':1}})
+
+
+def compare_frds_fols():
+    keys = ('just_friends','just_followers','rfriends')
+
+def tweets_over_time():
+    days =[]
+    twitpic = re.compile(r'twitpic\.com/\w+')
+    for tweet in Tweet.get_all():
+        if re.search(twitpic,tweet.text):
+            ca = tweet.created_at
+            days.append(ca.hour/24.0+ca.day)
+    graph_hist(
+            days,
+            "twitpic_hr",
+            kind="linear",
+            bins=numpy.arange(1,14,1/24.0),
+            )
+
+
+###########################################################
+# methods from localcrawl - use at your own risk!
+#
+
 
 def plot_tweets():
     #usage: peek.py print_locs| peek.py plot_tweets
@@ -70,6 +135,8 @@ def tpu_hist(path=None):
             )
     ax.set_xscale('log')
     fig.savefig('../www/tpu_us_hist.png')
+
+
 
 
 def diff_gnp_gps(path=None):
@@ -131,8 +198,6 @@ def user_stddev(path=None):
     ax.hist(means,bins=100,log=False)
     fig.savefig('../www/user.png')
     print numpy.median(means)
-
-
 
 
 def graph_edges(users_path="hou_tri_users", ats_path="hou_ats"):
