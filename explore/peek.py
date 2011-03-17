@@ -59,24 +59,34 @@ def count_sn(path):
     print "lost:%d found:%d"%(lost,found)
 
 
+def _tweets_correct_date(start,end):
+    tweets = Tweet.find(
+            Tweet._id.range(start and int(start), end and int(end)),
+            sort='_id',
+            descending = True,
+            timeout=False)
+    oldest = dt.utcnow()
+    for tweet in tweets:
+        if (tweet.created_at-oldest).days>0:
+            print "tweet out of order - %r"%tweet.to_d()
+        oldest = tweet.created_at = min(oldest,tweet.created_at)
+        yield tweet
+ 
 def krishna_export(start=settings.min_tweet_id,end=None):
     "export the tweets for Krishna's crawler"
-    settings.pdb()
-    q = {}
-    if start: q['$gte']=start
-    if end: q['$lt']=end
-    tweets = Tweet.find({'_id':q} if q else None, sort='_id')
+    tweets = _tweets_correct_date(start,end)
     for day,group in itertools.groupby(tweets,lambda t: t.created_at.date()):
         path = os.path.join(*(str(x) for x in day.timetuple()[0:3]))
         mkdir_p(os.path.dirname(path))
+        print path
         with open(path,'w') as f:
             for t in group:
                 ts = int(time.mktime(t.created_at.timetuple()))
                 if t.mentions:
                     for at in t.mentions:
                         print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
-                else:
-                    print>>f,"%d %d %d"%(ts,t._id,t.user_id)
+                #else:
+                #    print>>f,"%d %d %d"%(ts,t._id,t.user_id)
 
 
 def find_ats(users_path="hou_tri_users"):
