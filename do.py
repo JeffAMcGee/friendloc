@@ -59,5 +59,7 @@ else:
     gisgraphy = GisgraphyResource()
     twitter = twitter.TwitterResource()
     Model.database = mongo(settings.region)
-    if beanstalkc:
+    try:
         stalk = beanstalkc.Connection()
+    except:
+        pass

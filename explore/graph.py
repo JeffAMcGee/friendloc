@@ -23,7 +23,7 @@ from maroon import ModelCache
 from base.utils import *
 
 
-def graph_hist(data,path,kind="sum",normed=False,bins=None,**kwargs):
+def graph_hist(data,path,kind="sum",normed=False,bins=None,figsize=(18,12),**kwargs):
     if not isinstance(data,dict):
         data = {"":data}
 
@@ -36,7 +36,7 @@ def graph_hist(data,path,kind="sum",normed=False,bins=None,**kwargs):
     else:
         hargs['cumulative']=True
 
-    fig = plt.figure(figsize=(12,18))
+    fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     for key,ray in data.iteritems():
         if isinstance(key,tuple):
@@ -63,13 +63,30 @@ def geo_users():
     return User.find({'mloc':{'$exists':1}})
 
 
-def compare_frds_fols():
+def compare_edge_types():
+    users = User.find(
+            User.just_friends.exists() &
+            User.just_followers.exists() &
+            User.rfriends.exists(),limit=1000 )
     keys = ('just_friends','just_followers','rfriends')
+    data = defaultdict(list)
+    for user in users:
+        print user.screen_name
+        for key in keys:
+            amigo = User.get_id(getattr(user,key)[0])
+            place = amigo.geonames_place.to_d()
+            if place: #FIXME: we should always have a place!
+                dist = coord_in_miles(user.median_loc,amigo.geonames_place.to_d())
+                data[key].append(dist)
+    graph_hist(data,
+            "geo_edges",
+            )
+
 
 def tweets_over_time():
     days =[]
     twitpic = re.compile(r'twitpic\.com/\w+')
-    for tweet in Tweet.get_all():
+    for tweet in Tweet.get_all(fields=['ca','tx']):
         if re.search(twitpic,tweet.text):
             ca = tweet.created_at
             days.append(ca.hour/24.0+ca.day)
@@ -77,7 +94,9 @@ def tweets_over_time():
             days,
             "twitpic_hr",
             kind="linear",
-            bins=numpy.arange(1,14,1/24.0),
+            xlabel = "March 2011, UTC",
+            ylabel = "tweets with twitpic per hour",
+            bins=numpy.arange(4,18,1/24.0),
             )
 
 
