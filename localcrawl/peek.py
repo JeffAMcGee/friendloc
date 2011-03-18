@@ -7,8 +7,6 @@ import logging
 from collections import defaultdict
 from operator import itemgetter
 
-from couchdbkit import ResourceNotFound
-
 from settings import settings
 import base.twitter
 from base.models import *

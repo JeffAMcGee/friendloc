@@ -12,8 +12,36 @@ from maroon import ModelCache
 
 from settings import settings
 import base.twitter as twitter
+from base.gisgraphy import GisgraphyResource
 from base.models import *
 from base.utils import *
+
+
+def save_geo_mloc(path=None):
+    gis = GisgraphyResource()
+    for d in read_json(path):
+        if 'mloc' in d:
+            user = User(from_dict=d)
+            seen.add(user._id)
+            user.geonames_place = gis.twitter_loc(user.location)
+            user.save()
+
+def save_amigos(path=None):
+    users = set()
+    amigos = set()
+    for user in User.get_all(fields=['jfrds','jfols','rfrds']):
+        users.add(user._id)
+        for l in (user.just_friends,user.just_followers,user.rfriends):
+            if l:
+                amigos.add(l[0])
+    missing = amigos-users
+    print "missing %d"%len(missing)
+    for d in read_json(path):
+        if d['_id'] in missing:
+            user = User(from_dict=d)
+            user.save()
+            missing.remove(user._id)
+    print "missing %d"%len(missing)
 
 
 def print_locs(start='T',end='U'):
