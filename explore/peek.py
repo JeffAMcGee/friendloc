@@ -17,6 +17,27 @@ from base.models import *
 from base.utils import *
 
 
+def find_removed_locs():
+    for user in User.find(User.median_loc.exists()):
+        for key in ('just_friends','just_followers','rfriends'):
+            l = getattr(user,key)
+            if not l: continue
+            amigo = User.get_id(l[0])
+            place = amigo.geonames_place.to_d()
+            if not place:
+                print amigo._id
+
+def fix_removed_locs(path=None):
+    lusers = set(read_json ('removed_locs'))
+    for user in read_json(path):
+        id=user['_id']
+        if id in lusers and user['gnp']:
+            obj = User.get_id(user['_id'])
+            obj.geonames_place = GeonamesPlace(from_dict=user['gnp'])
+            obj.save()
+            lusers.remove(id)
+    print len(lusers)
+ 
 def save_geo_mloc(path=None):
     gis = GisgraphyResource()
     for d in read_json(path):
@@ -43,6 +64,14 @@ def save_amigos(path=None):
             missing.remove(user._id)
     print "missing %d"%len(missing)
 
+def find_geo_ats():
+    ds = User.database.User.find(
+            {'ats':{'$not':{'$size':0}}},
+            fields=['ats','uid'],
+            ).sort('uid')
+    for k,g in itertools.groupby(ds, itemgetter('uid')):
+        ats = set(at for d in g for at in d['ats'])
+        print json.dumps(dict(uid=uid,ats=list(ats)))
 
 def print_locs(start='T',end='U'):
     view = Model.database.paged_view('tweet/plc',

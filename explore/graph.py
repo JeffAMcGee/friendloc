@@ -23,7 +23,10 @@ from maroon import ModelCache
 from base.utils import *
 
 
-def graph_hist(data,path,kind="sum",normed=False,bins=None,figsize=(18,12),**kwargs):
+def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    
     if not isinstance(data,dict):
         data = {"":data}
 
@@ -36,24 +39,23 @@ def graph_hist(data,path,kind="sum",normed=False,bins=None,figsize=(18,12),**kwa
     else:
         hargs['cumulative']=True
 
-    fig = plt.figure(figsize=figsize)
-    ax = fig.add_subplot(111)
+    for known in ['bins','normed']:
+        if known in kwargs:
+            hargs[known] = kwargs[known]
+
     for key,ray in data.iteritems():
-        if isinstance(key,tuple):
+        if isinstance(key,basestring):
+            hargs['label'] = key
+        else:
             for k,v in zip(['label','color','linestyle'],key):
                 hargs[k] = v
-        else:
-            hargs['label'] = key
-        ax.hist(ray,
-            histtype='step',
-            bins=bins,
-            normed=normed,
-            **hargs
-            )
-    if normed:
+        ax.hist(ray, histtype='step', **hargs)
+    if kwargs.get('normed'):
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
         ax.set_ylim(0,kwargs['ylim'])
+    if len(data)>1:
+        ax.legend()
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
     fig.savefig('../www/'+path)
@@ -67,19 +69,21 @@ def compare_edge_types():
     users = User.find(
             User.just_friends.exists() &
             User.just_followers.exists() &
-            User.rfriends.exists(),limit=1000 )
+            User.rfriends.exists() )
     keys = ('just_friends','just_followers','rfriends')
     data = defaultdict(list)
     for user in users:
-        print user.screen_name
         for key in keys:
             amigo = User.get_id(getattr(user,key)[0])
             place = amigo.geonames_place.to_d()
-            if place: #FIXME: we should always have a place!
-                dist = coord_in_miles(user.median_loc,amigo.geonames_place.to_d())
-                data[key].append(dist)
+            dist = coord_in_miles(user.median_loc,place)
+            data[key].append(dist)
+        data['us_center'] = coord_in_miles(user.median_loc,[-92.2,37.5])
     graph_hist(data,
-            "geo_edges",
+            "geo_edges_zoom",
+            bins=xrange(1000),
+            xlabel = "distance between edges",
+            ylabel = "number of users",
             )
 
 

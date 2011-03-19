@@ -62,6 +62,7 @@ class GeoLookup(SplitProcess):
             user = User(from_dict=user_d)
             try:
                 self.save_neighbors(user)
+                #FIXME: don't overwrite old gnp data
                 user.attempt_save()
             except ResourceNotFound:
                 logging.info("ResourceNotFound for %d",user._id)
@@ -94,6 +95,7 @@ class GeoLookup(SplitProcess):
                 continue
             amigo.geonames_place = place
             amigos.append(amigo)
+        #FIXME: don't overwrite old median_locs!
         User.database.bulk_save_models(amigos)
 
         #pick a [friend,rfriend,follower] and store their info
