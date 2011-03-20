@@ -117,7 +117,7 @@ class Tweet(TwitterModel):
     ignored = [
         'contributors', 'entities', 'in_reply_to_screen_name', 'source',
         'truncated', 'user', 'id', 'id_str', 'retweeted', 'retweeted_status',
-        'retweeted_count', 'favorited', 'geo', 'user_id', 'user_id_str'
+        'retweeted_count', 'favorited', 'geo', 'user_id_str'
         ]
 
     #properties from twitter
