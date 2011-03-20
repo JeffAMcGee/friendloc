@@ -66,24 +66,36 @@ def geo_users():
 
 
 def compare_edge_types():
+    ats = dict((d['uid'],set(d['ats'])) for d in read_json('geo_ats.json'))
+    logging.info("read ats")
     users = User.find(
             User.just_friends.exists() &
             User.just_followers.exists() &
-            User.rfriends.exists() )
+            User.rfriends.exists(),
+            #limit=10000,
+            )
     keys = ('just_friends','just_followers','rfriends')
     data = defaultdict(list)
+    last_spot = place = [-92.2,37.5] #population center of US
     for user in users:
         for key in keys:
-            amigo = User.get_id(getattr(user,key)[0])
-            place = amigo.geonames_place.to_d()
+            amigo_id = getattr(user,key)[0]
+            if amigo_id not in ats.get(user._id,()): continue
+            if user._id not in ats.get(amigo_id,()): continue
+            place = User.get_id(amigo_id).geonames_place.to_d()
             dist = coord_in_miles(user.median_loc,place)
             data[key].append(dist)
-        data['us_center'] = coord_in_miles(user.median_loc,[-92.2,37.5])
+        data['us_center'].append(coord_in_miles(user.median_loc,last_spot))
+        last_spot = place
+    for k,v in data.iteritems():
+        logging.info("%s %d",k,len(v))
     graph_hist(data,
-            "geo_edges_zoom",
-            bins=xrange(1000),
+            "geo_edges_com",
+            bins=xrange(2000),
+            ylim=60000,
             xlabel = "distance between edges",
             ylabel = "number of users",
+            normed=True,
             )
 
 
