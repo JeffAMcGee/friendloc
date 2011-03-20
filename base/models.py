@@ -50,6 +50,15 @@ class GeonamesPlace(ModelPart):
 
 class User(TwitterModel):
     _id = TwitterIdProperty('_id')
+    ignored = [
+        'contributors_enabled', 'follow_request_sent', 'following',
+        'profile_background_color', 'profile_background_image_url',
+        'profile_background_tile', 'profile_link_color',
+        'profile_sidebar_border_color', 'profile_sidebar_fill_color',
+        'profile_text_color', 'profile_use_background_image',
+        'show_all_inline_media', 'time_zone', 'status', 'notifications',
+        'id', 'id_str', 'is_translator'
+    ]
 
     #local properties
     tweets_per_hour = FloatProperty('tph')
@@ -105,11 +114,15 @@ class Tweet(TwitterModel):
     _id = TwitterIdProperty('_id')
     mentions = ListProperty('ats',int) #based on entities
 
+    ignored = [
+        'contributors', 'entities', 'in_reply_to_screen_name', 'source',
+        'truncated', 'user', 'id', 'id_str', 'retweeted', 'retweeted_status',
+        'retweeted_count', 'favorited', 'geo', 'user_id', 'user_id_str'
+        ]
+
     #properties from twitter
     coordinates = Property('coord')
     created_at = TwitterDateTimeProperty('ca')
-    favorited = BoolProperty('fav')
-    geo = Property('geo')
     in_reply_to_status_id = TwitterIdProperty('rtt')
     in_reply_to_user_id = TwitterIdProperty('rtu')
     place = Property('plc')
