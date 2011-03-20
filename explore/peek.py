@@ -17,6 +17,16 @@ from base.models import *
 from base.utils import *
 
 
+def find_geo_ats(path=None):
+    uids = defaultdict(set)
+    for t in read_json(path):
+        ats = t['ats']
+        if ats:
+            uids[t['uid']].update(ats)
+    for k,v in uids.iteritems():
+        print json.dumps(dict(uid=k,ats=list(v)))
+
+
 def find_removed_locs():
     for user in User.find(User.median_loc.exists()):
         for key in ('just_friends','just_followers','rfriends'):
@@ -64,14 +74,6 @@ def save_amigos(path=None):
             missing.remove(user._id)
     print "missing %d"%len(missing)
 
-def find_geo_ats():
-    ds = User.database.User.find(
-            {'ats':{'$not':{'$size':0}}},
-            fields=['ats','uid'],
-            ).sort('uid')
-    for k,g in itertools.groupby(ds, itemgetter('uid')):
-        ats = set(at for d in g for at in d['ats'])
-        print json.dumps(dict(uid=uid,ats=list(ats)))
 
 def print_locs(start='T',end='U'):
     view = Model.database.paged_view('tweet/plc',
