@@ -160,16 +160,13 @@ def find_ats(users_path="hou_tri_users"):
 
 
 def print_tri_counts(users_path="hou_tri_users"):
-    users, uids = tri_users_dict_set(users_path)
     edges = ModelCache(Edges)
     data = []
-    for uid,user in users.iteritems():
-        me = edges[uid]
-        if not me : continue
-        friends = uids.intersection(me.friends)
-        if not friends: continue
-        your_id = random.sample(friends,1)[0]
-        you = edges[your_id]
+    for user in User.find( User.rfriends.exists() ):
+        amigo_id = user.rfriends[0]
+        amigo = User.get_id(amigo_id, fields=['gnp'])
+        me = edges[user._id]
+        you = edges[amigo_id]
         sets = dict(
             mfrd = set(me.friends),
             mfol = set(me.followers),
@@ -177,11 +174,8 @@ def print_tri_counts(users_path="hou_tri_users"):
             yfol = set(you.followers),
             )
         all = (sets['mfrd']|sets['mfol'])&(sets['yfrd']|sets['yfol'])
-        d = dict(
-            dist = coord_in_miles(user,users[your_id]),
-            all = len(all),
-            rfriend = 1 if your_id in sets['mfol'] else 0 
-        )
+        dist = coord_in_miles(user.median_loc,amigo.geonames_place.to_d())
+        d = dict(dist=dist, all=len(all))
         for k,v in sets.iteritems():
             d['l'+k]= len(v)
             d[k] = list(all&v)

@@ -103,9 +103,15 @@ def export_mongo():
 
 def import_mongo(cls_name,path=None):
     Cls = globals()[cls_name]
-    for g in grouper(100,read_json(path)):
+    for g in grouper(1000,read_json(path)):
         Cls.bulk_save(Cls(from_dict=d) for d in g if d)
 
+def fix_crowd_uids():
+    settings.pdb()
+    for crowd in Model.database.Crowd.find():
+        for user in crowd['users']:
+            user['id'] = int(user['id'][1:])
+        Model.database.Crowd.save(crowd)
 
 def pick_locals(path=None):
     file =open(path) if path else sys.stdin 

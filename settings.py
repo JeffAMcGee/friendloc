@@ -15,6 +15,7 @@ settings = SettingsBunch(
     beanstalk_host = 'localhost',
     beanstalk_port = 11300,
     beanstalkd_ttr = 7200,
+    mongo_host = 'localhost',
     couchdb_root = 'http://localhost:5984/',
     mention_weight = .5,
     crawl_ratio = .1,

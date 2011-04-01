@@ -36,7 +36,7 @@ def couch(name):
     return CouchDB(settings.couchdb_root+name,True)
 
 def mongo(name):
-    return MongoDB(name=name,slave_okay=True)
+    return MongoDB(name=name,host=settings.mongo_host,slave_okay=True)
 
 
 def in_local_box(place):
@@ -97,7 +97,7 @@ def mainstream_edges(edges):
 
 
 def split_tri_counts(counts_path):
-    edges = list(mainstream_edges(_read_json(counts_path)))
+    edges = list(mainstream_edges(read_json(counts_path)))
     third = len(edges)/3
     return (edges[:third],edges[2*third:3*third],edges[third:2*third])
 

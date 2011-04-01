@@ -43,13 +43,13 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
         if known in kwargs:
             hargs[known] = kwargs[known]
 
-    for key,ray in data.iteritems():
+    for key in sorted(data.iterkeys()):
         if isinstance(key,basestring):
             hargs['label'] = key
         else:
             for k,v in zip(['label','color','linestyle'],key):
                 hargs[k] = v
-        ax.hist(ray, histtype='step', **hargs)
+        ax.hist(data[key], histtype='step', **hargs)
     if kwargs.get('normed'):
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
@@ -59,10 +59,6 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
     fig.savefig('../www/'+path)
-
-
-def geo_users():
-    return User.find({'mloc':{'$exists':1}})
 
 
 def compare_edge_types():
@@ -114,6 +110,55 @@ def tweets_over_time():
             ylabel = "tweets with twitpic per hour",
             bins=numpy.arange(4,18,1/24.0),
             )
+
+
+def gr_tri_by_ratio():
+    counts = []
+    for edge in read_json('geo_tri_counts'):
+        if not edge['all']: continue
+        fields = ('mfrd','mfol','yfrd','yfol')
+        if any(edge['l'+f]<10 for f in fields): continue
+        for f in fields:
+            edge[f] = set(edge[f])
+        counts.append(edge)
+    pairs = itertools.product(('mfrd','mfol'),('yfrd','yfol'))
+    split = len(counts)/5
+    data = {}
+
+    for pair,color in zip(pairs,'rgbk'):
+        def set_len(d):
+            return len(d[pair[0]]&d[pair[1]])
+        counts.sort(key=set_len)
+        parts = (counts[:split],counts[-split:])
+        label = "-".join(pair)
+        print label, set_len(counts[split]), set_len(counts[-split])
+        for part,style in zip(parts,['solid','dotted']):
+            key = (label, color, style)
+            data[key] = [d['dist'] for d in part]
+    graph_hist(data,
+            "geo_tri_by_count",
+            bins=range(1000),
+            xlabel = "distance between edges",
+            ylabel = "number of users",
+            )
+
+def gr_tri_degree(key="mfrd",top=200,right=800):
+    top,right=int(top),int(right)
+    data = numpy.zeros((top+1,right+1))
+    for d in read_json('geo_tri_counts'):
+        data[ min(top,len(d[key])), min(right,d['l'+key]) ]+=1
+    data = data.clip(0,50)
+    #plot it
+    fig = plt.figure(figsize=(24,6))
+    ax = fig.add_subplot(111)
+    ax.imshow(data,
+            interpolation='nearest',
+            cmap = LinearSegmentedColormap.from_list("gray",["w","k"]),
+            )
+    ax.set_xlabel("edges")
+    ax.set_ylabel("edges in triangle")
+    #ax.set_title("Tweets from Houston, TX (11/26/2010-1/14/2010)")
+    fig.savefig('../www/tri_deg_%s.png'%key)
 
 
 ###########################################################
@@ -302,7 +347,7 @@ def graph_thickness(counts_path="tri_counts"):
     fig.savefig('../www/thick_%s.png'%('far' if far else 'near'))
 
 
-def graph_split_counts(counts_path="tri_counts"):
+def graph_split_counts(counts_path="geo_tri_counts"):
     fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(111)
     bins=[int(2**(x-1)) for x in xrange(10)]
@@ -321,9 +366,9 @@ def graph_split_counts(counts_path="tri_counts"):
                 )
     ax.set_xlabel('count of users in both sets')
     ax.set_ylabel('users')
-    ax.set_ylim(0,1000)
+    #ax.set_ylim(0,1000)
     ax.legend()
-    fig.savefig('../www/split_pairs.png')
+    fig.savefig('../www/geo_split_pairs.png')
 
 
 def split_count_friends(counts_path="tri_counts"):
@@ -350,19 +395,19 @@ def split_count_friends(counts_path="tri_counts"):
     fig.savefig('../www/split_fol_hist.png')
 
 
-def graph_tri_count_label(counts_path="tri_counts",label='mfan',me='mfol',you='yfol'):
+def graph_tri_count_label(label='mfan',me='mfol',you='yfol'):
     fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(111)
     last_bin=0
     dist_ratio = [
         (d['dist'], 1.0*len(set(d[me]).intersection(d[you]))/d['all'])
-        for d in mainstream_edges(read_json(counts_path))
+        for d in mainstream_edges(read_json('geo_tri_counts'))
         if d['all']
     ]
     for bin in [.2,.4,.6,.8,1]:
         dists = [d for d,r in dist_ratio if last_bin<r<=bin]
         ax.hist(dists,
-            bins=numpy.arange(0,100,.2),
+            bins=range(2000),#numpy.arange(0,100,.2),
             histtype='step',
             #normed=True,
             label="%f-%f"%(last_bin,bin),
@@ -371,10 +416,10 @@ def graph_tri_count_label(counts_path="tri_counts",label='mfan',me='mfol',you='y
         last_bin=bin
     ax.legend()
     #ax.set_ylim(0,1)
-    ax.set_ylim(0,2000)
+    ax.set_ylim(0,3000)
     ax.set_xlabel('length of edge in miles')
     ax.set_ylabel('users')
-    fig.savefig('../www/tri_'+label+'_ratio_main.png')
+    fig.savefig('../www/geo_'+label+'_ratio.png')
 
 
 def bar_graph(counts_path="tri_counts"):
