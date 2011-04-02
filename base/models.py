@@ -98,17 +98,6 @@ class User(TwitterModel):
     def with_location():
         return User.database.User.find({'mloc':{'$exists':1}})
 
-    @classmethod
-    def next_crawl(cls,endtime = None):
-        if endtime is None:
-            endtime = datetime.utcnow()
-        if settings.db == 'couch':
-            endkey=endtime.timetuple()[0:6]
-            users = cls.database.paged_view('user/next_crawl',endkey)
-            return (user['id'] for user in users)
-        else:
-            users = User.database.User.find({'ncd':{'$lt':endtime}}, {'_id':1})
-            return (user['_id'] for user in users)
 
 class Tweet(TwitterModel):
     _id = TwitterIdProperty('_id')

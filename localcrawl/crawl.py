@@ -19,32 +19,23 @@ class CrawlProcess(SplitProcess):
 
     def produce(self):
         Model.database = MongoDB(name=self.db_name,host=settings.mongo_host)
-        for uid in User.next_crawl():
-            if uid in self.waiting: continue # they are queued
-            self.waiting.add(uid)
-            yield uid
-
-    def consume(self,items):
-        for uid in items:
-            self.waiting.remove(uid)
+        endtime = datetime.utcnow()
+        return User.find(
+                User.next_crawl_date<endtime,
+                sort=User.next_crawl_date)
 
     def map(self,items):
         self.twitter = TwitterResource()
         Model.database = MongoDB(name=self.db_name,host=settings.mongo_host)
         #settings.pdb()
 
-        for uid in items:
+        for user in items:
             try:
-                user = User.get_id(uid)
                 self.crawl(user)
                 self.twitter.sleep_if_needed()
             except Exception as ex:
-                if user:
-                    logging.exception("exception for user %s"%user.to_d())
-                else:
-                    logging.exception("exception and user is None")
-            yield uid
-        print "slave is done"
+                logging.exception("exception for user %s"%user.to_d())
+            yield None
 
     def crawl(self, user):
         logging.info("visiting %s - %s",user._id,user.screen_name)
