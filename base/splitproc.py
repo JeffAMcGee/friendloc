@@ -103,17 +103,20 @@ class SplitProcess(object):
         if self._log_level is None:
             return
         root = logging.getLogger()
+        if len(root.handlers)==0:
+            hdlr = logging.StreamHandler()
+            root.addHandler(hdlr)
+            hdlr.setLevel(self._log_level)
+            root.setLevel(self._log_level)
         if self._log_path is not None:
             filepath = os.path.join(self._log_path, label)
             file_hdlr = logging.FileHandler(filepath, 'a')
-            fmt = logging.Formatter(logging.BASIC_FORMAT, None)
+            fmt = logging.Formatter(
+                "%(levelname)s:%(module)s:%(asctime)s:%(message)s",
+                "%H:%M:%S")
             file_hdlr.setFormatter(fmt)
             root.addHandler(file_hdlr)
             file_hdlr.setLevel(self._log_level)
-        hdlr = logging.StreamHandler()
-        root.addHandler(hdlr)
-        hdlr.setLevel(self._log_level)
-        root.setLevel(logging.DEBUG)
 
     def _do_async(self,jobs):
         "put jobs on self._todo and yield results from self._done"

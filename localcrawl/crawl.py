@@ -63,6 +63,6 @@ class CrawlProcess(SplitProcess):
         user.save()
 
 def crawl_once(region):
-    proc = CrawlProcess(region, log_level=logging.INFO)
+    proc = CrawlProcess(region, label=region, slaves=settings.slaves, log_level=logging.INFO)
     #proc.run_single()
     proc.run()
