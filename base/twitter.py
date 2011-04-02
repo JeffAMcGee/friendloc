@@ -38,9 +38,9 @@ class TwitterResource(Resource):
         for delay in self.backoff_seconds:
             try:
                 r = self.get(path, headers, **kwargs)
-                if 'x-ratelimit-remaining' in r.headers:
-                    self.remaining = int(r.headers['x-ratelimit-remaining'])
-                    stamp = int(r.headers['x-ratelimit-reset'])
+                if 'X-RateLimit-Remaining' in r.headers:
+                    self.remaining = int(r.headers['X-RateLimit-Remaining'])
+                    stamp = int(r.headers['X-RateLimit-Reset'])
                     self.reset_time = datetime.utcfromtimestamp(stamp)
                 if r.status_int == 304:
                     # I don't think this should happen - that's
