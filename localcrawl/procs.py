@@ -23,11 +23,6 @@ class LocalProc(object):
         log = label+"_"+slave_id if slave_id else label
         filepath = os.path.join(settings.log_dir, log)
         logging.basicConfig(filename=filepath+".log",level=logging.INFO)
-        
-        if settings.db == 'couch':
-            Model.database = CouchDB(settings.couchdb_root+settings.region,True)
-        else:
-            Model.database = TeeDB(filepath+".json",MongoDB(name=settings.region))
 
 
 def _run_slave(Proc,slave_id,*args):
