@@ -10,6 +10,7 @@ import cjson
 from datetime import datetime as dt
 import pdb
 
+import pymongo
 from couchdbkit import ResourceNotFound, BulkSaveError
 import restkit.errors
 from couchdbkit.loaders import FileSystemDocsLoader
@@ -78,6 +79,14 @@ def import_old_json():
                 if field in d and isinstance(d[field],list):
                     d[field] = [u[1:] for u in d[field]]
         Model.database.bulk_save(docs)
+
+def make_indexes(host=settings.mongo_host):
+    databases = ('hou','crowds','japan','egypt')
+    keys = [('User','ncd'),('Tweet','uid')]
+    connection = pymongo.Connection(host=host)
+    for db in databases:
+        for key in keys:
+            connection[db][key[0]].create_index(key[1])
 
 
 def export_json(start=None,end=None):
