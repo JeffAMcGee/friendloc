@@ -124,6 +124,7 @@ class TwitterResource(Resource):
                     uid,
                     max_id = max_id,
                     since_id = since_id,
+                    count=160,
                 )
             except Unauthorized:
                 logging.warn("unauthorized!")
@@ -132,7 +133,7 @@ class TwitterResource(Resource):
                 logging.warn("no tweets after %d for %s",len(all_tweets),uid)
                 break
             all_tweets+=tweets
-            if len(tweets)<90:
+            if len(tweets)<140:
                 #there are no more tweets, and since_id+1 was deleted
                 break
             max_id =int(tweets[-1]._id)-1

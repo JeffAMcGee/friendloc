@@ -25,7 +25,6 @@ from maroon import *
 from base.models import *
 from localcrawl.peek import *
 from localcrawl.admin import *
-from localcrawl.crawl import *
 from explore.graph import *
 from explore.peek import *
 from base.utils import *

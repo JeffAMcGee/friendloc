@@ -21,11 +21,29 @@ except:
 
 from settings import settings
 from scoredict import Scores, BUCKETS, log_score, DONE
-import lookup
+from localcrawl.crawl import CrawlProcess
+import localcrawl.lookup as lookup
 import base.twitter
 from base.models import *
 from maroon import Model
 from base.utils import grouper, couch, mongo, in_local_box, read_json
+
+
+def localcrawl():
+    while True:
+        for region in settings.regions:
+            crawl_once(region)
+        time.sleep(600)
+
+
+def crawl_once(region):
+    proc = CrawlProcess(
+            region,
+            label=region,
+            slaves=settings.slaves,
+            log_level=logging.INFO)
+    proc.run()
+
 
 def design_sync(type):
     "sync the documents in _design"
@@ -81,10 +99,9 @@ def import_old_json():
         Model.database.bulk_save(docs)
 
 def make_indexes(host=settings.mongo_host):
-    databases = ('hou','crowds','japan','egypt')
     keys = [('User','ncd'),('Tweet','uid')]
     connection = pymongo.Connection(host=host)
-    for db in databases:
+    for db in settings.regions:
         for key in keys:
             connection[db][key[0]].create_index(key[1])
 

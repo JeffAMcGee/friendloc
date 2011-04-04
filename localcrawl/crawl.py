@@ -22,12 +22,12 @@ class CrawlProcess(SplitProcess):
         endtime = datetime.utcnow()
         return User.find(
                 User.next_crawl_date<endtime,
-                sort=User.next_crawl_date)
+                sort=User.next_crawl_date,
+                timeout=False)
 
     def map(self,items):
         self.twitter = TwitterResource()
         Model.database = MongoDB(name=self.db_name,host=settings.mongo_host)
-        #settings.pdb()
 
         for user in items:
             try:
@@ -42,6 +42,7 @@ class CrawlProcess(SplitProcess):
         tweets = self.twitter.save_timeline(user._id, user.last_tid)
         if tweets:
             user.last_tid = tweets[0]._id
+        logging.info("saved %d for %s",len(tweets),user.screen_name)
         now = datetime.utcnow()
         last = user.last_crawl_date if user.last_crawl_date is not None else datetime(2010,11,12)
         delta = now - last
@@ -53,7 +54,9 @@ class CrawlProcess(SplitProcess):
         user.last_crawl_date = now
         user.save()
 
-def crawl_once(region):
-    proc = CrawlProcess(region, label=region, slaves=settings.slaves, log_level=logging.INFO)
-    #proc.run_single()
-    proc.run()
+def crawl_debug(region):
+    proc = CrawlProcess(region,
+            label=region,
+            slaves=1,
+            log_level=logging.DEBUG)
+    proc.run_single()
