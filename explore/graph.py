@@ -4,7 +4,8 @@ import logging
 import math
 import simplejson
 import re
-from collections import defaultdict
+import bisect
+from collections import defaultdict, namedtuple
 from datetime import datetime as dt
 from operator import itemgetter
 
@@ -23,7 +24,8 @@ from maroon import ModelCache
 from base.utils import *
 
 
-def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
+
+def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,**kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -33,11 +35,19 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
     hargs = {}
     if kind == 'power':
         ax.set_xscale('log')
+        ax.set_yscale('log')
         hargs['log']=True
     elif kind == 'linear':
         pass
+    elif kind == 'cumulog':
+        ax.set_xscale('log')
+        hargs['cumulative']=True
+        if legend_loc is None:
+            legend_loc = 2
     else:
         hargs['cumulative']=True
+        if legend_loc is None:
+            legend_loc = 4
 
     for known in ['bins','normed']:
         if known in kwargs:
@@ -47,7 +57,7 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
         if isinstance(key,basestring):
             hargs['label'] = key
         else:
-            for k,v in zip(['label','color','linestyle'],key):
+            for k,v in zip(['label','color','linestyle','linewidth'],key):
                 hargs[k] = v
         ax.hist(data[key], histtype='step', **hargs)
     if kwargs.get('normed'):
@@ -55,43 +65,79 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),**kwargs):
     elif 'ylim' in kwargs:
         ax.set_ylim(0,kwargs['ylim'])
     if len(data)>1:
-        ax.legend()
+        ax.legend(loc=legend_loc)
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
     fig.savefig('../www/'+path)
 
 
+def filter_rtt(path=None):
+    for tweet in read_json(path):
+        if tweet.get('in_reply_to_status_id'):
+            print "%d\t%d\t%s"%(
+                tweet['id'],
+                tweet['in_reply_to_status_id'],
+                tweet['created_at']
+                )
+
+def graph_rtt(path=None):
+    format = "%a %b %d %H:%M:%S +0000 %Y"
+    reply = namedtuple("reply",['id','rtt','ca'])
+    file = open(path) if path else sys.stdin
+    tweets = [ reply(
+            int(t[0]),
+            int(t[1]),
+            time.mktime(dt.strptime(t[2],format).timetuple())
+        )
+        for t in (line.strip().split('\t') for line in file)]
+    time_id = {}
+    for t in tweets:
+        time_id[t.ca] = max(t.id, time_id.get(t.ca,0))
+    cas = sorted(time_id.iterkeys())
+    ids = [time_id[ca] for ca in cas]
+    deltas = [
+        t.ca - cas[bisect.bisect_left(ids,t.rtt)]
+        for t in tweets[len(tweets)/2:]
+        if t.rtt>ids[0]]
+    graph_hist(deltas,
+            "reply_time_sum",
+            bins=xrange(0,3600*12,60),
+            xlabel="seconds between tweet and reply",
+            ylabel="count of tweets in a minute",
+        )
+
+
 def compare_edge_types():
-    ats = dict((d['uid'],set(d['ats'])) for d in read_json('geo_ats.json'))
+    TwitterModel.database = MongoDB(name='ngeo',slave_okay=True)
+    #ats = dict((d['uid'],set(d['ats'])) for d in read_json('geo_ats.json'))
     logging.info("read ats")
     users = User.find(
             User.just_friends.exists() &
             User.just_followers.exists() &
             User.rfriends.exists(),
-            #limit=10000,
+            limit=4000,
             )
     keys = ('just_friends','just_followers','rfriends')
     data = defaultdict(list)
-    last_spot = place = [-92.2,37.5] #population center of US
+    last_spot = place = [-92.2,37.5] #population center of US, just a sane default
     for user in users:
         for key in keys:
             amigo_id = getattr(user,key)[0]
-            if amigo_id not in ats.get(user._id,()): continue
-            if user._id not in ats.get(amigo_id,()): continue
+            #if amigo_id not in ats.get(user._id,()): continue
+            #if user._id not in ats.get(amigo_id,()): continue
             place = User.get_id(amigo_id).geonames_place.to_d()
             dist = coord_in_miles(user.median_loc,place)
-            data[key].append(dist)
-        data['us_center'].append(coord_in_miles(user.median_loc,last_spot))
+            data[key].append(1+dist)
+        data['random'].append(1+coord_in_miles(user.median_loc,last_spot))
         last_spot = place
     for k,v in data.iteritems():
         logging.info("%s %d",k,len(v))
     graph_hist(data,
-            "geo_edges_com",
-            bins=xrange(2000),
-            ylim=60000,
-            xlabel = "distance between edges",
+            "geo_edges_log",
+            bins=2**numpy.linspace(0,15,301),
+            kind="cumulog",
+            xlabel = "1+distance between edges in miles",
             ylabel = "number of users",
-            normed=True,
             )
 
 
@@ -112,12 +158,12 @@ def tweets_over_time():
             )
 
 
-def gr_tri_by_ratio():
+def gr_split_types():
     counts = []
     for edge in read_json('geo_tri_counts'):
         if not edge['all']: continue
         fields = ('mfrd','mfol','yfrd','yfol')
-        if any(edge['l'+f]<10 for f in fields): continue
+        if any(edge['l'+f]<5 for f in fields): continue
         for f in fields:
             edge[f] = set(edge[f])
         counts.append(edge)
@@ -126,19 +172,27 @@ def gr_tri_by_ratio():
     data = {}
 
     for pair,color in zip(pairs,'rgbk'):
+        #sort is stable - make it not so stable
+        random.shuffle(counts)
         def set_len(d):
             return len(d[pair[0]]&d[pair[1]])
         counts.sort(key=set_len)
-        parts = (counts[:split],counts[-split:])
-        label = "-".join(pair)
-        print label, set_len(counts[split]), set_len(counts[-split])
-        for part,style in zip(parts,['solid','dotted']):
-            key = (label, color, style)
-            data[key] = [d['dist'] for d in part]
+        steps = zip(
+            (counts[:split], counts[split*2:split*3], counts[-split:]),
+            ('solid','solid','dotted'),
+            ('1of5','3of5','5of5'),
+            (2,1,1)
+            )
+        for part,style,pl,lw in steps:
+            label = " ".join(pair+(pl,))
+            key = (label, color, style, lw)
+            data[key] = [1+d['dist'] for d in part]
     graph_hist(data,
-            "geo_tri_by_count",
-            bins=range(1000),
-            xlabel = "distance between edges",
+            "geo_tri_log_fifths",
+            bins=2**numpy.linspace(0,15,901),
+            figsize=(24,18),
+            kind="cumulog",
+            xlabel = "1 + distance between edges in miles",
             ylabel = "number of users",
             )
 
