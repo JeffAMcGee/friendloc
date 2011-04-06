@@ -26,7 +26,7 @@ from base.utils import *
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
-        **kwargs):
+        sample=None,**kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -40,6 +40,10 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         hargs['log']=True
     elif kind == 'linear':
         pass
+    elif kind == 'xlog':
+        ax.set_xscale('log')
+        if legend_loc is None:
+            legend_loc = 1
     elif kind == 'cumulog':
         ax.set_xscale('log')
         hargs['cumulative']=True
@@ -60,9 +64,12 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         else:
             for k,v in zip(['label','color','linestyle','linewidth'],key):
                 hargs[k] = v
+        row = data[key]
+        if sample:
+            row = random.sample(row,sample)
         if normed:
-            hargs['weights'] = [1.0/len(data[key])]*len(data[key])
-        ax.hist(data[key], histtype='step', **hargs)
+            hargs['weights'] = [1.0/len(row)]*len(row)
+        ax.hist(row, histtype='step', **hargs)
     if normed:
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
@@ -178,30 +185,28 @@ def gr_split_types(edge_type='rfrd'):
     data = {}
     for pair,color in zip(pairs,'rgbk'):
         #sort is stable - make it not so stable
-        #random.shuffle(counts)
+        random.shuffle(counts)
         def set_len(d):
             return len(d[pair[0]]&d[pair[1]])
-        #counts.sort(key=set_len)
-        bins = defaultdict(list)
-        for d in counts:
-            bins[set_len(d)].append(d)
+        counts.sort(key=set_len)
+        split = len(counts)/5
 
         steps = zip(
-            (bins[0], bins[1]+bins[2]+bins[3], sum([bins[k] for k in bins.keys() if k>=12],[])),
-            ('solid','dashed','dotted'),
-            ('0','1-3','12+'),
+            (counts[:split], counts[split*2:split*3], counts[-split:]),
+            ('solid','solid','dotted'),
+            (2,1,1),
             )
-        for part,style,pl in steps:
-            label = " ".join(pair+(pl,"(%d)"%len(part)))
-            key = (label, color, style)
+        for part,style,lw in steps:
+            range = "%d-%d"%(set_len(part[0]),set_len(part[-1]))
+            label = " ".join(pair+(range,))
+            key = (label, color, style, lw)
             data[key] = [d['dist'] for d in part]
     graph_hist(data,
             "geo_tri_"+edge_type+".pdf",
             bins=numpy.insert(2**numpy.linspace(0,15,901),0,0),
             kind="cumulog",
-            normed=True,
             xlim=(10,10000),
-            xlabel = "1 + distance between edges in miles",
+            xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
 
