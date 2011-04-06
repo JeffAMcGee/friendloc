@@ -159,11 +159,11 @@ def find_ats(users_path="hou_tri_users"):
                     print "%s\t%s"%(d['uid'],at)
 
 
-def print_tri_counts(users_path="hou_tri_users"):
+def print_tri_counts(key="rfriends"):
     edges = ModelCache(Edges)
     data = []
-    for user in User.find( User.rfriends.exists() ):
-        amigo_id = user.rfriends[0]
+    for user in User.find(getattr(User,key).exists(),timeout=False):
+        amigo_id = getattr(user,key)[0]
         amigo = User.get_id(amigo_id, fields=['gnp'])
         me = edges[user._id]
         you = edges[amigo_id]

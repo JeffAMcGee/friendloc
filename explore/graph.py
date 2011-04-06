@@ -25,7 +25,8 @@ from base.utils import *
 
 
 
-def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,**kwargs):
+def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
+        **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -49,7 +50,7 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,**kwargs):
         if legend_loc is None:
             legend_loc = 4
 
-    for known in ['bins','normed']:
+    for known in ['bins']:
         if known in kwargs:
             hargs[known] = kwargs[known]
 
@@ -59,11 +60,18 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,**kwargs):
         else:
             for k,v in zip(['label','color','linestyle','linewidth'],key):
                 hargs[k] = v
+        if normed:
+            hargs['weights'] = [1.0/len(data[key])]*len(data[key])
         ax.hist(data[key], histtype='step', **hargs)
-    if kwargs.get('normed'):
+    if normed:
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
         ax.set_ylim(0,kwargs['ylim'])
+    if 'xlim' in kwargs:
+        try:
+            ax.set_xlim(*kwargs['xlim'])
+        except TypeError:
+            ax.set_xlim(0,kwargs['xlim'])
     if len(data)>1:
         ax.legend(loc=legend_loc)
     ax.set_xlabel(kwargs.get('xlabel'))
@@ -72,23 +80,21 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,**kwargs):
 
 
 def filter_rtt(path=None):
+    format = "%a %b %d %H:%M:%S +0000 %Y"
     for tweet in read_json(path):
         if tweet.get('in_reply_to_status_id'):
+            ca = time.mktime(dt.strptime(t[2],format).timetuple())
             print "%d\t%d\t%s"%(
                 tweet['id'],
+                tweet['uid'],
                 tweet['in_reply_to_status_id'],
                 tweet['created_at']
                 )
 
 def graph_rtt(path=None):
-    format = "%a %b %d %H:%M:%S +0000 %Y"
-    reply = namedtuple("reply",['id','rtt','ca'])
+    reply = namedtuple("reply",['id','uid','rtt','ca'])
     file = open(path) if path else sys.stdin
-    tweets = [ reply(
-            int(t[0]),
-            int(t[1]),
-            time.mktime(dt.strptime(t[2],format).timetuple())
-        )
+    tweets = [reply([int(f) for f in t])
         for t in (line.strip().split('\t') for line in file)]
     time_id = {}
     for t in tweets:
@@ -99,6 +105,7 @@ def graph_rtt(path=None):
         t.ca - cas[bisect.bisect_left(ids,t.rtt)]
         for t in tweets[len(tweets)/2:]
         if t.rtt>ids[0]]
+    seen = set()
     graph_hist(deltas,
             "reply_time_sum",
             bins=xrange(0,3600*12,60),
@@ -115,7 +122,6 @@ def compare_edge_types():
             User.just_friends.exists() &
             User.just_followers.exists() &
             User.rfriends.exists(),
-            limit=4000,
             )
     keys = ('just_friends','just_followers','rfriends')
     data = defaultdict(list)
@@ -127,16 +133,18 @@ def compare_edge_types():
             #if user._id not in ats.get(amigo_id,()): continue
             place = User.get_id(amigo_id).geonames_place.to_d()
             dist = coord_in_miles(user.median_loc,place)
-            data[key].append(1+dist)
-        data['random'].append(1+coord_in_miles(user.median_loc,last_spot))
+            data[key].append(dist)
+        data['random'].append(coord_in_miles(user.median_loc,last_spot))
         last_spot = place
     for k,v in data.iteritems():
         logging.info("%s %d",k,len(v))
     graph_hist(data,
-            "geo_edges_log",
-            bins=2**numpy.linspace(0,15,301),
+            "geo_edges_log.pdf",
+            bins=numpy.insert(2**numpy.linspace(0,15,901),0,0),
+            xlim=(10,10000),
+            normed=True,
             kind="cumulog",
-            xlabel = "1+distance between edges in miles",
+            xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
 
@@ -158,43 +166,45 @@ def tweets_over_time():
             )
 
 
-def gr_split_types():
+def gr_split_types(edge_type='rfrd'):
     counts = []
-    for edge in read_json('geo_tri_counts'):
-        if not edge['all']: continue
+    for edge in read_json('geo_%s_tri'%edge_type):
         fields = ('mfrd','mfol','yfrd','yfol')
-        if any(edge['l'+f]<5 for f in fields): continue
+        #if any(edge['l'+f]<10 for f in fields): continue
         for f in fields:
             edge[f] = set(edge[f])
         counts.append(edge)
     pairs = itertools.product(('mfrd','mfol'),('yfrd','yfol'))
-    split = len(counts)/5
     data = {}
-
     for pair,color in zip(pairs,'rgbk'):
         #sort is stable - make it not so stable
-        random.shuffle(counts)
+        #random.shuffle(counts)
         def set_len(d):
             return len(d[pair[0]]&d[pair[1]])
-        counts.sort(key=set_len)
+        #counts.sort(key=set_len)
+        bins = defaultdict(list)
+        for d in counts:
+            bins[set_len(d)].append(d)
+
         steps = zip(
-            (counts[:split], counts[split*2:split*3], counts[-split:]),
-            ('solid','solid','dotted'),
-            ('1of5','3of5','5of5'),
-            (2,1,1)
+            (bins[0], bins[1]+bins[2]+bins[3], sum([bins[k] for k in bins.keys() if k>=12],[])),
+            ('solid','dashed','dotted'),
+            ('0','1-3','12+'),
             )
-        for part,style,pl,lw in steps:
-            label = " ".join(pair+(pl,))
-            key = (label, color, style, lw)
-            data[key] = [1+d['dist'] for d in part]
+        for part,style,pl in steps:
+            label = " ".join(pair+(pl,"(%d)"%len(part)))
+            key = (label, color, style)
+            data[key] = [d['dist'] for d in part]
     graph_hist(data,
-            "geo_tri_log_fifths",
-            bins=2**numpy.linspace(0,15,901),
-            figsize=(24,18),
+            "geo_tri_"+edge_type+".pdf",
+            bins=numpy.insert(2**numpy.linspace(0,15,901),0,0),
             kind="cumulog",
+            normed=True,
+            xlim=(10,10000),
             xlabel = "1 + distance between edges in miles",
             ylabel = "number of users",
             )
+
 
 def gr_tri_degree(key="mfrd",top=200,right=800):
     top,right=int(top),int(right)
