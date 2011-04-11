@@ -26,7 +26,7 @@ from base.utils import *
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
-        sample=None,**kwargs):
+        sample=None, histtype='step', **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -40,10 +40,10 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         hargs['log']=True
     elif kind == 'linear':
         pass
-    elif kind == 'xlog':
+    elif kind == 'logline':
         ax.set_xscale('log')
         if legend_loc is None:
-            legend_loc = 1
+            legend_loc = 9
     elif kind == 'cumulog':
         ax.set_xscale('log')
         hargs['cumulative']=True
@@ -69,7 +69,15 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
             row = random.sample(row,sample)
         if normed:
             hargs['weights'] = [1.0/len(row)]*len(row)
-        ax.hist(row, histtype='step', **hargs)
+
+        if kind=="logline":
+            for k in ['weights','log','bins']:
+                if k in hargs:
+                    del hargs[k]
+            hist,b = numpy.histogram(row,kwargs['bins'])
+            ax.plot((b[:-1]+b[1:])/2, hist, '-', **hargs)
+        else:
+            ax.hist(row, histtype=histtype, **hargs)
     if normed:
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
@@ -140,17 +148,17 @@ def compare_edge_types():
             #if user._id not in ats.get(amigo_id,()): continue
             place = User.get_id(amigo_id).geonames_place.to_d()
             dist = coord_in_miles(user.median_loc,place)
-            data[key].append(dist)
-        data['random'].append(coord_in_miles(user.median_loc,last_spot))
+            data[key].append(1+dist)
+        data['random'].append(1+coord_in_miles(user.median_loc,last_spot))
         last_spot = place
     for k,v in data.iteritems():
         logging.info("%s %d",k,len(v))
     graph_hist(data,
-            "geo_edges_log.pdf",
-            bins=numpy.insert(2**numpy.linspace(0,15,901),0,0),
-            xlim=(10,10000),
-            normed=True,
-            kind="cumulog",
+            "geo_edges_ll",
+            bins=numpy.insert(10**numpy.linspace(0,5,101),0,0),
+            xlim=(1,30000),
+            #normed=True,
+            kind="logline",
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
@@ -158,18 +166,16 @@ def compare_edge_types():
 
 def tweets_over_time():
     days =[]
-    twitpic = re.compile(r'twitpic\.com/\w+')
-    for tweet in Tweet.get_all(fields=['ca','tx']):
-        if re.search(twitpic,tweet.text):
-            ca = tweet.created_at
-            days.append(ca.hour/24.0+ca.day)
+    for tweet in Tweet.find(Tweet.text//r'twitpic\.com/\w+',fields=['ca']):
+        ca = tweet.created_at
+        days.append(ca.hour/24.0+ca.day)
     graph_hist(
             days,
-            "twitpic_hr",
+            "twitpic_hr_lim",
             kind="linear",
             xlabel = "March 2011, UTC",
             ylabel = "tweets with twitpic per hour",
-            bins=numpy.arange(4,18,1/24.0),
+            bins=numpy.arange(4,30,1/24.0),
             )
 
 
@@ -200,13 +206,13 @@ def gr_split_types(edge_type='rfrd'):
             range = "%d-%d"%(set_len(part[0]),set_len(part[-1]))
             label = " ".join(pair+(range,))
             key = (label, color, style, lw)
-            data[key] = [d['dist'] for d in part]
+            data[key] = [1+d['dist'] for d in part]
     graph_hist(data,
-            "geo_tri_"+edge_type+".pdf",
-            bins=numpy.insert(2**numpy.linspace(0,15,901),0,0),
-            kind="cumulog",
-            xlim=(10,10000),
-            xlabel = "distance between edges in miles",
+            "geo_tri_"+edge_type+"_db",
+            bins=numpy.insert(10**numpy.linspace(0,5,51),0,0),
+            kind="logline",
+            xlim=(1,30000),
+            xlabel = "1+distance between edges in miles",
             ylabel = "number of users",
             )
 
