@@ -179,22 +179,28 @@ def tweets_over_time():
             )
 
 
-def gr_split_types(edge_type='rfrd'):
+def simplify_tris(edge_type='rfrd'):
+    f = open('geo_%s_simp'%edge_type,'w')
     counts = []
     for edge in read_json('geo_%s_tri'%edge_type):
-        fields = ('mfrd','mfol','yfrd','yfol')
-        for f in fields:
-            edge[f] = set(edge[f])
-        counts.append(edge)
+        mfrd = set(edge['mfrd'])
+        mfol = set(edge['mfol'])
+        yfrd = set(edge['yfrd'])
+        yfol = set(edge['yfol'])
+        print >>f,json.dumps(dict(
+            dist=edge['dist'],
+            star=len((mfrd&yfrd) - (mfol|yfol)),
+            norm=len(mfol|yfol),
+            ))
+ 
+
+def gr_split_types(edge_type='rfrd'):
+    counts = list(read_json('geo_%s_simp'%edge_type))
     data = {}
-    funcs = (
-        lambda d: len((d['mfrd']&d['yfrd']) - ((d['mfol']|d['yfol']))),
-        lambda d: len(d['mfol']|d['yfol'])
-    )
-    for sort_name,func,color in zip(("star","norm"),funcs,'rb'):
+    for field,color in zip(("star","norm"),'rb'):
         #sort is stable - make it not so stable
         random.shuffle(counts)
-        counts.sort(key=func)
+        counts.sort(key=itemgetter(field))
         split = len(counts)/4
 
         steps = zip(
@@ -203,11 +209,11 @@ def gr_split_types(edge_type='rfrd'):
             (3,2,1,1),
             )
         for part,style,lw in steps:
-            label = "%s %d-%d"%(sort_name, func(part[0]), func(part[-1]))
+            label = "%s %d-%d"%(field, part[0][field], part[-1][field])
             key = (label, color, style, lw)
             data[key] = [1+d['dist'] for d in part]
     graph_hist(data,
-            "geo_tri_"+edge_type+"_db",
+            "geo_tri_"+edge_type+"_sp",
             bins=numpy.insert(10**numpy.linspace(0,5,51),0,0),
             kind="logline",
             xlim=(1,30000),
