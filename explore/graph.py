@@ -183,28 +183,27 @@ def gr_split_types(edge_type='rfrd'):
     counts = []
     for edge in read_json('geo_%s_tri'%edge_type):
         fields = ('mfrd','mfol','yfrd','yfol')
-        #if any(edge['l'+f]<10 for f in fields): continue
         for f in fields:
             edge[f] = set(edge[f])
         counts.append(edge)
-    pairs = itertools.product(('mfrd','mfol'),('yfrd','yfol'))
     data = {}
-    for pair,color in zip(pairs,'rgbk'):
+    funcs = (
+        lambda d: len((d['mfrd']&d['yfrd']) - ((d['mfol']|d['yfol']))),
+        lambda d: len(d['mfol']|d['yfol'])
+    )
+    for sort_name,func,color in zip(("star","norm"),funcs,'rb'):
         #sort is stable - make it not so stable
         random.shuffle(counts)
-        def set_len(d):
-            return len(d[pair[0]]&d[pair[1]])
-        counts.sort(key=set_len)
-        split = len(counts)/5
+        counts.sort(key=func)
+        split = len(counts)/4
 
         steps = zip(
-            (counts[:split], counts[split*2:split*3], counts[-split:]),
-            ('solid','solid','dotted'),
-            (2,1,1),
+            [counts[i*split:(i+1)*split] for i in xrange(4)],
+            ('solid','solid','solid','dotted'),
+            (3,2,1,1),
             )
         for part,style,lw in steps:
-            range = "%d-%d"%(set_len(part[0]),set_len(part[-1]))
-            label = " ".join(pair+(range,))
+            label = "%s %d-%d"%(sort_name, func(part[0]), func(part[-1]))
             key = (label, color, style, lw)
             data[key] = [1+d['dist'] for d in part]
     graph_hist(data,
