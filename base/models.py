@@ -74,7 +74,6 @@ class User(TwitterModel):
     rfriends = ListProperty('rfrds')
     just_friends = ListProperty('jfrds')
     just_followers = ListProperty('jfols')
-    mentioned = ListProperty('ated')
     
     #properties from twitter
     verified = BoolProperty("ver")

@@ -23,11 +23,15 @@ class GeoLookup(SplitProcess):
 
     def produce(self):
         users = {}
+        db = maroon.MongoDB(name=self.db_name)
+        old_users = db.User.find({'mloc':{'$exists':1}}, {'_id':1})
+        old_uids = set(user['_id'] for user in old_users)
+        logging.info("old_uids %d",len(old_uids))
         for i,t in enumerate(utils.read_json(self.path)):
             if i%10000 ==0:
                 logging.info("read %d tweets"%i)
             uid = t['user']['id']
-            if 'coordinates' not in t: continue
+            if 'coordinates' not in t or uid in old_uids: continue
             if uid not in users:
                 users[uid] = t['user']
                 users[uid]['locs'] = []
@@ -48,14 +52,18 @@ class GeoLookup(SplitProcess):
     def map(self,users):
         self.twitter = TwitterResource()
         self.gis = GisgraphyResource()
-        maroon.Model.database = maroon.MongoDB(name=self.db_name)
+        maroon.Model.database = maroon.TeeDB(
+            'logs/geocrawl_%d.json'%self.slave_id,
+            maroon.MongoDB(name=self.db_name)
+            )
 
         for user_d in users:
             self.twitter.sleep_if_needed()
             user = User(from_dict=user_d)
             try:
                 self.save_neighbors(user)
-                user.merge()
+                #FIXME: don't overwrite old gnp data
+                user.attempt_save()
             except ResourceNotFound:
                 logging.info("ResourceNotFound for %d",user._id)
             except Unauthorized:
@@ -63,21 +71,17 @@ class GeoLookup(SplitProcess):
             yield None
 
     def save_neighbors(self,user):
-        #FIXME: check if the user was in the database
         edges, tweets = self.save_user_data(user._id)
         frds = set(edges.friends)
         fols = set(edges.followers)
-        ated = set(at for t in tweets for at in t.mentions)
-        ated.remove(user._id)
         sets = dict(
             rfriends = frds&fols,
             just_friends = frds-fols,
             just_followers = fols-frds,
-            mentioned = ated,
             )
         for k,s in sets.iteritems():
-            if len(s)>25:
-                sets[k] = set(random.sample(s,25))
+            if len(s)>33:
+                sets[k] = set(random.sample(s,33))
         uids = list(itertools.chain(*sets.values()))
         users = self.twitter.user_lookup(user_ids=uids)
         amigos = []
@@ -91,34 +95,25 @@ class GeoLookup(SplitProcess):
                 continue
             amigo.geonames_place = place
             amigos.append(amigo)
-        for amigo in amigos:
-            amigo.merge()
+        #FIXME: don't overwrite old median_locs!
+        User.database.bulk_save_models(amigos)
 
-        #pick two [frd,rfrd,fol,ated] and store their info
+        #pick a [friend,rfriend,follower] and store their info
         for k,s in sets.iteritems():
+
             saved = s.intersection(a._id for a in amigos)
             if saved:
                 group = list(saved)
-                old_group = getattr(user,k,None):
-                if old_group:
-                    group=old_group
-                else:
-                    random.shuffle(group)
-                    setattr(user,k,group)
-                    self.save_user_data(group[0])
-                if len(group)>1:
-                    self.save_user_data(group[1])
+                random.shuffle(group)
+                setattr(user,k,group)
+                self.save_user_data(group[0])
 
     def save_user_data(self,uid):
-        edges = Edges.get_id(Edges):
-        if edges is None:
-            edges = self.twitter.get_edges(uid)
-            edges.save()
+        edges = self.twitter.get_edges(uid)
+        edges.attempt_save()
 
-        tweets = list(Tweet.find(Tweet.user_id=uid))
-        if tweets is None:
-            tweets = self.twitter.user_timeline(uid)
-            Tweet.database.bulk_save_models(tweets)
+        tweets = self.twitter.user_timeline(uid)
+        Tweet.database.bulk_save_models(tweets)
         return edges, tweets
 
 
