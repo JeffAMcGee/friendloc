@@ -138,25 +138,26 @@ def compare_edge_types():
             User.just_followers.exists() &
             User.rfriends.exists(),
             )
-    keys = ('just_friends','just_followers','rfriends')
+    keys = ('just_followers','just_friends','rfriends')
     data = defaultdict(list)
     last_spot = place = [-92.2,37.5] #population center of US, just a sane default
     for user in users:
         for key in keys:
             amigo_id = getattr(user,key)[0]
-            #if amigo_id not in ats.get(user._id,()): continue
-            #if user._id not in ats.get(amigo_id,()): continue
             place = User.get_id(amigo_id).geonames_place.to_d()
             dist = coord_in_miles(user.median_loc,place)
             data[key].append(1+dist)
-        data['random'].append(1+coord_in_miles(user.median_loc,last_spot))
+        rand_dist =coord_in_miles(user.median_loc,last_spot)
+        data['random'].append(1+rand_dist)
         last_spot = place
+        print rand_dist
     for k,v in data.iteritems():
         logging.info("%s %d",k,len(v))
     graph_hist(data,
-            "geo_edges_ll",
-            bins=numpy.insert(10**numpy.linspace(0,5,101),0,0),
+            "geo_edges_rfr",
+            bins=dist_bins(),
             xlim=(1,30000),
+            ylim=6000,
             #normed=True,
             kind="logline",
             xlabel = "distance between edges in miles",
@@ -192,7 +193,52 @@ def simplify_tris(edge_type='rfrd'):
             star=len((mfrd&yfrd) - (mfol|yfol)),
             norm=len(mfol|yfol),
             ))
- 
+
+
+def dist_bins():
+    return numpy.insert(10**numpy.linspace(0,5,51),0,0)
+
+
+def gr_locals(edge_type='rfrd'):
+    nonloc_cutoff = 30
+    counts = list(read_json('geo_%s_simp'%edge_type))
+    bins=dist_bins()
+    data = {}
+    rand_dists = [float(s.strip()) for s in open('rand_rfr')]
+    rand_hist,b = numpy.histogram(rand_dists,bins)
+    rand_sum = numpy.cumsum(rand_hist[nonloc_cutoff:])
+
+    for field,color in zip(("star","norm"),'rb'):
+        #sort is stable - make it not so stable
+        random.shuffle(counts)
+        counts.sort(key=itemgetter(field))
+        split = len(counts)/4
+
+        steps = zip(
+            [counts[i*split:(i+1)*split] for i in xrange(4)],
+            ('solid','solid','solid','dotted'),
+            (4,2,1,1),
+            )
+        for part,style,lw in steps:
+            row = [1+d['dist'] for d in part]
+            hist,b = numpy.histogram(row,bins)
+            fit = numpy.polyfit( numpy.cumsum(hist[nonloc_cutoff:]-200), rand_sum, 1)
+            print fit
+
+            label = "%s %d-%d %.2f"%(field, part[0][field], part[-1][field],1-4/fit[0])
+            key = (label, color, style, lw)
+            data[key]= hist-rand_hist/(fit[0])
+    fig = plt.figure(figsize=(18,12))
+    ax = fig.add_subplot(111)
+    ax.set_xscale('log')
+    for key in sorted(data.iterkeys()):
+        hargs = dict(zip(['label','color','linestyle','linewidth'],key))
+        ax.plot((bins[:-1]*bins[1:])**.5, data[key], '-', **hargs)
+    ax.set_xlim(1,30000)
+    ax.legend(loc=9)
+    ax.set_xlabel("1+distance between edges in miles")
+    ax.set_ylabel("number of users")
+    fig.savefig("../www/geo_local_"+edge_type)
 
 def gr_split_types(edge_type='rfrd'):
     counts = list(read_json('geo_%s_simp'%edge_type))
@@ -206,7 +252,7 @@ def gr_split_types(edge_type='rfrd'):
         steps = zip(
             [counts[i*split:(i+1)*split] for i in xrange(4)],
             ('solid','solid','solid','dotted'),
-            (3,2,1,1),
+            (4,2,1,1),
             )
         for part,style,lw in steps:
             label = "%s %d-%d"%(field, part[0][field], part[-1][field])
@@ -214,7 +260,8 @@ def gr_split_types(edge_type='rfrd'):
             data[key] = [1+d['dist'] for d in part]
     graph_hist(data,
             "geo_tri_"+edge_type+"_sp",
-            bins=numpy.insert(10**numpy.linspace(0,5,51),0,0),
+            #bins=numpy.insert(10**numpy.linspace(0,5,51),0,0),
+            bins=dist_bins(),
             kind="logline",
             xlim=(1,30000),
             xlabel = "1+distance between edges in miles",
