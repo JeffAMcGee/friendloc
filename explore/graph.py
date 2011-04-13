@@ -203,11 +203,53 @@ def simplify_tris(edge_type='rfrd'):
 def dist_bins():
     return numpy.insert(10**numpy.linspace(0,5,51),0,0)
 
+
 def prep_nonloc(x):
     cutoff = 25
     return (x[cutoff:])
 
+
+def gr_local_rat(edge_type='rfrd'):
+    if edge_type=='all':
+        for et in ['frd','fol','rfrd']:
+            gr_local_rat(et)
+        return
+    tri_types = ['star','norm']
+    bins=dist_bins()
+    rand_dists = [float(s.strip()) for s in open('rand_all')]
+    rand_hist,b = numpy.histogram(rand_dists,bins)
+    rand_sum = prep_nonloc(rand_hist)
+
+    dists = defaultdict(lambda: defaultdict(list))
+    for d in read_json('geo_%s_simp'%edge_type):
+        for key in tri_types:
+            dists[key][d[key]].append(d['dist'])
+
+    width = 1
+    fig = plt.figure(figsize=(18,12))
+    ax = fig.add_subplot(111)
+    for kind,color in zip(tri_types,"rb"):
+        users = 0
+        for i in xrange(100):
+            row = dists[kind].get(i)
+            if row is None: continue
+            hist,b = numpy.histogram(row,bins)
+            fit = numpy.polyfit(rand_sum, prep_nonloc(hist), 1)
+            height = 1-fit[0]*len(rand_dists)/len(row)
+            ax.bar(users,height,len(row),color=color,alpha=.5)
+            users+=len(row)
+            if users>59000: break
+    ax.set_ylabel('nonrandom fraction of users')
+    ax.set_xlabel('number of users')
+    ax.set_ylim(0,1)
+    fig.savefig('../www/local_rat_%s'%edge_type)
+
+
 def gr_locals(edge_type='rfrd'):
+    if edge_type=='all':
+        for et in ['frd','fol','rfrd']:
+            gr_locals(et)
+        return
     counts = list(read_json('geo_%s_simp'%edge_type))
     bins=dist_bins()
     data = {}
@@ -230,7 +272,6 @@ def gr_locals(edge_type='rfrd'):
             row = [1+d['dist'] for d in part]
             hist,b = numpy.histogram(row,bins)
             fit = numpy.polyfit(rand_sum, prep_nonloc(hist), 1)
-            print fit
 
             label = "%s %d-%d %.2f"%(field, part[0][field], part[-1][field],1-12*fit[0])
             key = (label, color, style, lw)
@@ -240,14 +281,16 @@ def gr_locals(edge_type='rfrd'):
     ax.set_xscale('log')
     for key in sorted(data.iterkeys()):
         hargs = dict(zip(['label','color','linestyle','linewidth'],key))
-        data[key] = numpy.cumsum(data[key])
+        #data[key] = data[key]/sum(data[key])
+        #data[key] = numpy.cumsum(data[key])
         ax.plot((bins[:-1]*bins[1:])**.5, data[key], '-', **hargs)
     ax.set_xlim(1,30000)
-    ax.set_ylim(0,10000)
+    #ax.set_ylim(0,1)
     ax.legend(loc=9)
     ax.set_xlabel("1+distance between edges in miles")
     ax.set_ylabel("number of users")
     fig.savefig("../www/geo_local_"+edge_type)
+
 
 def gr_split_types(edge_type='rfrd'):
     counts = list(read_json('geo_%s_simp'%edge_type))
