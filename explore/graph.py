@@ -138,19 +138,24 @@ def compare_edge_types():
             User.just_followers.exists() &
             User.rfriends.exists(),
             )
+    dests = {}
+    for user in User.database.User.find(fields=['gnp']):
+        if 'gnp' in user:
+            dests[user['_id']] = user['gnp']
+    logging.info("read gnp")
     keys = ('just_followers','just_friends','rfriends')
     data = defaultdict(list)
     last_spot = place = [-92.2,37.5] #population center of US, just a sane default
     for user in users:
         for key in keys:
             amigo_id = getattr(user,key)[0]
-            place = User.get_id(amigo_id).geonames_place.to_d()
+            place = dests[amigo_id]
             dist = coord_in_miles(user.median_loc,place)
             data[key].append(1+dist)
-        rand_dist =coord_in_miles(user.median_loc,last_spot)
-        data['random'].append(1+rand_dist)
-        last_spot = place
-        print rand_dist
+            rand_dist =coord_in_miles(last_spot,place)
+            data['rand-'+key].append(1+rand_dist)
+            print rand_dist
+        last_spot = user.median_loc
     for k,v in data.iteritems():
         logging.info("%s %d",k,len(v))
     graph_hist(data,
@@ -198,15 +203,17 @@ def simplify_tris(edge_type='rfrd'):
 def dist_bins():
     return numpy.insert(10**numpy.linspace(0,5,51),0,0)
 
+def prep_nonloc(x):
+    cutoff = 25
+    return (x[cutoff:])
 
 def gr_locals(edge_type='rfrd'):
-    nonloc_cutoff = 30
     counts = list(read_json('geo_%s_simp'%edge_type))
     bins=dist_bins()
     data = {}
-    rand_dists = [float(s.strip()) for s in open('rand_rfr')]
+    rand_dists = [float(s.strip()) for s in open('rand_all')]
     rand_hist,b = numpy.histogram(rand_dists,bins)
-    rand_sum = numpy.cumsum(rand_hist[nonloc_cutoff:])
+    rand_sum = prep_nonloc(rand_hist)
 
     for field,color in zip(("star","norm"),'rb'):
         #sort is stable - make it not so stable
@@ -222,19 +229,21 @@ def gr_locals(edge_type='rfrd'):
         for part,style,lw in steps:
             row = [1+d['dist'] for d in part]
             hist,b = numpy.histogram(row,bins)
-            fit = numpy.polyfit( numpy.cumsum(hist[nonloc_cutoff:]-200), rand_sum, 1)
+            fit = numpy.polyfit(rand_sum, prep_nonloc(hist), 1)
             print fit
 
-            label = "%s %d-%d %.2f"%(field, part[0][field], part[-1][field],1-4/fit[0])
+            label = "%s %d-%d %.2f"%(field, part[0][field], part[-1][field],1-12*fit[0])
             key = (label, color, style, lw)
-            data[key]= hist-rand_hist/(fit[0])
+            data[key]= hist-rand_hist*(fit[0])
     fig = plt.figure(figsize=(18,12))
     ax = fig.add_subplot(111)
     ax.set_xscale('log')
     for key in sorted(data.iterkeys()):
         hargs = dict(zip(['label','color','linestyle','linewidth'],key))
+        data[key] = numpy.cumsum(data[key])
         ax.plot((bins[:-1]*bins[1:])**.5, data[key], '-', **hargs)
     ax.set_xlim(1,30000)
+    ax.set_ylim(0,10000)
     ax.legend(loc=9)
     ax.set_xlabel("1+distance between edges in miles")
     ax.set_ylabel("number of users")
