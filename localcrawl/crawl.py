@@ -18,7 +18,7 @@ class CrawlProcess(SplitProcess):
         self.waiting = set()
 
     def produce(self):
-        Model.database = MongoDB(name=self.db_name,host=settings.mongo_host)
+        Model.database = MongoDB(name=self.db_name,host=settings.db_host)
         endtime = datetime.utcnow()
         return User.find(
                 User.next_crawl_date<endtime,
@@ -27,7 +27,7 @@ class CrawlProcess(SplitProcess):
 
     def map(self,items):
         self.twitter = TwitterResource()
-        Model.database = MongoDB(name=self.db_name,host=settings.mongo_host)
+        Model.database = MongoDB(name=self.db_name,host=settings.db_host)
 
         for user in items:
             try:

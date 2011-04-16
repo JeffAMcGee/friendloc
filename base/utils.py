@@ -36,7 +36,7 @@ def couch(name):
     return CouchDB(settings.couchdb_root+name,True)
 
 def mongo(name):
-    return MongoDB(name=name,host=settings.mongo_host,slave_okay=True)
+    return MongoDB(name=name,host=settings.db_host,slave_okay=True)
 
 
 def in_local_box(place):

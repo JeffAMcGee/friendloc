@@ -58,6 +58,7 @@ class SplitProcess(object):
         result = self.consume(self._do_async(jobs))
         for slave in slaves:
             slave.join()
+        self._stop_logging()
         return result
 
     def _start_slaves(self):
@@ -85,6 +86,7 @@ class SplitProcess(object):
         except:
             logging.exception("exception killed thread")
             self._todo.task_done()
+        self._stop_logging()
 
     def _todo_iter(self):
         "generator that gets items from self.todo"
@@ -117,6 +119,10 @@ class SplitProcess(object):
             file_hdlr.setFormatter(fmt)
             root.addHandler(file_hdlr)
             file_hdlr.setLevel(self._log_level)
+            self.file_hdlr = file_hdlr
+
+    def _stop_logging(self):
+        logging.getLogger().removeHandler(self.file_hdlr)
 
     def _do_async(self,jobs):
         "put jobs on self._todo and yield results from self._done"
@@ -142,7 +148,9 @@ class SplitProcess(object):
         "run the job without multiprocessing for testing and debuging"
         self._setup_logging('single')
         try:
-            return self.consume(self.map(self.produce()))
+            res = self.consume(self.map(self.produce()))
         except:
             logging.exception("exception caused HALT")
             pdb.post_mortem()
+        self._stop_logging()
+        return res

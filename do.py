@@ -33,14 +33,18 @@ logging.basicConfig(level=logging.INFO)
 
 if len(sys.argv)>1:
     try:
-        opts, args = getopt.getopt(sys.argv[2:], "c:m:s:e:")
+        opts, args = getopt.getopt(sys.argv[2:], "c:m:s:e:h:")
     except getopt.GetoptError, err:
         print str(err)
         print "usage: ./admin.py function_name [-c couchdb] [-m mongodb] [-s startkey] [-e endkey] [arguments]"
         sys.exit(2)
     kwargs={}
     for o, a in opts:
-        if o == "-c":
+        if o == "-h":
+            if getattr(Model,'database',None):
+                raise Exception("-h must come before -c or -m")
+            settings.db_host=a
+        elif o == "-c":
             Model.database = couch(a)
         elif o == "-m":
             Model.database = mongo(a)
@@ -48,8 +52,8 @@ if len(sys.argv)>1:
             kwargs['start']=a
         elif o == "-e":
             kwargs['end']=a
-        else:
-            assert False, "unhandled option"
+        elif o !='-h':
+            raise Exception("unhandled option")
     try:
         locals()[sys.argv[1]](*args,**kwargs)
     except:
