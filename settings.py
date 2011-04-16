@@ -11,6 +11,7 @@ settings = SettingsBunch(
     region = "houtx",
     slaves = 4,
     db = "mongo",
+    db_host = "localhost",
     gisgraphy_url = "http://services.gisgraphy.com",
     beanstalk_host = 'localhost',
     beanstalk_port = 11300,

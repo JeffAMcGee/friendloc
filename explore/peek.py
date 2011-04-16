@@ -175,7 +175,7 @@ def print_tri_counts(key="rfriends"):
             )
         all = (sets['mfrd']|sets['mfol'])&(sets['yfrd']|sets['yfol'])
         dist = coord_in_miles(user.median_loc,amigo.geonames_place.to_d())
-        d = dict(dist=dist, all=len(all))
+        d = dict(dist=dist, all=len(all), uid=user._id, aid=amigo_id)
         for k,v in sets.iteritems():
             d['l'+k]= len(v)
             d[k] = list(all&v)

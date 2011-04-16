@@ -188,12 +188,14 @@ def tweets_over_time():
 def simplify_tris(edge_type='rfrd'):
     f = open('geo_%s_simp'%edge_type,'w')
     counts = []
-    for edge in read_json('geo_%s_tri'%edge_type):
+    for edge in read_json():
         mfrd = set(edge['mfrd'])
         mfol = set(edge['mfol'])
         yfrd = set(edge['yfrd'])
         yfol = set(edge['yfol'])
         print >>f,json.dumps(dict(
+            uid=edge['uid'],
+            aid=edge['aid'],
             dist=edge['dist'],
             star=len((mfrd&yfrd) - (mfol|yfol)),
             norm=len(mfol|yfol),
@@ -208,41 +210,48 @@ def prep_nonloc(x):
     cutoff = 25
     return (x[cutoff:])
 
-
-def gr_local_rat(edge_type='rfrd'):
-    if edge_type=='all':
-        for et in ['frd','fol','rfrd']:
-            gr_local_rat(et)
-        return
-    tri_types = ['star','norm']
-    bins=dist_bins()
-    rand_dists = [float(s.strip()) for s in open('rand_all')]
-    rand_hist,b = numpy.histogram(rand_dists,bins)
-    rand_sum = prep_nonloc(rand_hist)
-
-    dists = defaultdict(lambda: defaultdict(list))
-    for d in read_json('geo_%s_simp'%edge_type):
-        for key in tri_types:
-            dists[key][d[key]].append(d['dist'])
-
-    width = 1
-    fig = plt.figure(figsize=(18,12))
-    ax = fig.add_subplot(111)
-    for kind,color in zip(tri_types,"rb"):
+def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, bins, iat, youat):
+    for kind,color in zip(['star','norm'],"rb"):
         users = 0
         for i in xrange(100):
-            row = dists[kind].get(i)
+            row = dists.get((kind,i,iat,youat),None)
             if row is None: continue
             hist,b = numpy.histogram(row,bins)
-            fit = numpy.polyfit(rand_sum, prep_nonloc(hist), 1)
+            fit = numpy.polyfit(rand_nonloc, prep_nonloc(hist), 1)
             height = 1-fit[0]*len(rand_dists)/len(row)
             ax.bar(users,height,len(row),color=color,alpha=.5)
             users+=len(row)
-            if users>59000: break
-    ax.set_ylabel('nonrandom fraction of users')
-    ax.set_xlabel('number of users')
-    ax.set_ylim(0,1)
-    fig.savefig('../www/local_rat_%s'%edge_type)
+
+
+def gr_local_ratio():
+    ats = dict((d['uid'],set(d['ats'])) for d in read_json('geo_ats.json'))
+    bins=dist_bins()
+    rand_dists = [float(s.strip()) for s in open('rand_all')]
+    rand_hist,b = numpy.histogram(rand_dists,bins)
+    rand_nonloc = prep_nonloc(rand_hist)
+    conv_labels = [ "I talk to", "I talk with", "talk to me", "ignore"]
+    edge_labels = dict(rfrd="rfriends",frd="just friends",fol="just followers")
+
+    fig = plt.figure(figsize=(12,16))
+    for col,edge_type in enumerate(['fol','rfrd','frd']):
+        dists = defaultdict(list)
+        for d in read_json('geo_%s_simp'%edge_type):
+            for kind in ['star','norm']:
+                iat = d['aid'] in ats.get(d['uid'],())
+                youat = d['uid'] in ats.get(d['aid'],())
+                bits = (1+int(math.log(d[kind],2))) if d[kind] else 0
+                dists[(kind,bits,iat,youat)].append(d['dist'])
+        for row,conv_label in enumerate(conv_labels):
+            ax = fig.add_subplot(4,3,1+row*3+col)
+            local_ratio_subplot(ax,dists,
+                    rand_dists,rand_nonloc,bins,
+                    row<2,1<=row<3)
+            ax.set_ylabel('nonrandom fraction of users')
+            ax.set_xlabel('number of users')
+            ax.set_ylim(0,1)
+            ax.tick_params(labelsize="small")
+            ax.set_title('%s who %s'%(edge_labels[edge_type],conv_label))
+    fig.savefig('../www/local_ratio.pdf')
 
 
 def gr_locals(edge_type='rfrd'):
