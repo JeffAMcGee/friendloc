@@ -8,11 +8,12 @@ import logging
 import maroon
 from restkit.errors import Unauthorized, ResourceNotFound
 
-from base.models import Edges, User, Tweet
+from base.models import Edges, User, Tweets
 from base.twitter import TwitterResource
 from base.gisgraphy import GisgraphyResource
 from base.splitproc import SplitProcess
-import base.utils
+import base.utils as utils
+from settings import settings
 
 
 class GeoLookup(SplitProcess):
@@ -48,38 +49,53 @@ class GeoLookup(SplitProcess):
     def map(self,users):
         self.twitter = TwitterResource()
         self.gis = GisgraphyResource()
-        maroon.Model.database = maroon.MongoDB(name=self.db_name)
+        maroon.Model.database = maroon.MongoDB(
+                host=settings.db_host,
+                name=self.db_name)
 
         for user_d in users:
             self.twitter.sleep_if_needed()
-            user = User(from_dict=user_d)
+            user = User.get_id(user_d['id'])
+            if user:
+                user.update(user_d)
+            else:
+                user = User(user_d)
+            logging.info("visit %s - %d",user.screen_name,user._id)
             try:
                 self.save_neighbors(user)
                 user.merge()
             except ResourceNotFound:
-                logging.info("ResourceNotFound for %d",user._id)
+                logging.warn("ResourceNotFound for %d",user._id)
             except Unauthorized:
-                logging.info("Unauthorized for %d",user._id)
+                logging.warn("Unauthorized for %d",user._id)
             yield None
 
     def save_neighbors(self,user):
-        #FIXME: check if the user was in the database
-        edges, tweets = self.save_user_data(user._id)
+        self.save_user_data(user._id)
+        edges = Edges.get_id(user._id)
+        tweets = Tweets.get_id(user._id,fields=['ats'])
+        ated = set(tweets.ats)
         frds = set(edges.friends)
         fols = set(edges.followers)
-        ated = set(at for t in tweets for at in t.mentions)
-        ated.remove(user._id)
         sets = dict(
             rfriends = frds&fols,
             just_friends = frds-fols,
             just_followers = fols-frds,
-            mentioned = ated,
+            just_mentioned = ated-(frds|fols),
             )
+        #pick 100 uids from sets
         for k,s in sets.iteritems():
-            if len(s)>25:
-                sets[k] = set(random.sample(s,25))
-        uids = list(itertools.chain(*sets.values()))
-        users = self.twitter.user_lookup(user_ids=uids)
+            l = list(s)
+            random.shuffle(l)
+            sets[k] = l
+        uids = itertools.islice(
+            itertools.ifilter(lambda x: x is not None,
+                itertools.chain.from_iterable(
+                    itertools.izip_longest(
+                        *sets.values()))),
+            0, 100)
+        users = self.twitter.user_lookup(user_ids=list(uids))
+
         amigos = []
         for amigo in users:
             if not amigo or amigo.protected: continue
@@ -93,33 +109,36 @@ class GeoLookup(SplitProcess):
             amigos.append(amigo)
         for amigo in amigos:
             amigo.merge()
+        amigo_ids = set(a._id for a in amigos)
 
-        #pick two [frd,rfrd,fol,ated] and store their info
+        save_limit = 12
         for k,s in sets.iteritems():
-            saved = s.intersection(a._id for a in amigos)
-            if saved:
-                group = list(saved)
-                old_group = getattr(user,k,None):
-                if old_group:
-                    group=old_group
-                else:
-                    random.shuffle(group)
-                    setattr(user,k,group)
-                    self.save_user_data(group[0])
-                if len(group)>1:
-                    self.save_user_data(group[1])
+            group = [aid for aid in s if aid in amigo_ids]
+            if group:
+                setattr(user,k,group)
+                if self.save_user_data(group[0]):
+                    save_limit-=1
+        for k in ['rfriends','just_followers','just_friends','just_mentioned']:
+            group = getattr(user,k) or []
+            for uid in group[1:]:
+                if self.save_user_data(uid):
+                    save_limit-=1
+                if save_limit==0:
+                    return
 
     def save_user_data(self,uid):
-        edges = Edges.get_id(Edges):
-        if edges is None:
-            edges = self.twitter.get_edges(uid)
-            edges.save()
+        try:
+            if not Edges.in_db(uid):
+                edges = self.twitter.get_edges(uid)
+                edges.save()
 
-        tweets = list(Tweet.find(Tweet.user_id=uid))
-        if tweets is None:
-            tweets = self.twitter.user_timeline(uid)
-            Tweet.database.bulk_save_models(tweets)
-        return edges, tweets
+            if not Tweets.in_db(uid):
+                tweets = self.twitter.user_timeline(uid)
+                Tweets(_id=uid,tweets=tweets).save()
+            return True
+        except Unauthorized:
+            logging.warn("Unauthorized for %d",uid)
+            return False
 
 
 if __name__ == '__main__':

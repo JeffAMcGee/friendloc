@@ -6,10 +6,10 @@ sys.path.append("..")
 import logging
 import unittest
 
-from geocrawl import GeoLookup
-from localcrawl.models import Edges, User, Tweet
+from explore.geocrawl import GeoLookup
+from base.models import Edges, User, Tweets
 from maroon import MongoDB, Model
-
+from settings import settings
 
 class TestSplitProc(unittest.TestCase):
 
@@ -29,10 +29,13 @@ class TestSplitProc(unittest.TestCase):
             }
         gl = GeoLookup("geo_tweets.json",test_db)
         list(gl.map([info_d]))
-        Model.database = MongoDB(name=test_db)
         infobotter = User.get_id(90333071)
         self.assertEqual(len(infobotter.rfriends), 1)
         self.assertEqual(infobotter.rfriends[0],48479480)
+        all_edges = list(Edges.get_all())
+        self.assertEqual(len(all_edges), 5)
+        ib_tweets = Tweets.get_id(90333071)
+        self.assertEqual(len(ib_tweets.ats), 2)
 
 
 if __name__ == '__main__':

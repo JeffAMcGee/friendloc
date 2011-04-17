@@ -131,7 +131,6 @@ def graph_rtt(path=None):
 
 def compare_edge_types():
     TwitterModel.database = MongoDB(name='ngeo',slave_okay=True)
-    #ats = dict((d['uid'],set(d['ats'])) for d in read_json('geo_ats.json'))
     logging.info("read ats")
     users = User.find(
             User.just_friends.exists() &
@@ -154,7 +153,7 @@ def compare_edge_types():
             data[key].append(1+dist)
             rand_dist =coord_in_miles(last_spot,place)
             data['rand-'+key].append(1+rand_dist)
-            print rand_dist
+            #print rand_dist
         last_spot = user.median_loc
     for k,v in data.iteritems():
         logging.info("%s %d",k,len(v))

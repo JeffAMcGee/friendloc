@@ -15,6 +15,7 @@ __all__ = [
     'GeonamesPlace',
     'User',
     'Tweet',
+    'Tweets',
     'Edges',
     'JobBody',
     'LookupJobBody',
@@ -74,6 +75,7 @@ class User(TwitterModel):
     rfriends = ListProperty('rfrds')
     just_friends = ListProperty('jfrds')
     just_followers = ListProperty('jfols')
+    just_mentioned = ListProperty('jat')
     mentioned = ListProperty('ated')
     
     #properties from twitter
@@ -142,9 +144,22 @@ class Tweet(TwitterModel):
             return (Tweet(from_dict=t) for t in tweets)
 
 
+class Tweets(TwitterModel):
+    def __init__(self, from_dict=None, **kwargs):
+        TwitterModel.__init__(self, from_dict, **kwargs)
+        if self.tweets and not self.ats:
+            ats = set(at for t in self.tweets for at in t.mentions)
+            ats.discard(self._id)
+            self.ats = ats
+
+    _id = TwitterIdProperty('_id') #user id
+    ats = ListProperty('ats',int)
+    tweets = ModelListProperty('tws',Tweet)
+
+
 class Edges(TwitterModel):
     # I only store the first 5000 friends and followers
-    _id = TwitterIdProperty('_id')
+    _id = TwitterIdProperty('_id') #user id
     friends = ListProperty('frs',int)
     followers = ListProperty('fols',int)
     
