@@ -210,14 +210,17 @@ def prep_nonloc(x):
     cutoff = 25
     return (x[cutoff:])
 
-def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, bins, iat, youat):
-    kinds = ['star','norm']
-    for kind,color in [['sum','r']]:#zip(kinds,"rbg"):
+def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, edge_type, iat, youat):
+    if edge_type=='frd':
+        kinds = [['star','r'],['norm','b']]
+    else:
+        kinds = [['sum','g']]
+    for kind,color in kinds:
         users = 0
         for i in xrange(15):
             row = dists.get((kind,i,iat,youat),None)
             if not row: continue
-            hist,b = numpy.histogram(row,bins)
+            hist,b = numpy.histogram(row,dist_bins())
             fit = numpy.polyfit(rand_nonloc, prep_nonloc(hist), 1)
             height = 1-fit[0]*len(rand_dists)/len(row)
             ax.bar(users,height,len(row),color=color,edgecolor=color,alpha=.3)
@@ -227,9 +230,8 @@ def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, bins, iat, youat):
 
 def gr_local_ratio():
     ats = dict((d['uid'],set(d['ats'])) for d in read_json('geo_ats.json'))
-    bins=dist_bins()
     rand_dists = [float(s.strip()) for s in open('rand_all')]
-    rand_hist,b = numpy.histogram(rand_dists,bins)
+    rand_hist,b = numpy.histogram(rand_dists,dist_bins())
     rand_nonloc = prep_nonloc(rand_hist)
 
     conv_labels = [
@@ -237,7 +239,7 @@ def gr_local_ratio():
             "who converse",
             "who talk to me",
             "who ignore each other"]
-    edge_labels = dict(rfrd="rfriends",frd="just friends",fol="just followers")
+    edge_labels = dict(rfrd="rfriends",frd="friends",fol="followers")
 
     fig = plt.figure(figsize=(15,10))
     for col,edge_type in enumerate(['fol','rfrd','frd']):
@@ -252,7 +254,7 @@ def gr_local_ratio():
         for row,conv_label in enumerate(conv_labels):
             ax = fig.add_subplot(3,4,1+row+col*4)
             local_ratio_subplot(ax,dists,
-                    rand_dists,rand_nonloc,bins,
+                    rand_dists,rand_nonloc,edge_type,
                     row<2,1<=row<3)
             if row==0:
                 ax.set_ylabel('local users')
