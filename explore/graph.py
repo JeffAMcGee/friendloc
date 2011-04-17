@@ -211,16 +211,18 @@ def prep_nonloc(x):
     return (x[cutoff:])
 
 def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, bins, iat, youat):
-    for kind,color in zip(['star','norm'],"rb"):
+    kinds = ['star','norm']
+    for kind,color in [['sum','r']]:#zip(kinds,"rbg"):
         users = 0
-        for i in xrange(100):
+        for i in xrange(15):
             row = dists.get((kind,i,iat,youat),None)
-            if row is None: continue
+            if not row: continue
             hist,b = numpy.histogram(row,bins)
             fit = numpy.polyfit(rand_nonloc, prep_nonloc(hist), 1)
             height = 1-fit[0]*len(rand_dists)/len(row)
-            ax.bar(users,height,len(row),color=color,alpha=.5)
+            ax.bar(users,height,len(row),color=color,edgecolor=color,alpha=.3)
             users+=len(row)
+    ax.set_xlim(0,users)
 
 
 def gr_local_ratio():
@@ -229,29 +231,37 @@ def gr_local_ratio():
     rand_dists = [float(s.strip()) for s in open('rand_all')]
     rand_hist,b = numpy.histogram(rand_dists,bins)
     rand_nonloc = prep_nonloc(rand_hist)
-    conv_labels = [ "I talk to", "I talk with", "talk to me", "ignore"]
+
+    conv_labels = [
+            "I talk to",
+            "who converse",
+            "who talk to me",
+            "who ignore each other"]
     edge_labels = dict(rfrd="rfriends",frd="just friends",fol="just followers")
 
-    fig = plt.figure(figsize=(12,16))
+    fig = plt.figure(figsize=(15,10))
     for col,edge_type in enumerate(['fol','rfrd','frd']):
         dists = defaultdict(list)
         for d in read_json('geo_%s_simp'%edge_type):
-            for kind in ['star','norm']:
+            for kind in ['star','norm','sum']:
                 iat = d['aid'] in ats.get(d['uid'],())
                 youat = d['uid'] in ats.get(d['aid'],())
-                bits = (1+int(math.log(d[kind],2))) if d[kind] else 0
+                count = d['star']+d['norm'] if kind=='sum' else d[kind]
+                bits = (1+int(math.log(count,2))) if count else 0
                 dists[(kind,bits,iat,youat)].append(d['dist'])
         for row,conv_label in enumerate(conv_labels):
-            ax = fig.add_subplot(4,3,1+row*3+col)
+            ax = fig.add_subplot(3,4,1+row+col*4)
             local_ratio_subplot(ax,dists,
                     rand_dists,rand_nonloc,bins,
                     row<2,1<=row<3)
-            ax.set_ylabel('nonrandom fraction of users')
-            ax.set_xlabel('number of users')
+            if row==0:
+                ax.set_ylabel('local users')
+            if col==2:
+                ax.set_xlabel('count of users')
             ax.set_ylim(0,1)
-            ax.tick_params(labelsize="small")
-            ax.set_title('%s who %s'%(edge_labels[edge_type],conv_label))
-    fig.savefig('../www/local_ratio.pdf')
+            ax.tick_params(labelsize="x-small")
+            ax.set_title('%s %s'%(edge_labels[edge_type],conv_label))
+    fig.savefig('../www/local_ratio.png')
 
 
 def gr_locals(edge_type='rfrd'):
