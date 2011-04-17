@@ -125,7 +125,21 @@ def coord_angle(p, p1, p2):
 
 
 def coord_in_miles(p1, p2):
-    return math.hypot(*_coord_delta(p1,p2))
+    """
+    calculate the great circle distance using the haversine formula
+    Taken from stackoverflow:
+    http://stackoverflow.com/questions/4913349/
+    """
+    points = itertools.chain.from_iterable(
+            (p['lng'],p['lat']) if isinstance(p, dict) else p
+            for p in (p1,p2))
+    lon1, lat1, lon2, lat2 = map(math.radians, points)
+    # haversine formula 
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a)) 
+    return 3959 * c
 
 
 def read_json(path=None):
