@@ -42,7 +42,10 @@ class GeoLookup(SplitProcess):
             if user['followers_count']==0 and user['friends_count']==0: continue
             median = utils.median_2d(spots)
             dists = [utils.coord_in_miles(median,spot) for spot in spots]
-            if numpy.median(dists)>50: continue
+            if 24<median[1]<50 and -126<median[0]<-66:
+                continue #not in us
+            if numpy.median(dists)>50:
+                continue #user moves too much
             del user['locs']
             user['mloc'] = median
             yield user
@@ -116,7 +119,7 @@ class GeoLookup(SplitProcess):
             amigo.merge()
         amigo_ids = set(a._id for a in amigos)
 
-        save_limit = 12
+        save_limit = 10
         for k,s in sets.iteritems():
             group = [aid for aid in s if aid in amigo_ids]
             if group:
@@ -148,6 +151,9 @@ class GeoLookup(SplitProcess):
 
 if __name__ == '__main__':
     path = sys.argv[1] if len(sys.argv)>1 else None
-    proc = GeoLookup(path, "geo", log_level=logging.INFO, slaves=12)
+    proc = GeoLookup(path, "usgeo",
+            label='geocrawl',
+            log_level=logging.INFO,
+            slaves=8)
     #proc.run_single()
     proc.run()

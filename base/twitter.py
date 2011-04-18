@@ -38,18 +38,12 @@ class TwitterResource(Resource):
         for delay in self.backoff_seconds:
             try:
                 r = self.get(path, headers, **kwargs)
-                if 'X-RateLimit-Remaining' in r.headers:
-                    self.remaining = int(r.headers['X-RateLimit-Remaining'])
-                    stamp = int(r.headers['X-RateLimit-Reset'])
-                    self.reset_time = datetime.utcfromtimestamp(stamp)
-                if r.status_int == 304:
-                    # I don't think this should happen - that's
-                    # why I raise the exception.
-                    raise Exception("Error 304 - %s, "%r.final_url)
+                self._parse_ratelimit(r)
                 return json.loads(r.body_string())
             except ValueError:
                 logging.exception("incomplete json")
             except RequestFailed as failure:
+                self._parse_ratelimit(failure.response)
                 if failure.response.status_int == 502:
                     logging.info("Fail whale says slow down!")
                 else:
@@ -62,6 +56,12 @@ class TwitterResource(Resource):
                     delay = 240
             time.sleep(delay)
         raise Exception("Epic Fail Whale! - %s"%path)
+
+    def _parse_ratelimit(self,r):
+        if 'X-RateLimit-Remaining' in r.headers:
+            self.remaining = int(r.headers['X-RateLimit-Remaining'])
+            stamp = int(r.headers['X-RateLimit-Reset'])
+            self.reset_time = datetime.utcfromtimestamp(stamp)
 
     def get_ids(self, path, user_id, **kwargs):
         ids=self.get_d(
@@ -154,7 +154,7 @@ class TwitterResource(Resource):
 
     def sleep_if_needed(self):
         logging.info("api calls remaining: %d",self.remaining)
-        if self.remaining > 50: return
+        if self.remaining > 100: return
         delta = (self.reset_time-datetime.utcnow())
         logging.info("goodnight for %r",delta)
         #sleep an extra minute in case clocks are wrong
