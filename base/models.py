@@ -43,6 +43,11 @@ class TwitterDateTimeProperty(DateTimeProperty):
         DateTimeProperty.__init__(self, name, format, **kwargs)
 
 class GeonamesPlace(ModelPart):
+    ignored = [
+        'country_code','country_flag_url','country_name','elevation',
+        'feature_class','fully_qualified_name','google_map_url','gtopo30',
+        'name_ascii','placetype','score','timezone','yahoo_map_url',
+    ]
     lat = FloatProperty('lat')
     lng = FloatProperty('lng')
     feature_code = TextProperty('code')

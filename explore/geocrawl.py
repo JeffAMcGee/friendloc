@@ -58,6 +58,10 @@ class GeoLookup(SplitProcess):
             self.twitter.sleep_if_needed()
             user = User.get_id(user_d['id'])
             if user:
+                if user.median_loc:
+                    logging.warn("not revisiting %d",user._id)
+                    yield None
+                    continue
                 user.update(user_d)
             else:
                 user = User(user_d)
@@ -117,29 +121,29 @@ class GeoLookup(SplitProcess):
             group = [aid for aid in s if aid in amigo_ids]
             if group:
                 setattr(user,k,group)
-                if self.save_user_data(group[0]):
-                    save_limit-=1
-        for k in ['rfriends','just_followers','just_friends','just_mentioned']:
-            group = getattr(user,k) or []
-            for uid in group[1:]:
-                if self.save_user_data(uid):
-                    save_limit-=1
-                if save_limit==0:
-                    return
+
+        keys = ['rfriends','just_followers','just_friends','just_mentioned']
+        groups = filter(None,(getattr(user,k) for k in keys))
+        uids = itertools.chain(
+                [g[0] for g in groups],
+                *[g[1:] for g in groups])
+        for uid in uids:
+            try:
+                self.save_user_data(uid)
+                save_limit-=1
+            except Unauthorized:
+                logging.warn("Unauthorized for %d",user._id)
+            if save_limit==0:
+                return
 
     def save_user_data(self,uid):
-        try:
-            if not Edges.in_db(uid):
-                edges = self.twitter.get_edges(uid)
-                edges.save()
+        if not Edges.in_db(uid):
+            edges = self.twitter.get_edges(uid)
+            edges.save()
 
-            if not Tweets.in_db(uid):
-                tweets = self.twitter.user_timeline(uid)
-                Tweets(_id=uid,tweets=tweets).save()
-            return True
-        except Unauthorized:
-            logging.warn("Unauthorized for %d",uid)
-            return False
+        if not Tweets.in_db(uid):
+            tweets = self.twitter.user_timeline(uid)
+            Tweets(_id=uid,tweets=tweets).save()
 
 
 if __name__ == '__main__':
