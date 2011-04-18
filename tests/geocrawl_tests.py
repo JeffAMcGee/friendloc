@@ -32,6 +32,7 @@ class TestSplitProc(unittest.TestCase):
         infobotter = User.get_id(90333071)
         self.assertEqual(len(infobotter.rfriends), 1)
         self.assertEqual(infobotter.rfriends[0],48479480)
+        self.assertEqual(len(infobotter.neighbors),4)
         all_edges = list(Edges.get_all())
         self.assertEqual(len(all_edges), 5)
         ib_tweets = Tweets.get_id(90333071)

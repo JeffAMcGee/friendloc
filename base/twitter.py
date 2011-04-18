@@ -42,6 +42,9 @@ class TwitterResource(Resource):
                 return json.loads(r.body_string())
             except ValueError:
                 logging.exception("incomplete json")
+            except Unauthorized as unauth:
+                self._parse_ratelimit(unauth.response)
+                raise
             except RequestFailed as failure:
                 self._parse_ratelimit(failure.response)
                 if failure.response.status_int == 502:

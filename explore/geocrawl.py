@@ -42,7 +42,7 @@ class GeoLookup(SplitProcess):
             if user['followers_count']==0 and user['friends_count']==0: continue
             median = utils.median_2d(spots)
             dists = [utils.coord_in_miles(median,spot) for spot in spots]
-            if 24<median[1]<50 and -126<median[0]<-66:
+            if not (-126<median[0]<-66 and 24<median[1]<50):
                 continue #not in us
             if numpy.median(dists)>50:
                 continue #user moves too much
@@ -61,7 +61,7 @@ class GeoLookup(SplitProcess):
             self.twitter.sleep_if_needed()
             user = User.get_id(user_d['id'])
             if user:
-                if user.median_loc:
+                if user.neighbors:
                     logging.warn("not revisiting %d",user._id)
                     yield None
                     continue
@@ -130,14 +130,18 @@ class GeoLookup(SplitProcess):
         uids = itertools.chain(
                 [g[0] for g in groups],
                 *[g[1:] for g in groups])
+        neighbors = []
         for uid in uids:
             try:
                 self.save_user_data(uid)
+                neighbors.append(uid)
                 save_limit-=1
             except Unauthorized:
                 logging.warn("Unauthorized for %d",user._id)
             if save_limit==0:
-                return
+                break
+        if neighbors:
+            user.neighbors = neighbors
 
     def save_user_data(self,uid):
         if not Edges.in_db(uid):
