@@ -27,8 +27,9 @@ class GeoLookup(SplitProcess):
         for i,t in enumerate(utils.read_json(self.path)):
             if i%10000 ==0:
                 logging.info("read %d tweets"%i)
+            if 'id' not in t: continue # this is not a tweet
             uid = t['user']['id']
-            if 'coordinates' not in t: continue
+            if not t.get('coordinates'): continue
             if uid not in users:
                 users[uid] = t['user']
                 users[uid]['locs'] = []
@@ -143,5 +144,6 @@ class GeoLookup(SplitProcess):
 
 if __name__ == '__main__':
     path = sys.argv[1] if len(sys.argv)>1 else None
-    proc = GeoLookup(path, "geo", log_level=logging.INFO)
+    proc = GeoLookup(path, "geo", log_level=logging.INFO, slaves=12)
+    #proc.run_single()
     proc.run()
