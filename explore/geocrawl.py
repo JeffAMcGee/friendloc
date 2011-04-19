@@ -82,7 +82,7 @@ class GeoLookup(SplitProcess):
         self.save_user_data(user._id)
         edges = Edges.get_id(user._id)
         tweets = Tweets.get_id(user._id,fields=['ats'])
-        ated = set(tweets.ats)
+        ated = set(tweets.ats or [])
         frds = set(edges.friends)
         fols = set(edges.followers)
         sets = dict(
