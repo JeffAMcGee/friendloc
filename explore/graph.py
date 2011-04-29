@@ -182,6 +182,7 @@ def tweets_over_time():
             xlabel = "March 2011, UTC",
             ylabel = "tweets with twitpic per hour",
             bins=numpy.arange(19,29,1/24.0),
+            xlim=(21,29),
             )
 
 
