@@ -1,12 +1,14 @@
-
-import beanstalkc
+try:
+    import beanstalkc
+except:
+    pass
 import os
 import string
 import logging
 from multiprocessing import Process
 
 from settings import settings
-from maroon import CouchDB, MongoDB, TeeDB
+from maroon import MongoDB, Model
 from base.models import *
 
 
@@ -23,6 +25,7 @@ class LocalProc(object):
         log = label+"_"+slave_id if slave_id else label
         filepath = os.path.join(settings.log_dir, log)
         logging.basicConfig(filename=filepath+".log",level=logging.INFO)
+        Model.database = MongoDB(name=settings.region)
 
 
 def _run_slave(Proc,slave_id,*args):

@@ -20,7 +20,7 @@ except:
 from settings import settings
 import twitter as twitter
 from models import *
-from maroon import ModelCache, CouchDB, MongoDB
+from maroon import ModelCache, MongoDB
 
 
 def all_users():

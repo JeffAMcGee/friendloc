@@ -8,7 +8,6 @@ from datetime import datetime
 from restkit.errors import RequestFailed, Unauthorized
 from settings import settings
 from models import Edges, User, Tweet
-from couchdbkit import BulkSaveError
 
 
 class TwitterResource(Resource):
@@ -143,16 +142,8 @@ class TwitterResource(Resource):
             if len(all_tweets)>=3150:
                 logging.error("hit max after %d for %s",len(all_tweets),uid)
                 break
-        try:
-            stored_tweets = [t for t in all_tweets if int(t._id)-1>since_id]
-            Tweet.database.bulk_save_models(stored_tweets)
-        except BulkSaveError as err:
-            #ignore conflicts
-            if any(d['error']!='conflict' for d in err.errors):
-                raise
-            else:
-                logging.warn("conflicts for %s:",uid)
-                logging.warn("%r",err.errors)
+        stored_tweets = [t for t in all_tweets if int(t._id)-1>since_id]
+        Tweet.database.bulk_save_models(stored_tweets)
         return all_tweets
 
     def sleep_if_needed(self):

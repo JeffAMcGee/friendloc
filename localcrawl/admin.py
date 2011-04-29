@@ -11,11 +11,11 @@ from datetime import datetime as dt
 import pdb
 
 import pymongo
-from couchdbkit import ResourceNotFound, BulkSaveError
 import restkit.errors
-from couchdbkit.loaders import FileSystemDocsLoader
 try:
     import beanstalkc
+    from couchdbkit import ResourceNotFound, BulkSaveError
+    from couchdbkit.loaders import FileSystemDocsLoader
 except:
     pass
 
@@ -23,6 +23,7 @@ from settings import settings
 from scoredict import Scores, BUCKETS, log_score, DONE
 from localcrawl.crawl import CrawlProcess
 import localcrawl.lookup as lookup
+from localcrawl.procs import create_slaves
 import base.twitter
 from base.models import *
 from maroon import Model
@@ -49,6 +50,18 @@ def design_sync(type):
     "sync the documents in _design"
     loader = FileSystemDocsLoader(type+'_design')
     loader.sync(Model.database, verbose=True)
+
+
+def start_lookup():
+    print "spawning minions!"
+    create_slaves(lookup.LookupSlave)
+    proc = lookup.LookupMaster()
+    proc.run()
+
+
+def start_lookup_slave():
+    proc = lookup.LookupSlave('x')
+    proc.run()
 
 
 def stop_lookup():
@@ -99,7 +112,9 @@ def import_old_json():
         Model.database.bulk_save(docs)
 
 def make_indexes(host=settings.mongo_host):
-    keys = [('User','ncd'),('Tweet','uid')]
+    keys = [('User','ncd'),
+            ('Tweet',[('uid',1),('ca',1)]),
+            ('Tweet',[('ats',1),('ca',1)]) ]
     connection = pymongo.Connection(host=host)
     for db in settings.regions:
         for key in keys:
@@ -132,12 +147,15 @@ def import_mongo(cls_name,path=None):
     for g in grouper(1000,read_json(path)):
         Cls.bulk_save(Cls(from_dict=d) for d in g if d)
 
+
 def fix_crowd_uids():
-    settings.pdb()
     for crowd in Model.database.Crowd.find():
+        for k in ['start','end']:
+            crowd[k] = dt.fromtimestamp(crowd[k])# if crowd[k] else dt(2010,12,28)
         for user in crowd['users']:
-            user['id'] = int(user['id'][1:])
+            user['id'] = int(user['id'])
         Model.database.Crowd.save(crowd)
+
 
 def pick_locals(path=None):
     file =open(path) if path else sys.stdin 

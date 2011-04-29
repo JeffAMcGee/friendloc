@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 from collections import defaultdict
-import beanstalkc
+try:
+    import beanstalkc
+except:
+    pass
 import json
 import pdb
 import signal
@@ -196,10 +199,7 @@ class LookupSlave(LocalProc):
                     job.delete()
                     continue
                 try:
-                    if self.twitter.remaining < 30:
-                        dt = (self.twitter.reset_time-datetime.utcnow())
-                        logging.info("goodnight for %r",dt)
-                        time.sleep(dt.seconds)
+                    self.twitter.sleep_if_needed()
                     logging.info("look at %s",user.screen_name)
                     if (not body.force) and User.in_db(user._id):
                         job.delete()
