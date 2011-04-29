@@ -170,17 +170,18 @@ def compare_edge_types():
 
 
 def tweets_over_time():
-    days =[]
-    for tweet in Tweet.find(Tweet.text//r'twitpic\.com/\w+',fields=['ca']):
-        ca = tweet.created_at
-        days.append(ca.hour/24.0+ca.day)
+    tweets = Tweet.find(
+            (Tweet.text//r'twitpic\.com/\w+')&
+            Tweet.created_at.range(dt(2011,2,19),dt(2011,3,1)),
+            fields=['ca'])
+    days = [tweet.created_at.hour/24.0+tweet.created_at.day for tweet in tweets]
     graph_hist(
             days,
             "twitpic_hr_lim",
             kind="linear",
             xlabel = "March 2011, UTC",
             ylabel = "tweets with twitpic per hour",
-            bins=numpy.arange(4,30,1/24.0),
+            bins=numpy.arange(19,29,1/24.0),
             )
 
 
