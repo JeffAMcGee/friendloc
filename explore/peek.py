@@ -17,14 +17,11 @@ from base.models import *
 from base.utils import *
 
 
-def find_geo_ats(path=None):
-    uids = defaultdict(set)
-    for t in read_json(path):
-        ats = t['ats']
-        if ats:
-            uids[t['uid']].update(ats)
-    for k,v in uids.iteritems():
-        print json.dumps(dict(uid=k,ats=list(v)))
+def find_geo_ats():
+    "create geo_ats.json"
+    for tweets in Tweets.find({},fields=['ats']):
+        if tweets.ats:
+            print json.dumps(dict(uid=tweets._id,ats=tweets.ats))
 
 
 def find_removed_locs():
@@ -159,27 +156,51 @@ def find_ats(users_path="hou_tri_users"):
                     print "%s\t%s"%(d['uid'],at)
 
 
-def print_tri_counts(key="rfriends"):
-    edges = ModelCache(Edges)
-    data = []
-    for user in User.find(getattr(User,key).exists(),timeout=False):
-        amigo_id = getattr(user,key)[0]
-        amigo = User.get_id(amigo_id, fields=['gnp'])
-        me = edges[user._id]
-        you = edges[amigo_id]
-        sets = dict(
-            mfrd = set(me.friends),
-            mfol = set(me.followers),
-            yfrd = set(you.friends),
-            yfol = set(you.followers),
-            )
-        all = (sets['mfrd']|sets['mfol'])&(sets['yfrd']|sets['yfol'])
-        dist = coord_in_miles(user.median_loc,amigo.geonames_place.to_d())
-        d = dict(dist=dist, all=len(all), uid=user._id, aid=amigo_id)
-        for k,v in sets.iteritems():
-            d['l'+k]= len(v)
-            d[k] = list(all&v)
-        data.append(d)
-    data.sort(key=itemgetter('dist'))
-    for d in data:
-        print json.dumps(d)
+def print_tri_counts():
+    edges = ModelCache(Edges)#dict( (edges._id,edges) for edges in Edges.find())
+    print 'loaded edges'
+    data = defaultdict(list)
+    keys = {'rfrd':'rfriends',
+        'jat':'just_mentioned',
+        'fol':'just_followers',
+        #'frd':'just_friends'
+        }
+    users = list(User.find_connected(timeout=False))
+    print 'loaded users'
+    for key,field in keys.iteritems():
+        amigo_lists = (getattr(user,field) for user in users)
+        amigo_ids = list(set(al[0] for al in amigo_lists if al))
+        amigos = dict(
+            (user._id,user.geonames_place.to_d())
+            for user in User.find(
+                User._id.is_in(amigo_ids),
+                fields=['gnp']
+            ))
+        print 'loaded amigos for %s'%key
+
+        for user in users:
+            field_ids = getattr(user,field)
+            if not field_ids: continue
+            your_id = field_ids[0]
+            me = edges[user._id]
+            you = edges[your_id]
+            if you is None:
+                settings.pdb()
+            sets = dict(
+                mfrd = set(me.friends),
+                mfol = set(me.followers),
+                yfrd = set(you.friends),
+                yfol = set(you.followers),
+                )
+            all = (sets['mfrd']|sets['mfol'])&(sets['yfrd']|sets['yfol'])
+            dist = coord_in_miles(user.median_loc,amigos[your_id])
+            d = dict(dist=dist, all=len(all), uid=user._id, aid=your_id)
+            for k,v in sets.iteritems():
+                d['l'+k]= len(v)
+                d[k] = list(all&v)
+            data[key].append(d)
+        data[key].sort(key=itemgetter('dist'))
+        with open('geo_tri_%s'%key,'w') as f:
+            for d in data[key]:
+                print>>f, json.dumps(d)
+        print 'saved file'

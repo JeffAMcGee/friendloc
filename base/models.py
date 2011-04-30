@@ -100,9 +100,15 @@ class User(TwitterModel):
     utc_offset = IntProperty('utco')
 
     @classmethod
-    def with_location():
+    def with_location(cls):
         return User.database.User.find({'mloc':{'$exists':1}})
 
+    @classmethod
+    def find_connected(cls,**kwargs):
+        return User.find(
+            User.just_friends.exists() & User.just_followers.exists() & User.rfriends.exists(),
+            **kwargs
+            )
 
 class Tweet(TwitterModel):
     _id = TwitterIdProperty('_id')
