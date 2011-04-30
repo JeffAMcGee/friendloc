@@ -156,6 +156,13 @@ def fix_crowd_uids():
             user['id'] = int(user['id'])
         Model.database.Crowd.save(crowd)
 
+def fix_jats():
+    settings.pdb()
+    for user in Model.database.User.find({'jat':{'$exists':1}}):
+        user['jats'] = user['jat']
+        del user['jat']
+        Model.database.User.save(user)
+
 
 def pick_locals(path=None):
     file =open(path) if path else sys.stdin 
