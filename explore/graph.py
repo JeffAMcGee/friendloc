@@ -7,6 +7,7 @@ import re
 import bisect
 from collections import defaultdict, namedtuple
 from datetime import datetime as dt
+from datetime import timedelta
 from operator import itemgetter
 
 import matplotlib
@@ -168,6 +169,12 @@ def compare_edge_types():
             ylabel = "number of users",
             )
 
+def find_urls():
+    #for Krishna
+    start = dt(2011,2,22,0)
+    tweets = Tweet.find(Tweet.created_at.range(start,start+timedelta(hours=2)))
+    for t in tweets:
+        print t.to_d(long_names=True,dateformat="%a %b %d %H:%M:%S +0000 %Y")
 
 def tweets_over_time():
     tweets = Tweet.find(
