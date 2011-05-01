@@ -405,6 +405,28 @@ def diff_gnp_gps(path=None):
             )
 
 
+def plot_mine_ours():
+    ours,mine = [],[]
+    for quad in read_json('rfrd_tris'):
+        for key,l in [('our',ours), ('my',mine)]:
+            dist = coord_in_miles(quad['me']['loc'],quad[key]['loc'])
+            l.append(1+dist)
+    
+    fig = plt.figure(figsize=(24,24))
+    ax = fig.add_subplot(111)
+    ax.loglog(ours, mine,'+',
+            color='k',
+            alpha=.05,
+            markersize=10,
+            )
+    ax.set_xlim(1,30000)
+    ax.set_ylim(1,30000)
+    ax.set_xlabel("ours")
+    ax.set_ylabel("mine")
+    ax.set_title("closed vs. open triads")
+    fig.savefig('../www/mine_ours.png')
+
+
 ###########################################################
 # methods from localcrawl - use at your own risk!
 #
