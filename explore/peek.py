@@ -157,17 +157,17 @@ def find_ats(users_path="hou_tri_users"):
 
 
 def print_tri_counts():
-    edges = ModelCache(Edges)#dict( (edges._id,edges) for edges in Edges.find())
     print 'loaded edges'
     data = defaultdict(list)
     keys = {'rfrd':'rfriends',
         'jat':'just_mentioned',
         'fol':'just_followers',
-        #'frd':'just_friends'
+        'frd':'just_friends'
         }
     users = list(User.find_connected(timeout=False))
     print 'loaded users'
     for key,field in keys.iteritems():
+        edges = ModelCache(Edges)
         amigo_lists = (getattr(user,field) for user in users)
         amigo_ids = list(set(al[0] for al in amigo_lists if al))
         amigos = dict(
