@@ -13,6 +13,7 @@ from maroon import ModelCache
 from settings import settings
 import base.twitter as twitter
 from base.gisgraphy import GisgraphyResource
+from base.splitproc import SplitProcess
 from base.models import *
 from base.utils import *
 
@@ -204,3 +205,48 @@ def print_tri_counts():
             for d in data[key]:
                 print>>f, json.dumps(d)
         print 'saved file'
+       
+def find_rfriend_tris():
+    _RfriendTriProc().run()
+
+
+class _RfriendTriProc(SplitProcess):
+    def produce(self):
+        TwitterModel.database = mongo('usgeo')
+        return User.find_connected(timeout=False)
+
+    def map(self,items):
+        TwitterModel.database = mongo('usgeo')
+        for me in items:
+            yield self._find_tris(me)
+
+    def _find_tris(self,me):
+        me_rfr = set(me.rfriends).intersection(me.neighbors)
+        print len(me_rfr)
+        if len(me_rfr)<3:
+            return None
+        for you_id in me_rfr:
+            you_ed = Edges.get_id(you_id)
+            ours = me_rfr.intersection(you_ed.friends,you_ed.followers)
+            mine = me_rfr.difference(you_ed.friends,you_ed.followers)
+            if ours and mine:
+                d = dict(
+                    me = dict(_id=me._id,loc=me.median_loc),
+                    you = dict(_id=you_id),
+                    my = dict(_id=random.choice(list(mine))),
+                    our = dict(_id=random.choice(list(ours))),
+                    )
+                for k,v in d.iteritems():
+                    if k=='me': continue
+                    gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
+                    gnp.pop('zipcode',None)
+                    v['loc'] = gnp
+                    
+                return d
+        return None
+
+    def consume(self,items):
+        with open('rfrd_tris','w') as f:
+            for item in items:
+                if item:
+                    print>>f, json.dumps(item)

@@ -27,7 +27,7 @@ from base.utils import *
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
-        sample=None, histtype='step', **kwargs):
+        sample=None, histtype='step', marker='-', **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -76,7 +76,7 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
                 if k in hargs:
                     del hargs[k]
             hist,b = numpy.histogram(row,kwargs['bins'])
-            ax.plot((b[:-1]+b[1:])/2, hist, '-', **hargs)
+            ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
         else:
             ax.hist(row, histtype=histtype, **hargs)
     if normed:
@@ -221,10 +221,10 @@ def prep_nonloc(x):
     return (x[cutoff:])
 
 def _kinds_for_et(edge_type):
-    if edge_type in ['frd','jat']:
+    #if edge_type in ['frd','jat']:
         return [['star','r'],['norm','b']]
-    else:
-        return [['sum','g']]
+    #else:
+    #    return [['sum','g']]
 
 def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, edge_type, iat, youat):
     for kind,color in _kinds_for_et(edge_type):
@@ -270,15 +270,15 @@ def gr_local_ratio():
                 bits = (1+int(math.log(count,2))) if count else 0
                 dists[(kind,bits,iat,youat)].append(d['dist'])
             users[(iat,youat)]+=1
-        subcol = 0
         total_users = sum(users.values())
         for col,conv_label in enumerate(conv_labels):
             if row==3 and col>1:
                 continue #we can't get data for these boxes
+            ax = fig.add_subplot(4,4,1+col+row*4)
+            
             iat, youat = col<2,1<=col<3
-            width = 1+int(100*users[(iat,youat)]/total_users)
-            ax = plt.subplot2grid((4,104),(row,subcol),colspan=width)
-            subcol+=width
+            width = users[(iat,youat)]**2/total_users
+            ax.bar(0,.05,width,.95,color='.5')
 
             local_ratio_subplot(ax,dists,rand_dists,rand_nonloc,edge_type,iat, youat)
             if col==0:
@@ -387,6 +387,24 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
     fig.savefig('../www/tri_deg_%s.png'%key)
 
 
+def diff_gnp_gps(path=None):
+    users = User.find(
+            User.median_loc.exists() & User.geonames_place.exists(),
+            fields=['gnp','mloc'])
+    dists = [
+        1+coord_in_miles(user.geonames_place.to_d(),user.median_loc)
+        for user in users ]
+    graph_hist(dists,
+            "diff_gnp_gps",
+            bins = numpy.insert(10**numpy.linspace(0,5,201),0,0),
+            kind="cumulog",
+            marker = 'o-',
+            xlim=(1,30000),
+            xlabel = "1+distance between geonames and tweets in miles",
+            ylabel = "number of users",
+            )
+
+
 ###########################################################
 # methods from localcrawl - use at your own risk!
 #
@@ -441,51 +459,6 @@ def tpu_hist(path=None):
             )
     ax.set_xscale('log')
     fig.savefig('../www/tpu_us_hist.png')
-
-
-
-
-def diff_gnp_gps(path=None):
-    gis = gisgraphy.GisgraphyResource()
-    names = {}
-    latlngs = defaultdict(list)
-    for t in read_json(path):
-        uid = t['user']['id']
-        if 'coordinates' not in t: continue
-        lng,lat = t['coordinates']['coordinates']
-        latlngs[uid].append(dict(lng=lng,lat=lat))
-        names[uid] = t['user']['location']
-    dists = []
-    for uid,spots in latlngs.iteritems():
-        if len(spots)<2: continue
-        if coord_in_miles(spots[0],spots[1])>30: continue
-        gnp = gis.twitter_loc(names[uid])
-        if not gnp: continue
-        if gnp.population>5000000: continue
-        if gnp.feature_code>"ADM1": continue
-        dist = coord_in_miles(gnp.to_d(),spots[0])
-        dists.append(dist)
-        if dist>100:
-            d = gnp.to_d()
-            d['uid'] = uid
-            d['spot'] = spots[0]
-            d['claim'] = names[uid]
-            print simplejson.dumps(d)
-    fig = plt.figure(figsize=(18,12))
-    ax = fig.add_subplot(111)
-    ax.hist(dists,
-            bins=xrange(200), #[2**i for i in xrange(15)],
-            #log=True,
-            #normed =True,
-            histtype='step',
-            cumulative=True,
-            )
-    ax.set_xlabel('miles between location and tweet')
-    ax.set_ylabel('number of users in bin')
-    #ax.set_xscale('log')
-    fig.savefig('../www/diff_gnp_gps.png')
-    print len(dists)
-
 
 
 def user_stddev(path=None):
