@@ -7,13 +7,14 @@ import logging
 from collections import defaultdict
 from datetime import datetime as dt
 from operator import itemgetter
+from multiprocessing import Pool
 
 from maroon import ModelCache
 
 from settings import settings
 import base.twitter as twitter
 from base.gisgraphy import GisgraphyResource
-from base.splitproc import SplitProcess, do_split
+from base.splitproc import SplitProcess
 from base.models import *
 from base.utils import *
 
@@ -209,8 +210,7 @@ def print_tri_counts():
 def startup_usgeo():
     TwitterModel.database = mongo('usgeo')
 
-def find_rfriend_tris():
-    def find_tris(me):
+def find_tris(me):
         me_rfr = set(me.rfriends).intersection(me.neighbors)
         print len(me_rfr)
         if len(me_rfr)<3:
@@ -234,11 +234,12 @@ def find_rfriend_tris():
                 return d
         return None
 
+def find_rfriend_tris():
     startup_usgeo()
     users = User.find_connected(timeout=False,limit=100)
-
+    p = Pool(8,initializer=startup_usgeo)
     with open('rfrd_tris','w') as f:
-        for item in do_split(users, startup_usgeo, find_tris, single=True):
+        for item in p.imap_unordered(find_tris,users):
             if item:
                 print>>f, json.dumps(item)
 

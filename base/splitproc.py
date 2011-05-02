@@ -166,29 +166,3 @@ class SplitProcess(object):
             pdb.post_mortem()
         self._stop_logging()
         return res
-
-class _SimpleSplitProc(SplitProcess):
-    def __init__(self,iter,startup,map,single=False,**kwargs):
-        SplitProcess.__init__(self,**kwargs)
-        self._iter = iter
-        self._startup = startup
-        self._map = map
-
-    def startup(self,**kwargs):
-        self._startup(**kwargs)
-
-    def produce(self):
-        return self._iter
-
-    def map(self,items):
-        return (self._map(item) for item in items)
-
-    def consume(self,items):
-        return items
-
-def do_split(iter,startup,map,single=False,**kwargs):
-    ssp = _SimpleSplitProc(iter,startup,map,**kwargs)
-    if single:
-        return ssp.run_single()
-    else:
-        return ssp.run()

@@ -6,7 +6,7 @@ sys.path.append("..")
 import unittest
 import logging
 import time
-from splitproc import SplitProcess
+from base.splitproc import SplitProcess
 
 from maroon import *
 
@@ -26,7 +26,6 @@ class AdderSplitProc(SplitProcess):
 
     def consume(self,items):
         return sum(items)
-
 
 
 class TestSplitProc(unittest.TestCase):
