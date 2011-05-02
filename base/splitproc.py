@@ -25,17 +25,24 @@ class SplitProcess(object):
       get passed to consume.  You could make self._done a JoinableQueue .
     """
     def __init__(self, label="proc", slaves=8, buffer_size=0, 
-            log_path="logs", log_level=None):
+            log_path="logs", log_level=None, *args, **kwargs):
         self.slave_id = -1
         self.halting = multiprocessing.Event()
         self._proc_label = label
         self._log_path = log_path
         self._log_level = log_level
         self._slaves = slaves
+        self._args = args
+        self._kwargs = kwargs
 
+        self._file_hdlr = None
         buffer_size = buffer_size or BUFFER_DEFAULT
         self._todo = multiprocessing.JoinableQueue(buffer_size)
         self._done = multiprocessing.Queue()
+
+    def startup(self):
+        "this is called when the master or slave starts running"
+        pass
 
     def produce(self):
         """generator that returns a stream of objects to act on"""
@@ -54,6 +61,8 @@ class SplitProcess(object):
         ""
         slaves = self._start_slaves()
         self._setup_logging(self._proc_label)
+        self.startup(*self._args,**self._kwargs)
+
         jobs = self.produce()
         result = self.consume(self._do_async(jobs))
         for slave in slaves:
@@ -78,6 +87,7 @@ class SplitProcess(object):
         self._setup_logging("%s_%d"%(self._proc_label,slave_id))
         try:
             logging.warn("thread %d began",slave_id)
+            self.startup(*self._args,**self._kwargs)
             for result in self.map(self._todo_iter()):
                 if result is not None:
                     logging.debug("slave %d wrote %r",slave_id,result)
@@ -122,7 +132,8 @@ class SplitProcess(object):
             self.file_hdlr = file_hdlr
 
     def _stop_logging(self):
-        logging.getLogger().removeHandler(self.file_hdlr)
+        if self._file_hdlr:
+            logging.getLogger().removeHandler(self.file_hdlr)
 
     def _do_async(self,jobs):
         "put jobs on self._todo and yield results from self._done"
@@ -148,9 +159,36 @@ class SplitProcess(object):
         "run the job without multiprocessing for testing and debuging"
         self._setup_logging('single')
         try:
+            self.startup(*self._args,**self._kwargs)
             res = self.consume(self.map(self.produce()))
         except:
             logging.exception("exception caused HALT")
             pdb.post_mortem()
         self._stop_logging()
         return res
+
+class _SimpleSplitProc(SplitProcess):
+    def __init__(self,iter,startup,map,single=False,**kwargs):
+        SplitProcess.__init__(self,**kwargs)
+        self._iter = iter
+        self._startup = startup
+        self._map = map
+
+    def startup(self,**kwargs):
+        self._startup(**kwargs)
+
+    def produce(self):
+        return self._iter
+
+    def map(self,items):
+        return (self._map(item) for item in items)
+
+    def consume(self,items):
+        return items
+
+def do_split(iter,startup,map,single=False,**kwargs):
+    ssp = _SimpleSplitProc(iter,startup,map,**kwargs)
+    if single:
+        return ssp.run_single()
+    else:
+        return ssp.run()
