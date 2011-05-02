@@ -13,7 +13,7 @@ from maroon import ModelCache
 from settings import settings
 import base.twitter as twitter
 from base.gisgraphy import GisgraphyResource
-from base.splitproc import SplitProcess
+from base.splitproc import SplitProcess, do_split
 from base.models import *
 from base.utils import *
 
@@ -206,21 +206,11 @@ def print_tri_counts():
                 print>>f, json.dumps(d)
         print 'saved file'
        
+def startup_usgeo():
+    TwitterModel.database = mongo('usgeo')
+
 def find_rfriend_tris():
-    _RfriendTriProc().run()
-
-
-class _RfriendTriProc(SplitProcess):
-    def produce(self):
-        TwitterModel.database = mongo('usgeo')
-        return User.find_connected(timeout=False)
-
-    def map(self,items):
-        TwitterModel.database = mongo('usgeo')
-        for me in items:
-            yield self._find_tris(me)
-
-    def _find_tris(self,me):
+    def find_tris(me):
         me_rfr = set(me.rfriends).intersection(me.neighbors)
         print len(me_rfr)
         if len(me_rfr)<3:
@@ -241,12 +231,24 @@ class _RfriendTriProc(SplitProcess):
                     gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
                     gnp.pop('zipcode',None)
                     v['loc'] = gnp
-                    
                 return d
         return None
 
-    def consume(self,items):
-        with open('rfrd_tris','w') as f:
-            for item in items:
-                if item:
-                    print>>f, json.dumps(item)
+    startup_usgeo()
+    users = User.find_connected(timeout=False,limit=100)
+
+    with open('rfrd_tris','w') as f:
+        for item in do_split(users, startup_usgeo, find_tris, single=True):
+            if item:
+                print>>f, json.dumps(item)
+
+def find_foo(self,me):
+        me_rfr = set(me.rfriends).intersection(me.neighbors)
+        for you_id in me_rfr:
+            gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
+            d = dict(
+                    lat=gnp['lat'],
+                    lng=gnp['lng'],
+                    _id=you_id,
+                    fols=me_rfr.intersection(),
+                    )
