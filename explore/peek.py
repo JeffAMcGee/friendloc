@@ -210,46 +210,64 @@ def print_tri_counts():
 def startup_usgeo():
     TwitterModel.database = mongo('usgeo')
 
-def find_tris(me):
-        me_rfr = set(me.rfriends).intersection(me.neighbors)
-        print len(me_rfr)
-        if len(me_rfr)<3:
-            return None
-        for you_id in me_rfr:
-            you_ed = Edges.get_id(you_id)
-            ours = me_rfr.intersection(you_ed.friends,you_ed.followers)
-            mine = me_rfr.difference(you_ed.friends,you_ed.followers)
-            if ours and mine:
-                d = dict(
-                    me = dict(_id=me._id,loc=me.median_loc),
-                    you = dict(_id=you_id),
-                    my = dict(_id=random.choice(list(mine))),
-                    our = dict(_id=random.choice(list(ours))),
-                    )
-                for k,v in d.iteritems():
-                    if k=='me': continue
-                    gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
-                    gnp.pop('zipcode',None)
-                    v['loc'] = gnp
-                return d
-        return None
 
-def find_rfriend_tris():
+def save_user_json(func):
     startup_usgeo()
-    users = User.find_connected(timeout=False,limit=100)
+    users = User.find_connected(timeout=False)
     p = Pool(8,initializer=startup_usgeo)
-    with open('rfrd_tris','w') as f:
-        for item in p.imap_unordered(find_tris,users):
+    with open(func,'w') as f:
+        for item in p.imap_unordered(globals()[func],users):
             if item:
                 print>>f, json.dumps(item)
 
-def find_foo(self,me):
-        me_rfr = set(me.rfriends).intersection(me.neighbors)
-        for you_id in me_rfr:
-            gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
+
+def save_user_debug(func):
+    startup_usgeo()
+    users = User.find_connected(timeout=False,limit=100)
+    for item in map(globals()[func],users):
+        if item:
+            print json.dumps(item)
+
+
+def rfr_triads(me):
+    me_rfr = set(me.rfriends).intersection(me.neighbors)
+    print len(me_rfr)
+    if len(me_rfr)<3:
+        return None
+    for you_id in me_rfr:
+        you_ed = Edges.get_id(you_id)
+        ours = me_rfr.intersection(you_ed.friends,you_ed.followers)
+        mine = me_rfr.difference(you_ed.friends,you_ed.followers)
+        if ours and mine:
             d = dict(
-                    lat=gnp['lat'],
-                    lng=gnp['lng'],
-                    _id=you_id,
-                    fols=me_rfr.intersection(),
-                    )
+                me = dict(_id=me._id,loc=me.median_loc),
+                you = dict(_id=you_id),
+                my = dict(_id=random.choice(list(mine))),
+                our = dict(_id=random.choice(list(ours))),
+                )
+            for k,v in d.iteritems():
+                if k=='me': continue
+                gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
+                gnp.pop('zipcode',None)
+                v['loc'] = gnp
+            return d
+    return None
+
+
+def rfr_net(me):
+    me_rfr = set(me.rfriends).intersection(me.neighbors)
+    rfrs = []
+    for you_id in me_rfr:
+        edges = Edges.get_id(you_id,fields=['fols'])
+        gnp = User.get_id(you_id,fields=['gnp']).geonames_place.to_d()
+        rfrs.append(dict(
+            lat=gnp['lat'],
+            lng=gnp['lng'],
+            _id=you_id,
+            fols=list(me_rfr.intersection(edges.followers)),
+            ))
+    return dict(
+        _id=me._id,
+        mloc = me.median_loc,
+        rfrs = rfrs,
+        )
