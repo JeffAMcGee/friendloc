@@ -10,6 +10,7 @@ from datetime import datetime as dt
 from datetime import timedelta
 from operator import itemgetter
 
+import networkx as nx
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -444,10 +445,47 @@ def plot_mine_ours():
     fig.savefig('../www/mine_ours.png')
 
 
+def draw_net_map():
+    size=10
+    counter = 0
+    fig = plt.figure(figsize=(size*4,size*2))
+    for net in read_json('rfr_net'):
+        edges = [(fol,rfr['_id'])
+            for rfr in net['rfrs']
+            for fol in rfr['fols']]
+        if not edges: continue
+        counter+=1
+        g = nx.DiGraph(edges)
+        g.add_nodes_from(r['_id'] for r in net['rfrs'])
+        ax = fig.add_subplot(size,size,counter)#,frame_on=False)
+        ax.bar(net['mloc'][0]-.5,1,1,net['mloc'][1]-.5,edgecolor='b')
+        pos = dict((r['_id'],(r['lng'],r['lat'])) for r in net['rfrs'])
+        nx.draw_networkx_nodes(g,
+                ax=ax,
+                pos=pos,
+                alpha=.1,
+                node_size=50,
+                edgecolor='r',
+                node_shape='d',
+                )
+        nx.draw_networkx_edges(g,
+                ax=ax,
+                pos=pos,
+                alpha=.2,
+                width=1,
+                )
+        ax.set_xlim(-126,-66)
+        ax.set_ylim(24,50)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        if counter ==size*size:
+            break
+    fig.savefig('../www/net_map.png')
+
+
 ###########################################################
 # methods from localcrawl - use at your own risk!
 #
-
 
 def plot_tweets():
     #usage: peek.py print_locs| peek.py plot_tweets
