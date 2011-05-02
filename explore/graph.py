@@ -405,6 +405,23 @@ def diff_gnp_gps(path=None):
             )
 
 
+def gr_rfr_tris():
+    "compare distance from me to you, our rfriend, and my rfriend"
+    data = defaultdict(list)
+    for quad in read_json('rfrd_tris'):
+        for key in ['you','our','my']:
+            dist = coord_in_miles(quad['me']['loc'],quad[key]['loc'])
+            data[key].append(1+dist)
+    graph_hist(data,
+            "rfr_tris",
+            bins=dist_bins(),
+            xlim=(1,30000),
+            kind="logline",
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )
+
+
 def plot_mine_ours():
     ours,mine = [],[]
     for quad in read_json('rfrd_tris'):
