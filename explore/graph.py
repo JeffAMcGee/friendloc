@@ -443,21 +443,83 @@ def plot_mine_ours():
     ax.set_ylabel("mine")
     ax.set_title("closed vs. open triads")
     fig.savefig('../www/mine_ours.png')
+    
 
+def graph_from_net(net):
+    edges = [(fol,rfr['_id'])
+        for rfr in net['rfrs']
+        for fol in rfr['fols']]
+    g = nx.DiGraph(edges)
+    g.add_nodes_from(
+        (r['_id'], dict(lat=r['lat'],lng=r['lng']))
+        for r in net['rfrs'])
+    return g
+
+def near_edges():
+    data = defaultdict(list)
+    catgs = [
+            ("near fol",0,0),
+            ("near frd",0,1),
+            ("far fol",-1,0),
+            ("far frd",-1,1),
+            ]
+    for net in read_json('rfr_net'):
+        g = graph_from_net(net)
+        if g.size()<3: continue
+        pairs = (
+            (edge, coord_in_miles(g.node[edge[0]], g.node[edge[1]]))
+            for edge in g.edges_iter())
+        edges = sorted(pairs,key=itemgetter(1))
+        if edges[0][1]==edges[-1][1]: continue
+        for label,index,dir in catgs:
+            node = g.node[edges[index][0][dir]]
+            dist = coord_in_miles(net['mloc'],node)
+            data[label].append(1+dist)
+    graph_hist(data,
+            "rel_dist",
+            bins=dist_bins(),
+            xlim=(1,30000),
+            ylim=4000,
+            kind="logline",
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )
+
+
+def diff_deg():
+    data = defaultdict(list)
+    for net in read_json('rfr_net_10k'):
+        g = graph_from_net(net)
+        if g.size()<3: continue
+        indegs = sorted(g.out_degree_iter(),key=itemgetter(1))
+        for index,key in [(0,"not connected"),(-1,"in-deg connected")]:
+            loc = g.node[indegs[index][0]]
+            dist = coord_in_miles(net['mloc'],loc)
+            data[key].append(1+dist)
+    graph_hist(data,
+            "out_deg",
+            bins=dist_bins(),
+            xlim=(1,30000),
+            ylim=4000,
+            kind="logline",
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )
+
+
+
+
+    
 
 def draw_net_map():
     size=10
     counter = 0
     fig = plt.figure(figsize=(size*4,size*2))
     for net in read_json('rfr_net'):
-        edges = [(fol,rfr['_id'])
-            for rfr in net['rfrs']
-            for fol in rfr['fols']]
-        if not edges: continue
         counter+=1
-        g = nx.DiGraph(edges)
-        g.add_nodes_from(r['_id'] for r in net['rfrs'])
-        ax = fig.add_subplot(size,size,counter)#,frame_on=False)
+        g = graph_from_net(net)
+        if not g.size(): continue
+        ax = fig.add_subplot(size,size,counter,frame_on=False)
         ax.bar(net['mloc'][0]-.5,1,1,net['mloc'][1]-.5,edgecolor='b')
         pos = dict((r['_id'],(r['lng'],r['lat'])) for r in net['rfrs'])
         nx.draw_networkx_nodes(g,
