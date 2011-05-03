@@ -219,8 +219,8 @@ def simplify_tris():
                 ))
 
 
-def dist_bins():
-    return numpy.insert(10**numpy.linspace(0,5,51),0,0)
+def dist_bins(per_decade=10):
+    return numpy.insert(10**numpy.linspace(0,5,1+5*per_decade),0,0)
 
 
 def prep_nonloc(x):
@@ -475,11 +475,13 @@ def rel_prox():
                 for n in (tn,fn))
             data["%d_min"%bin,colors[bin],'solid'].append(1+dists[0])
             data["%d_max"%bin,colors[bin],'dashed'].append(1+dists[1])
+            data["rfr",'k','dotted',3].append(1+edist)
     graph_hist(data,
             "rel_prox",
-            bins=dist_bins(),
+            bins=dist_bins(80),
             xlim=(1,30000),
-            kind="logline",
+            #kind="logline",
+            kind="cumulog",
             label_len=True,
             normed=True,
             xlabel = "distance between edges in miles",
