@@ -29,7 +29,7 @@ from base.utils import *
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-',
-        label_len=False, **kwargs):
+        label_len=False, auto_ls=True, **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -61,12 +61,16 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         if known in kwargs:
             hargs[known] = kwargs[known]
 
-    for key in sorted(data.iterkeys()):
+    for index,key in enumerate(sorted(data.iterkeys())):
         if isinstance(key,basestring):
             hargs['label'] = key
         else:
             for k,v in zip(['label','color','linestyle','linewidth'],key):
                 hargs[k] = v
+
+        if auto_ls:
+            hargs['linestyle'] = ('solid','dashed','dashdot','dotted')[index/7]
+
         row = data[key]
         if sample:
             row = random.sample(row,sample)
@@ -395,23 +399,26 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
 
 
 def diff_gnp_gps(path=None):
-    users = User.find(
-            User.median_loc.exists() & User.geonames_place.exists(),
-            fields=['gnp','mloc'])
+    #users = User.find(
+    #        User.median_loc.exists() & User.geonames_place.exists(),
+    #        fields=['gnp','mloc'])
+    users = (User(u) for u in read_json('gnp_gps_big'))
     dists = defaultdict(list)
+    users_len = 0
     for user in users:
         d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
         dists[user.geonames_place.feature_code].append(d+1)
+        users_len+=1
     for k in dists.keys():
-        if len(dists[k])<1000:
-            dists['other'].extend(dists.pop(k))
+        if len(dists[k])<.005*users_len:
+            dists['other','k','dotted',3].extend(dists.pop(k))
     graph_hist(dists,
             "diff_gnp_gps",
             bins = dist_bins(80),
             kind="cumulog",
-            marker = 'o-',
             normed=True,
             label_len=True,
+            auto_ls=True,
             xlim=(1,30000),
             xlabel = "1+distance between geonames and tweets in miles",
             ylabel = "fraction of users",
