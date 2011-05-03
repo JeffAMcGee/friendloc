@@ -38,5 +38,5 @@ settings = SettingsBunch(
 try:
     from settings_dev import settings as s
     settings.update(s)
-except:
+except ImportError:
     pass

@@ -403,7 +403,7 @@ def diff_gnp_gps(path=None):
         d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
         dists[user.geonames_place.feature_code].append(d+1)
     for k in dists.keys():
-        if len(dists[k])<400:
+        if len(dists[k])<1000:
             dists['other'].extend(dists.pop(k))
     graph_hist(dists,
             "diff_gnp_gps",

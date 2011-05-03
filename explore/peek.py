@@ -49,12 +49,15 @@ def fix_removed_locs(path=None):
  
 def save_geo_mloc(path=None):
     gis = GisgraphyResource()
-    for d in read_json(path):
-        if 'mloc' in d:
-            user = User(from_dict=d)
-            seen.add(user._id)
-            user.geonames_place = gis.twitter_loc(user.location)
-            user.save()
+    settings.pdb()
+    users = User.find(User.median_loc.exists() &
+            User.geonames_place.exists(False),
+            fields=['loc'])
+    for user in users:
+        user.geonames_place = gis.twitter_loc(user.location)
+        if user.geonames_place:
+            print user.location
+            user.merge()
 
 def save_amigos(path=None):
     users = set()
