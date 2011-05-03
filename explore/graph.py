@@ -398,17 +398,23 @@ def diff_gnp_gps(path=None):
     users = User.find(
             User.median_loc.exists() & User.geonames_place.exists(),
             fields=['gnp','mloc'])
-    dists = [
-        1+coord_in_miles(user.geonames_place.to_d(),user.median_loc)
-        for user in users ]
+    dists = defaultdict(list)
+    for user in users:
+        d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
+        dists[user.geonames_place.feature_code].append(d+1)
+    for k in dists.keys():
+        if len(dists[k])<400:
+            dists['other'].extend(dists.pop(k))
     graph_hist(dists,
             "diff_gnp_gps",
-            bins = numpy.insert(10**numpy.linspace(0,5,201),0,0),
+            bins = dist_bins(80),
             kind="cumulog",
             marker = 'o-',
+            normed=True,
+            label_len=True,
             xlim=(1,30000),
             xlabel = "1+distance between geonames and tweets in miles",
-            ylabel = "number of users",
+            ylabel = "fraction of users",
             )
 
 
@@ -460,6 +466,7 @@ def graph_from_net(net):
         (r['_id'], dict(lat=r['lat'],lng=r['lng']))
         for r in net['rfrs'])
     return g
+
 
 def rel_prox():
     data = defaultdict(list)
