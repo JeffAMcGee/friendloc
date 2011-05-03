@@ -70,17 +70,20 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         if sample:
             row = random.sample(row,sample)
         if normed:
-            hargs['weights'] = [1.0/len(row)]*len(row)
+            weight = 1.0/len(row)
+            hargs['weights'] = [weight]*len(row)
 
         if kind=="logline":
             for k in ['weights','log','bins']:
                 if k in hargs:
                     del hargs[k]
             hist,b = numpy.histogram(row,kwargs['bins'])
+            if normed:
+                hist = hist*weight
             ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
         else:
             ax.hist(row, histtype=histtype, **hargs)
-    if normed:
+    if normed and kind!='logline':
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
         ax.set_ylim(0,kwargs['ylim'])
@@ -455,32 +458,28 @@ def graph_from_net(net):
         for r in net['rfrs'])
     return g
 
-def near_edges():
+def near_edges_nearby():
     data = defaultdict(list)
-    catgs = [
-            ("near fol",0,0),
-            ("near frd",0,1),
-            ("far fol",-1,0),
-            ("far frd",-1,1),
-            ]
-    for net in read_json('rfr_net'):
+    for net in read_json('rfr_net_10k'):
         g = graph_from_net(net)
-        if g.size()<3: continue
-        pairs = (
-            (edge, coord_in_miles(g.node[edge[0]], g.node[edge[1]]))
-            for edge in g.edges_iter())
-        edges = sorted(pairs,key=itemgetter(1))
-        if edges[0][1]==edges[-1][1]: continue
-        for label,index,dir in catgs:
-            node = g.node[edges[index][0][dir]]
-            dist = coord_in_miles(net['mloc'],node)
+        for fn,tn in itertools.product(g,g):
+            if fn==tn: continue
+            edist = coord_in_miles(g.node[fn], g.node[tn])
+            real = g.has_edge(fn,tn)
+            if edist<30:
+                label='real near' if real else 'fake near'
+            elif edist>300:
+                label='real far' if real else 'fake far'
+            else:
+                continue
+            dist = coord_in_miles(net['mloc'],g.node[fn])
             data[label].append(1+dist)
     graph_hist(data,
-            "rel_dist",
+            "near_near",
             bins=dist_bins(),
             xlim=(1,30000),
-            ylim=4000,
             kind="logline",
+            normed=True,
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
@@ -506,10 +505,6 @@ def diff_deg():
             ylabel = "number of users",
             )
 
-
-
-
-    
 
 def draw_net_map():
     size=10
