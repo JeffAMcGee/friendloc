@@ -28,7 +28,8 @@ from base.utils import *
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
-        sample=None, histtype='step', marker='-', **kwargs):
+        sample=None, histtype='step', marker='-',
+        label_len=False, **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -72,6 +73,8 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         if normed:
             weight = 1.0/len(row)
             hargs['weights'] = [weight]*len(row)
+        if label_len:
+            hargs['label'] = "%s (%d)"%(hargs['label'],len(row))
 
         if kind=="logline":
             for k in ['weights','log','bins']:
@@ -457,6 +460,31 @@ def graph_from_net(net):
         (r['_id'], dict(lat=r['lat'],lng=r['lng']))
         for r in net['rfrs'])
     return g
+
+def rel_prox():
+    data = defaultdict(list)
+    colors = dict(zip((4**x for x in xrange(0,7)),'rgbcmyk'))
+    for net in read_json('rfr_net_10k'):
+        g = graph_from_net(net)
+        for fn,tn in itertools.product(g,g):
+            if fn>=tn: continue
+            edist = coord_in_miles(g.node[fn], g.node[tn])
+            bin = 4**int(math.log(1+edist,4))
+            dists = sorted(
+                coord_in_miles(net['mloc'],g.node[n])
+                for n in (tn,fn))
+            data["%d_min"%bin,colors[bin],'solid'].append(1+dists[0])
+            data["%d_max"%bin,colors[bin],'dashed'].append(1+dists[1])
+    graph_hist(data,
+            "rel_prox",
+            bins=dist_bins(),
+            xlim=(1,30000),
+            kind="logline",
+            label_len=True,
+            normed=True,
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )
 
 def near_edges_nearby():
     data = defaultdict(list)
