@@ -399,9 +399,6 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
 
 
 def diff_gnp_gps(path=None):
-    #users = User.find(
-    #        User.median_loc.exists() & User.geonames_place.exists(),
-    #        fields=['gnp','mloc'])
     users = (User(u) for u in read_json('gnp_gps_big'))
     dists = defaultdict(list)
     users_len = 0

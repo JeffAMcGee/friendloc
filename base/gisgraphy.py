@@ -61,7 +61,6 @@ class GisgraphyResource(Resource):
                         found = res
         return found
 
-
 if __name__ == '__main__':
     res = GisgraphyResource()
     f = res.fulltextsearch('Austin TX')

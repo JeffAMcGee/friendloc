@@ -5,6 +5,8 @@ import logging
 import itertools
 import json
 from multiprocessing import Pool 
+from operator import itemgetter
+from collections import defaultdict
 
 import maroon
 
@@ -58,3 +60,32 @@ def _lookup_user(user):
         mloc = median,
         gnp = gnp.to_d(),
         )
+
+def gisgraphy_mdist():
+    mdist = {}
+    dists = defaultdict(list)
+    gnps = {}
+    for u in utils.read_json('gnp_gps'):
+        if u['_id']%10>3: continue
+        d = utils.coord_in_miles(u['gnp'],u['mloc'])
+        id = u['gnp'].get('feature_id','COORD')
+        dists[id].append(d)
+        gnps[id] = u['gnp']
+    codes = defaultdict(list)
+    for k,gnp in gnps.iteritems():
+        if len(dists[k])>2:
+            #add an entry for each feature that has a meaningful median
+            mdist[str(k)] = numpy.median(dists[k])
+        else:
+            codes[gnp.get('code')].append(dists[k][0])
+    other = []
+
+    for k,code in codes.iteritems():
+        if len(code)>5:
+            #add an entry for each feature code that has a meaningful median
+            mdist[k] = numpy.median(codes[k])
+        else:
+            other.extend(code)
+    #add a catch-all for everything else
+    mdist['other'] = numpy.median(other)
+    utils.write_json([mdist],'mdists')

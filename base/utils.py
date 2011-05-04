@@ -146,6 +146,12 @@ def read_json(path=None):
     file = open(path) if path else sys.stdin
     return (json.loads(l) for l in file)
 
+def write_json(it, path=None):
+    file = open(path,'w') if path else sys.stdout
+    for d in it:
+        print>>file, json.dumps(d)
+    file.close()
+
 def peek(iterable):
     it = iter(iterable)
     first = it.next()
