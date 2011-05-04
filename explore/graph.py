@@ -24,7 +24,7 @@ import base.gisgraphy as gisgraphy
 from base.models import *
 from maroon import ModelCache
 from base.utils import *
-
+from explore.fixgis import GisgraphyMdist
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
@@ -399,23 +399,23 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
 
 
 def diff_gnp_gps(path=None):
-    users = (User(u) for u in read_json('gnp_gps_big'))
+    users = (User(u) for u in read_json('gnp_gps'))
+    mdist = GisgraphyMdist()
     dists = defaultdict(list)
-    users_len = 0
+    labels = ["<1",'1-10','10-100','100-1000','1000+','1000+']
     for user in users:
-        d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
-        dists[user.geonames_place.feature_code].append(d+1)
-        users_len+=1
-    for k in dists.keys():
-        if len(dists[k])<.005*users_len:
-            dists['other','k','dotted',3].extend(dists.pop(k))
+        if 3<(user._id%10)<7:
+            d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
+            md = mdist.mdist(user.geonames_place)
+            bin = len(str(int(md))) if md>1 else 0
+            dists[labels[bin]].append(d+1)
+            dists[('all','k','solid',2)].append(d+1)
     graph_hist(dists,
             "diff_gnp_gps",
             bins = dist_bins(80),
             kind="cumulog",
             normed=True,
             label_len=True,
-            auto_ls=True,
             xlim=(1,30000),
             xlabel = "1+distance between geonames and tweets in miles",
             ylabel = "fraction of users",

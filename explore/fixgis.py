@@ -61,6 +61,7 @@ def _lookup_user(user):
         gnp = gnp.to_d(),
         )
 
+
 def gisgraphy_mdist():
     mdist = {}
     dists = defaultdict(list)
@@ -89,3 +90,23 @@ def gisgraphy_mdist():
     #add a catch-all for everything else
     mdist['other'] = numpy.median(other)
     utils.write_json([mdist],'mdists')
+
+
+class GisgraphyMdist():
+    def __init__(self):
+        self._mdist = list(utils.read_json('mdists'))[0]
+
+    def mdist(self,gnp):
+        try:
+            gnp = gnp.to_d()
+        except AttributeError:
+            pass
+        id = str(gnp.get('feature_id',"COORD"))
+        if id in self._mdist:
+            return self._mdist[id]
+        if gnp['code'] in self._mdist:
+            return self._mdist[gnp['code']]
+        return self._mdist['other']
+
+
+
