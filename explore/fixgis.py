@@ -16,7 +16,8 @@ from settings import settings
 
 gis = GisgraphyResource()
 
-def print_gnp_gps():
+def print_gnp_gps(eval=False):
+    start,end = (4,6) if eval else (0,3)
     users = {}
     for i,t in enumerate(utils.read_json()):
         if i%10000 ==0:
@@ -24,7 +25,7 @@ def print_gnp_gps():
         if 'id' not in t: continue # this is not a tweet
         uid = t['user']['id']
         if not t.get('coordinates'): continue
-        if uid%10>3: continue
+        if not (start<=uid%10<=end): continue
         if uid not in users:
             users[uid] = dict(
                 _id = t['user']['id'],
@@ -34,13 +35,14 @@ def print_gnp_gps():
         users[uid]['locs'].append(t['coordinates']['coordinates'])
     logging.info("sending %d users",len(users))
     gnp_users = lookup_gnp_multi(_calc_mloc(u) for u in users.itervalues())
-    utils.write_json(gnp_users,"gnp_gps")
+    utils.write_json(gnp_users,"gnp_gps_%d%d"%(start,end))
 
 
-def relookup_gnp_gps():
-    users = [u for u in utils.read_json('gnp_gps') if 3<u['_id']%10<7]
+def relookup_gnp_gps(eval=False):
+    #this is going away
+    users = [u for u in utils.read_json('gnp_gps') if start<=u['_id']%10<=end]
     gnp_users = lookup_gnp_multi(users)
-    utils.write_json(gnp_users,"gnp_gps_3")
+    utils.write_json(gnp_users,"gnp_gps_%d%d"%(start,end))
 
 
 def lookup_gnp_multi(users):
@@ -74,20 +76,18 @@ def _calc_mloc(user):
         mloc = median,
         )
 
-def gisgraphy_mdist():
+def gisgraphy_mdist(item_cutoff=2,kind_cutoff=5):
     mdist = {}
     dists = defaultdict(list)
     gnps = {}
-    settings.pdb()
-    for u in utils.read_json('gnp_gps_0'):
-        if u['_id']%10>3: continue
+    for u in utils.read_json('gnp_gps_03'):
         d = utils.coord_in_miles(u['gnp'],u['mloc'])
         id = u['gnp'].get('fid','COORD')
         dists[id].append(d)
         gnps[id] = u['gnp']
     codes = defaultdict(list)
     for k,gnp in gnps.iteritems():
-        if len(dists[k])>2:
+        if len(dists[k])>item_cutoff:
             #add an entry for each feature that has a meaningful median
             mdist[str(k)] = numpy.median(dists[k])
         else:
@@ -95,7 +95,7 @@ def gisgraphy_mdist():
     other = []
 
     for k,code in codes.iteritems():
-        if len(code)>5:
+        if len(code)>kind_cutoff:
             #add an entry for each feature code that has a meaningful median
             mdist[k] = numpy.median(codes[k])
         else:

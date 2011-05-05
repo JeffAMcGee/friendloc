@@ -23,6 +23,7 @@ import base.twitter as twitter
 import base.gisgraphy as gisgraphy
 from base.models import *
 from maroon import ModelCache
+from explore.fixgis import gisgraphy_mdist
 from base.utils import *
 
 
@@ -397,8 +398,38 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
     fig.savefig('../www/tri_deg_%s.png'%key)
 
 
+def eval_mdist(item=2,kind=5):
+    item,kind = int(item),int(kind)
+    # this is broken
+    gisgraphy_mdist(item,kind)
+    users = (User(u) for u in read_json('gnp_gps_46'))
+    mdist = gisgraphy.GisgraphyResource()
+    dists = []
+    mdists = []
+    for user in users:
+        md = mdist.mdist(user.geonames_place)
+        d = coord_in_miles(user.geonames_place.to_d(), user.median_loc)
+        dists.append(1+d)
+        mdists.append(1+md)
+        if 35<md<40:
+            print md
+    
+    fig = plt.figure(figsize=(12,12))
+    ax = fig.add_subplot(111)
+    ax.loglog(dists, mdists, '+',
+            color='k',
+            alpha='.05',
+            markersize=10,
+            )
+    ax.set_xlim(1,30000)
+    ax.set_ylim(1,30000)
+    ax.set_xlabel("dist")
+    ax.set_ylabel("mdist")
+    fig.savefig('../www/mdist_%d_%d.png'%(item,kind))
+    
+
 def diff_gnp_gps(path=None):
-    users = (User(u) for u in read_json('gnp_gps_3'))
+    users = (User(u) for u in read_json('gnp_gps_46'))
     mdist = gisgraphy.GisgraphyResource()
     dists = defaultdict(list)
     labels = ["<1",'1-10','10-100','100-1000','1000+','1000+']

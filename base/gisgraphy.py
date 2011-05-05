@@ -57,8 +57,11 @@ class GisgraphyResource(Resource):
         q = ''.join(re.split('[|&!+]',q))
         if not q: return None
         results = self.fulltextsearch(q)
+        # otherwise, return the best result
         if results:
-            return GeonamesPlace(results[0])
+            res = GeonamesPlace(results[0])
+            res.mdist = self.mdist(res)
+            return res
         # try splitting q in half
         found = None
         for splitter in ('and','or','/'):
