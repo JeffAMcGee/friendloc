@@ -24,7 +24,7 @@ def print_gnp_gps():
         if 'id' not in t: continue # this is not a tweet
         uid = t['user']['id']
         if not t.get('coordinates'): continue
-        if uid%10>6: continue
+        if uid%10>3: continue
         if uid not in users:
             users[uid] = dict(
                 _id = t['user']['id'],
@@ -33,17 +33,34 @@ def print_gnp_gps():
             )
         users[uid]['locs'].append(t['coordinates']['coordinates'])
     logging.info("sending %d users",len(users))
-    p = Pool(8)
-    with open('gnp_gps','w') as f:
-        items = p.imap_unordered(
-                _lookup_user,
-                users.itervalues(),
-                chunksize=100)
-        for item in items:
-            if item:
-                print>>f, json.dumps(item)
+    gnp_users = lookup_gnp_multi(_calc_mloc(u) for u in users.itervalues())
+    utils.write_json(gnp_users,"gnp_gps")
 
-def _lookup_user(user):
+
+def relookup_gnp_gps():
+    users = [u for u in utils.read_json('gnp_gps') if 3<u['_id']%10<7]
+    gnp_users = lookup_gnp_multi(users)
+    utils.write_json(gnp_users,"gnp_gps_3")
+
+
+def lookup_gnp_multi(users):
+    p = Pool(8)
+    items = p.map(
+        _lookup_gnp,
+        itertools.ifilter(None,users),
+        chunksize=100)
+    return itertools.ifilter(None,items)
+
+
+def _lookup_gnp(user):
+    gnp = gis.twitter_loc(user['loc'])
+    if not gnp:
+        return None
+    user['gnp'] = gnp.to_d()
+    return user
+
+
+def _calc_mloc(user):
     spots = user['locs']
     if len(spots)<2 or not user['loc']:
         return None
@@ -51,25 +68,21 @@ def _lookup_user(user):
     dists = [utils.coord_in_miles(median,spot) for spot in spots]
     if numpy.median(dists)>50:
         return None #user moves too much
-    gnp = gis.twitter_loc(user['loc'])
-    if not gnp:
-        return None
     return dict(
         _id = user['_id'],
         loc = user['loc'],
         mloc = median,
-        gnp = gnp.to_d(),
         )
-
 
 def gisgraphy_mdist():
     mdist = {}
     dists = defaultdict(list)
     gnps = {}
-    for u in utils.read_json('gnp_gps'):
+    settings.pdb()
+    for u in utils.read_json('gnp_gps_0'):
         if u['_id']%10>3: continue
         d = utils.coord_in_miles(u['gnp'],u['mloc'])
-        id = u['gnp'].get('feature_id','COORD')
+        id = u['gnp'].get('fid','COORD')
         dists[id].append(d)
         gnps[id] = u['gnp']
     codes = defaultdict(list)
@@ -90,23 +103,3 @@ def gisgraphy_mdist():
     #add a catch-all for everything else
     mdist['other'] = numpy.median(other)
     utils.write_json([mdist],'mdists')
-
-
-class GisgraphyMdist():
-    def __init__(self):
-        self._mdist = list(utils.read_json('mdists'))[0]
-
-    def mdist(self,gnp):
-        try:
-            gnp = gnp.to_d()
-        except AttributeError:
-            pass
-        id = str(gnp.get('feature_id',"COORD"))
-        if id in self._mdist:
-            return self._mdist[id]
-        if gnp['code'] in self._mdist:
-            return self._mdist[gnp['code']]
-        return self._mdist['other']
-
-
-

@@ -24,7 +24,6 @@ import base.gisgraphy as gisgraphy
 from base.models import *
 from maroon import ModelCache
 from base.utils import *
-from explore.fixgis import GisgraphyMdist
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
@@ -399,8 +398,8 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
 
 
 def diff_gnp_gps(path=None):
-    users = (User(u) for u in read_json('gnp_gps'))
-    mdist = GisgraphyMdist()
+    users = (User(u) for u in read_json('gnp_gps_3'))
+    mdist = gisgraphy.GisgraphyResource()
     dists = defaultdict(list)
     labels = ["<1",'1-10','10-100','100-1000','1000+','1000+']
     for user in users:

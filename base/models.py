@@ -42,13 +42,14 @@ class GeonamesPlace(ModelPart):
     ignored = [
         'country_code','country_flag_url','country_name','elevation',
         'feature_class','fully_qualified_name','google_map_url','gtopo30',
-        'name_ascii','placetype','score','timezone','yahoo_map_url',
+        'name_ascii','placetype','score','timezone','yahoo_map_url','zipcode',
     ]
+    feature_id = IntProperty('fid')
     lat = FloatProperty('lat')
     lng = FloatProperty('lng')
     feature_code = TextProperty('code')
     name = TextProperty('name')
-    population = IntProperty('pop')
+    mdist = FloatProperty('mdist')
 
 class User(TwitterModel):
     _id = TwitterIdProperty('_id')
