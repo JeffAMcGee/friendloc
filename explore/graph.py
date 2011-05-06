@@ -440,7 +440,7 @@ def diff_gnp_gps(path=None):
             for key in labels[bin:]:
                 dists[key].append(d+1)
             dists[('all','k','solid',2)].append(d+1)
-            dists[('mdist','.6','dashed',6)].append(md+1)
+            dists[('mdist','.6','dashed',1)].append(md+1)
     graph_hist(dists,
             "diff_gnp_gps",
             bins = dist_bins(120),

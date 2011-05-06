@@ -60,7 +60,7 @@ class User(TwitterModel):
         'profile_sidebar_border_color', 'profile_sidebar_fill_color',
         'profile_text_color', 'profile_use_background_image',
         'show_all_inline_media', 'time_zone', 'status', 'notifications',
-        'id', 'id_str', 'is_translator', 'mdist',
+        'id', 'id_str', 'is_translator'
     ]
 
     #local properties
