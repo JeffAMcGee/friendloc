@@ -29,7 +29,7 @@ from base.utils import *
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-',
-        label_len=False, auto_ls=True, **kwargs):
+        label_len=False, auto_ls=False, **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -432,17 +432,18 @@ def diff_gnp_gps(path=None):
     users = (User(u) for u in read_json('gnp_gps_46'))
     mdist = gisgraphy.GisgraphyResource()
     dists = defaultdict(list)
-    labels = ["<1",'1-10','10-100','100-1000','1000+','1000+']
+    labels = ["<1",'<10','<100','<1000']
     for user in users:
-        if 3<(user._id%10)<7:
             d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
             md = mdist.mdist(user.geonames_place)
-            bin = len(str(int(md))) if md>1 else 0
-            dists[labels[bin]].append(d+1)
+            bin = len(str(int(md))) if md>=1 else 0
+            for key in labels[bin:]:
+                dists[key].append(d+1)
             dists[('all','k','solid',2)].append(d+1)
+            dists[('mdist','.6','dashed',6)].append(md+1)
     graph_hist(dists,
             "diff_gnp_gps",
-            bins = dist_bins(80),
+            bins = dist_bins(120),
             kind="cumulog",
             normed=True,
             label_len=True,

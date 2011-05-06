@@ -12,9 +12,18 @@ import maroon
 
 from base.gisgraphy import GisgraphyResource
 import base.utils as utils
+from base.models import User
 from settings import settings
 
 gis = GisgraphyResource()
+
+
+def fix_user_mdist():
+    users = User.find(User.geonames_place.exists(), timeout=False)
+    for user in users:
+        user.geonames_place.mdist = gis.mdist(user.geonames_place)
+        user.save()
+
 
 def print_gnp_gps(eval=False):
     start,end = (4,6) if eval else (0,3)
@@ -35,13 +44,6 @@ def print_gnp_gps(eval=False):
         users[uid]['locs'].append(t['coordinates']['coordinates'])
     logging.info("sending %d users",len(users))
     gnp_users = lookup_gnp_multi(_calc_mloc(u) for u in users.itervalues())
-    utils.write_json(gnp_users,"gnp_gps_%d%d"%(start,end))
-
-
-def relookup_gnp_gps(eval=False):
-    #this is going away
-    users = [u for u in utils.read_json('gnp_gps') if start<=u['_id']%10<=end]
-    gnp_users = lookup_gnp_multi(users)
     utils.write_json(gnp_users,"gnp_gps_%d%d"%(start,end))
 
 
