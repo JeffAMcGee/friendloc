@@ -9,7 +9,7 @@ class SettingsBunch(dict):
 settings = SettingsBunch(
     local_box = dict(lat=(29,30.5),lng=(-96,-94.5)),
     region = "houtx",
-    slaves = 4,
+    slaves = 8,
     db = "mongo",
     db_host = "localhost",
     gisgraphy_url = "http://services.gisgraphy.com",

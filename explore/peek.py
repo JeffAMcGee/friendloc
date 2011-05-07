@@ -223,7 +223,7 @@ def startup_usgeo():
 
 def save_user_json(func):
     startup_usgeo()
-    users = User.find_connected(timeout=False)
+    users = User.find_connected(timeout=False, where="this._id % 10 <=6")
     p = Pool(8,initializer=startup_usgeo)
     with open(func,'w') as f:
         for item in p.imap_unordered(globals()[func],users):
@@ -233,15 +233,16 @@ def save_user_json(func):
 
 def save_user_debug(func):
     startup_usgeo()
-    users = User.find_connected(timeout=False,limit=100)
+    settings.pdb()
+    users = User.find_connected(timeout=False, where="this._id % 10 <=6", limit=100)
     for item in map(globals()[func],users):
         if item:
             print json.dumps(item)
 
 
 def rfr_triads(me):
+    #./do.py save_user_json rfr_triads
     me_rfr = set(me.rfriends).intersection(me.neighbors)
-    print len(me_rfr)
     if len(me_rfr)<3:
         return None
     for you_id in me_rfr:
@@ -265,6 +266,7 @@ def rfr_triads(me):
 
 
 def rfr_net(me):
+    #./do.py save_user_json rfr_net 
     me_rfr = set(me.rfriends).intersection(me.neighbors)
     rfrs = []
     for you_id in me_rfr:
@@ -273,6 +275,7 @@ def rfr_net(me):
         rfrs.append(dict(
             lat=gnp['lat'],
             lng=gnp['lng'],
+            mdist=gnp['mdist'],
             _id=you_id,
             fols=list(me_rfr.intersection(edges.followers)),
             ))
