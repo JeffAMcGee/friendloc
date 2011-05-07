@@ -480,6 +480,30 @@ def gr_rfr_tris():
             )
 
 
+def mine_ours_img():
+    bins = dist_bins(40)
+    data = numpy.zeros((len(bins),len(bins)))
+    for quad in read_json('rfr_triads'):
+        if quad['my']['loc']['mdist']<100  and quad['our']['loc']['mdist']<100:
+            spot = [
+                bisect.bisect_left(bins, 1+coord_in_miles(quad['me']['loc'],quad[key]['loc']))
+                for key in ('our','my')
+            ]
+            data[tuple(spot)]+=1
+    
+    data = data-numpy.transpose(data)
+    fig = plt.figure(figsize=(24,24))
+    ax = fig.add_subplot(111)
+    ax.imshow(data,interpolation='nearest')
+
+    ax.set_xlim(0,160)
+    ax.set_ylim(0,160)
+    ax.set_xlabel("mine")
+    ax.set_ylabel("ours")
+    ax.set_title("closed vs. open triads")
+    fig.savefig('../www/mine_ours.png')
+    
+
 def plot_mine_ours():
     data = dict(our=[],my=[])
     for quad in read_json('rfr_triads'):
