@@ -1,0 +1,122 @@
+\documentclass{sig-alternate}
+\usepackage{url}
+
+\title{FriendlyLocation: User Location Estimation Based on the Social Graph}
+
+\numberofauthors{1} 
+\author{
+    \alignauthor Jeffrey McGee, James Caverlee
+    \affaddr{Department of Computer Science and Engineering, Texas A\&M
+    University} \\
+    \affaddr{ College Station, TX 77845 USA} \\
+    \email{jeffamcgee@tamu.edu, caverlee@cse.tamu.edu}
+} 
+\begin{document}
+
+\maketitle
+\begin{abstract}
+We investigate the relationship between 
+We use what we have observed about the edges of the social graph to improve a location estimation system.
+
+goal: estimate location of users on twitter
+special sauce: people live neare friends, some rels are more important than others
+\end{abstract}
+
+
+
+
+\section{INTRODUCTION}
+\section{RELATED WORK}
+\section{DATA COLLECTION}
+
+Datasets
+Houston:
+snowball sample starting from a handful of users done in November 2010
+visited @mentioned users and rfriends
+Took everyone who geocoded to Houston, plus users with two out of three:
+    high connectedness using score,
+    central standard time,
+    unknown location field
+Ignored accounts that were protected
+160k users - 80k definite, 80k probable
+
+
+Geocrawl:
+Listened to geo API for 10 days in April 2011.
+Took all users who posted at least 2 tweets.
+Found the median location of the tweets for each user
+calculated the median distance from a user's tweets to their median location
+removed users with a median distance greater than 50 miles - mostly jobs postings
+removed users outside of contintental us bounding box
+estimated 130k users
+
+for each of these users, grab their friends, followers, and 100 tweets
+Ignore users with no connections
+lookup profiles for up to 100 rfriends, friends, followers, and mentioned
+For 10 of the profiles we looked up that have identifable place, grab friends, followers, and 100 tweets.
+
+\section{INVESTIGATION}
+
+What type of friendship is closest?
+
+What is the relationship between friendship and distance?
+mixed social network and news network
+some connections are based on 
+
+Are you closer to people you commmunicate with?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+analysis of Houston:
+most users stay within 8 miles of home
+users tweet along roadways
+geolocoated tweets show map starting at houston expanding out
+looked at triangles posting distance of two sides on x-y axis
+strong concentration at 0,0
+compared fake triangles to real triangles:
+    real triangles have high concentration near origin
+    fake triangles spread out
+hou_gis: where locations tend to resolve to
+Since people often say they live in a city, there are large clusters.
+
+For houston, I picked a friend for each user and went from there.
+In houston data, having stars in common hurts the chances that two users are nearby.  It doesn't matter for the geo data. In Houston, we are only looking at up to 100 miles. Does this matter?
+
+
+normed_edges.png:
+conv>ated>at>rfrd>fol>frd>random
+why is rfrd so close to fol in the hou data? Because we know they live near eachother?
+
+tpu_hist: tweets per user is zipfian
+
+diff_gnp_gps.png - shows the error in gnp decoding by comparing it to normal tweets
+
+tri_deg_*.png - The number of triangles formed is NOT a function of the number of edges a user has therefore talking about the ratio of people involved in a type of triangle is stupid.
+
+geo_edges_log.png - same as normed_edges.png
+
+geo_tri_rfrd_sp.png - distance is a binomial distribution, possibly the sum of two log-normal distributions.
+
+geo_local_1_*.png when you take out non-locals the cumulative graph starts to look linear.
+
+geo_local_*.png - after removing the non-local, you still see a hump around 10 miles. Is that just error from the geo-coding and city level data?
+
+local_ratio.png - star v. non-star matters a lot for friend case, but not so much in others
+\section{EVALUATION}
+\section{FUTURE WORK}
+
+\bibliographystyle{abbrv}
+\bibliography{fl} 
+\end{document}
