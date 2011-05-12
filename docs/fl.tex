@@ -5,7 +5,7 @@
 
 \numberofauthors{1} 
 \author{
-    \alignauthor Jeffrey McGee, James Caverlee
+    \alignauthor Jeffrey McGee, James Caverlee\\
     \affaddr{Department of Computer Science and Engineering, Texas A\&M
     University} \\
     \affaddr{ College Station, TX 77845 USA} \\
@@ -29,8 +29,7 @@ special sauce: people live neare friends, some rels are more important than othe
 \section{RELATED WORK}
 \section{DATA COLLECTION}
 
-Datasets
-Houston:
+\subsection{houston}
 snowball sample starting from a handful of users done in November 2010
 visited @mentioned users and rfriends
 Took everyone who geocoded to Houston, plus users with two out of three:
@@ -41,19 +40,32 @@ Ignored accounts that were protected
 160k users - 80k definite, 80k probable
 
 
-Geocrawl:
-Listened to geo API for 10 days in April 2011.
-Took all users who posted at least 2 tweets.
-Found the median location of the tweets for each user
-calculated the median distance from a user's tweets to their median location
-removed users with a median distance greater than 50 miles - mostly jobs postings
-removed users outside of contintental us bounding box
-estimated 130k users
+\subsection{geocrawl}
+We used Twitter's Streaming API to obtain tweets that contain geographic information.
+We used 19877804 tweets posted between April 7 until April 16,2011.
+We ignored tweets from users who made their account private, had neither friends nor followers, or posted fewer than two tweets.
+We found the median latitude and median longitude for each user, and use this as an approximation of the home location of the user.
+We noticed that some Twitter accounts, such as accounts that posted jobs, would move around faster than a human could possibly move. To account for this, we calculated the distance beteen each tweet and the user's home location. We ignored users if the median distance from their tweets to their home location was greater than 50 miles.
 
-for each of these users, grab their friends, followers, and 100 tweets
-Ignore users with no connections
-lookup profiles for up to 100 rfriends, friends, followers, and mentioned
-For 10 of the profiles we looked up that have identifable place, grab friends, followers, and 100 tweets.
+We divided these geo-located users into three groups based on the last digit of their twitter user id:
+\begin{description}
+\item[0--3] 131295 users from around the world with a decodable location field to estimate the quality of results from the reverse geocoder.
+\item[4--6] 40945 users with a home location in the US bounding box to train FriendlyLocation.
+\item[7--9] 40861 users, also in the US, to evaluate FriendlyLocation.
+\end{description}
+
+All of the analysis in the investigation section of this document was done on 104214 who lived in the US and were in the first two groups.
+
+We considered users to be in the US based on a simple bounding box.  If their median latitude was between 24 and 50 degrees and their median longitude was between -126 and -66 degrees, then their home location was considered inside the continental US.
+For all of the geo-located users who lived in the US, we used Twitter's API to download the users' friends, followers, and 100 most recent tweets. We also downloaded the profiles for 100 randomly chosen friends, followers, and people they mention in their tweets.
+From the 100 profiles, we kept the users with a decodable locaion field and threw away the rest. From what was left of the hundred, we randomly picked one relationship from each of these four categories:
+\begin{description}
+\item[reciprical friend (rfrd)] The geo-located user follows this user and is followed back.
+\item[just friend (jfrd)] The geo-located user follows this user and is not followed back.
+\item[just follower (jfol)]The geo-located user is followed by this user, but does not follow them.
+\item[just mentioned (jat)] The users do not follow each other, but the geo-located user mentioned the name of the other user in a tweet.
+\end{description}
+For each relationship, we stored their friends, followers, and 100 most recent tweets.
 
 \section{INVESTIGATION}
 
@@ -88,32 +100,32 @@ strong concentration at 0,0
 compared fake triangles to real triangles:
     real triangles have high concentration near origin
     fake triangles spread out
-hou_gis: where locations tend to resolve to
+%hou_gis: where locations tend to resolve to
 Since people often say they live in a city, there are large clusters.
 
 For houston, I picked a friend for each user and went from there.
 In houston data, having stars in common hurts the chances that two users are nearby.  It doesn't matter for the geo data. In Houston, we are only looking at up to 100 miles. Does this matter?
 
 
-normed_edges.png:
+%normed_edges.png:
 conv>ated>at>rfrd>fol>frd>random
 why is rfrd so close to fol in the hou data? Because we know they live near eachother?
 
-tpu_hist: tweets per user is zipfian
+%tpu_hist: tweets per user is zipfian
 
-diff_gnp_gps.png - shows the error in gnp decoding by comparing it to normal tweets
+%diff_gnp_gps.png - shows the error in gnp decoding by comparing it to normal tweets
 
-tri_deg_*.png - The number of triangles formed is NOT a function of the number of edges a user has therefore talking about the ratio of people involved in a type of triangle is stupid.
+%tri_deg_*.png - The number of triangles formed is NOT a function of the number of edges a user has therefore talking about the ratio of people involved in a type of triangle is stupid.
 
-geo_edges_log.png - same as normed_edges.png
+%geo_edges_log.png - same as normed_edges.png
 
-geo_tri_rfrd_sp.png - distance is a binomial distribution, possibly the sum of two log-normal distributions.
+%geo_tri_rfrd_sp.png - distance is a binomial distribution, possibly the sum of two log-normal distributions.
 
-geo_local_1_*.png when you take out non-locals the cumulative graph starts to look linear.
+%geo_local_1_*.png when you take out non-locals the cumulative graph starts to look linear.
 
-geo_local_*.png - after removing the non-local, you still see a hump around 10 miles. Is that just error from the geo-coding and city level data?
+%geo_local_*.png - after removing the non-local, you still see a hump around 10 miles. Is that just error from the geo-coding and city level data?
 
-local_ratio.png - star v. non-star matters a lot for friend case, but not so much in others
+%local_ratio.png - star v. non-star matters a lot for friend case, but not so much in others
 \section{EVALUATION}
 \section{FUTURE WORK}
 
