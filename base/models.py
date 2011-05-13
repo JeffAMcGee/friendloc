@@ -80,6 +80,7 @@ class User(TwitterModel):
     just_mentioned = ListProperty('jats')
     mentioned = ListProperty('ated')
     neighbors = ListProperty('nebrs')
+    many_edges = BoolProperty('mne')
     
     #properties from twitter
     verified = BoolProperty("ver")
@@ -171,6 +172,8 @@ class Edges(TwitterModel):
     _id = TwitterIdProperty('_id') #user id
     friends = ListProperty('frs',int)
     followers = ListProperty('fols',int)
+    #This is only used if many_edges is true for the user
+    lookups = ListProperty('lkus',int)
     
     @classmethod
     def get_for_user_id(cls, _id):
