@@ -22,7 +22,7 @@ class UsersToLookupFinder(SplitProcess):
         self.chunk_lookup.db_name = db_name
 
     def produce(self):
-        return User.find(User.median_loc.exists(), fields=[])
+        return User.find(User.median_loc.exists(), fields=[], timeout=False)
 
     def startup(self):
         self.gis = GisgraphyResource()
@@ -50,7 +50,8 @@ class UsersToLookupFinder(SplitProcess):
 
     def _filter_old_uids(self, uid_sets):
         logging.info("began to read old uids")
-        done = set(u._id for u in User.find(fields=[]))
+        done = set(u['_id'] for u in User.database.User.find(fields=[]))
+        settings.pdb()
         logging.info("read old uids")
         for s in uid_sets:
             new = s-done
@@ -74,10 +75,11 @@ class _ChunckLookup(SplitProcess):
 
     def produce(self):
         return self.groups
-#SLEEP IF NEEDED
+
     def map(self, chunks):
         for chunk in chunks:
-            users = filter(None,twitter.user_lookup(user_ids=list(uids)))
+            self.twitter.sleep_if_needed()
+            users = filter(None,self.twitter.user_lookup(user_ids=list(uids)))
             saved = 0
             for amigo in filter(None,users):
                 if not amigo or amigo.protected: continue
@@ -97,5 +99,4 @@ if __name__ == '__main__':
             log_level=logging.INFO,
             slaves=8,
             debug=True)
-    settings.pdb()
     proc.run()
