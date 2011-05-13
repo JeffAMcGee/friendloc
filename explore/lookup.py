@@ -83,26 +83,22 @@ class _ChunckLookup(SplitProcess):
 
     def map(self, chunks):
         for chunk in chunks:
-            logging.info()
             self.twitter.sleep_if_needed()
             users = filter(None,self.twitter.user_lookup(user_ids=list(chunk)))
             saved = 0
-            for amigo in filter(None,users):
-                if not amigo or amigo.protected: continue
-                place = self.gis.twitter_loc(amigo.location)
-                if not place:
-                    continue
-                amigo.geonames_place = place
+            for amigo in users:
+                amigo.geonames_place = self.gis.twitter_loc(amigo.location)
+                if not amigo.geonames_place: continue
                 amigo.merge()
                 saved +=1
-            logging.info("saved %d of %d starting at %d",saved,len(users),users[0])
+            logging.info("saved %d of %d starting at %d",saved,len(users),chunk[0])
             yield None
 
 
 if __name__ == '__main__':
-    UsersToLookupFinder(
+    _ChunckLookup(
         "usgeo",
-        label='geolookup',
+        label='geolu2',
         log_level=logging.INFO,
-        slaves=10,
+        slaves=8,
     ).run()
