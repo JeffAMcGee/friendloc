@@ -5,7 +5,7 @@ import json
 import time
 import logging
 from datetime import datetime
-from restkit.errors import RequestFailed, Unauthorized
+from restkit.errors import RequestFailed, Unauthorized, RequestError
 from settings import settings
 from models import Edges, User, Tweet
 
@@ -44,9 +44,14 @@ class TwitterResource(Resource):
             except Unauthorized as unauth:
                 self._parse_ratelimit(unauth.response)
                 raise
+            except RequestError:
+                logging.exception("RequestError")
             except RequestFailed as failure:
                 self._parse_ratelimit(failure.response)
-                if failure.response.status_int == 502:
+                if failure.response.status_int == 500:
+                    logging.exception("RequestFailed 500 Internal Server Error")
+                    raise
+                elif failure.response.status_int == 502:
                     logging.info("Fail whale says slow down!")
                 else:
                     logging.error("%s while retrieving %s",
@@ -77,12 +82,23 @@ class TwitterResource(Resource):
     def user_lookup(self, user_ids=[], screen_names=[], **kwargs):
         ids = ','.join(str(u) for u in user_ids)
         names = ','.join(screen_names)
-        lookup = self.get_d(
-            "users/lookup.json",
-            screen_name=names,
-            user_id=ids,
-            **kwargs
-        )
+        try:
+            lookup = self.get_d(
+                "users/lookup.json",
+                screen_name=names,
+                user_id=ids,
+                **kwargs
+            )
+        except RequestFailed:
+            #ick. Twitter dies for some users.  Do a binary search to avoid them.
+            if len(user_ids)>1:
+                split = len(user_ids)/2
+                first,last = user_ids[:split],user_ids[split:]
+                logging.info("split to %r and %r",first,last)
+                return self.user_lookup(first) + self.user_lookup(last)
+            elif user_ids:
+                logging.warn("Twitter hates %d",user_ids[0])
+                return [None]
         users = [User(d) for d in lookup]
         if len(users)==len(user_ids) or screen_names:
             return users

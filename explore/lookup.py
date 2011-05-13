@@ -18,11 +18,11 @@ class UsersToLookupFinder(SplitProcess):
     def __init__(self,db_name,**kwargs):
         SplitProcess.__init__(self, **kwargs)
         self.db_name = db_name
-        self.chunk_lookup = _ChunckLookup(**kwargs)
-        self.chunk_lookup.db_name = db_name
 
     def produce(self):
-        return User.find(User.median_loc.exists(), fields=[], timeout=False)
+        return User.find(
+            User.median_loc.exists(),
+            fields=[])
 
     def startup(self):
         self.gis = GisgraphyResource()
@@ -34,24 +34,25 @@ class UsersToLookupFinder(SplitProcess):
             edges = Edges.get_id(user._id)
             tweets = Tweets.get_id(user._id,fields=['ats'])
             uids = set(itertools.chain(
-                edges.friends,
-                edges.followers,
-                tweets.mentioned))
-            if len(uids)>2000:
+                edges.friends or [],
+                edges.followers or [],
+                tweets.ats or []))
+            if edges.lookups:
+                yield set(edges.lookups)
+            elif len(uids)>2000:
                 chosen = random.sample(uids,2000)
-                user = User.get_id(uid)
+                user = User.get_id(user._id)
                 user.many_edges = True
                 user.save()
                 edges.lookups = chosen
                 edges.save()
-                yield chosen
+                yield set(chosen)
             else:
                 yield uids
 
     def _filter_old_uids(self, uid_sets):
         logging.info("began to read old uids")
         done = set(u['_id'] for u in User.database.User.find(fields=[]))
-        settings.pdb()
         logging.info("read old uids")
         for s in uid_sets:
             new = s-done
@@ -60,26 +61,31 @@ class UsersToLookupFinder(SplitProcess):
             yield new
 
     def consume(self, uid_sets):
-        self.chunk_lookup.groups = utils.grouper(100,
-            itertools.chain.from_iterable(
-                self._filter_old_uids(uid_sets)
-            ))
-        self.chunk_lookup.run()
+        uids = itertools.chain.from_iterable(self._filter_old_uids(uid_sets))
+        with open('lookups','w') as f:
+            for uid in uids:
+                print>>f, uid
 
 
 class _ChunckLookup(SplitProcess):
+    def __init__(self,db_name,**kwargs):
+        SplitProcess.__init__(self, **kwargs)
+        self.db_name = db_name
+
     def startup(self):
         self.twitter = TwitterResource()
         self.gis = GisgraphyResource()
         utils.use_mongo(self.db_name)
 
     def produce(self):
-        return self.groups
+        ids = (int(l) for l in open('lookups'))
+        return utils.grouper(100, ids)
 
     def map(self, chunks):
         for chunk in chunks:
+            logging.info()
             self.twitter.sleep_if_needed()
-            users = filter(None,self.twitter.user_lookup(user_ids=list(uids)))
+            users = filter(None,self.twitter.user_lookup(user_ids=list(chunk)))
             saved = 0
             for amigo in filter(None,users):
                 if not amigo or amigo.protected: continue
@@ -89,14 +95,14 @@ class _ChunckLookup(SplitProcess):
                 amigo.geonames_place = place
                 amigo.merge()
                 saved +=1
-            logging.info("saved %d of %d",saved,len(users))
+            logging.info("saved %d of %d starting at %d",saved,len(users),users[0])
             yield None
 
 
 if __name__ == '__main__':
-    proc = UsersToLookupFinder("usgeo",
-            label='geolookup',
-            log_level=logging.INFO,
-            slaves=8,
-            debug=True)
-    proc.run()
+    UsersToLookupFinder(
+        "usgeo",
+        label='geolookup',
+        log_level=logging.INFO,
+        slaves=10,
+    ).run()
