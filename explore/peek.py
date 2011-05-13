@@ -162,53 +162,60 @@ def find_ats(users_path="hou_tri_users"):
 
 
 def print_tri_counts():
-    print 'loaded edges'
-    data = defaultdict(list)
+    use_mongo('usgeo')
+    pool = Pool(8,use_mongo,['usgeo'])
+    users = list(User.find_connected(where="this._id % 10 <=6"))
+    print 'loaded users'
+
+    for key in ['rfrd','jat','fol','frd']:
+        print 'working on '+key
+        data = pool.map(
+            _tri_for_user,
+            ((user,key) for user in users),
+            chunksize=100,
+            )
+        cleaned = sorted(itertools.ifilter(None, data), key=itemgetter('dist'))
+        write_json(cleaned, 'geo_tri_%s'%key)
+        print 'saved file'
+
+def _tri_for_user(user_key):
+    user, key = user_key
     keys = {'rfrd':'rfriends',
         'jat':'just_mentioned',
         'fol':'just_followers',
         'frd':'just_friends'
         }
-    users = list(User.find_connected(timeout=False))
-    print 'loaded users'
-    for key,field in keys.iteritems():
-        edges = ModelCache(Edges)
-        amigo_lists = (getattr(user,field) for user in users)
-        amigo_ids = list(set(al[0] for al in amigo_lists if al))
-        amigos = dict(
-            (user._id,user.geonames_place.to_d())
-            for user in User.find(
-                User._id.is_in(amigo_ids),
-                fields=['gnp']
-            ))
-        print 'loaded amigos for %s'%key
 
-        for user in users:
-            field_ids = getattr(user,field)
-            if not field_ids: continue
-            your_id = field_ids[0]
-            me = edges[user._id]
-            you = edges[your_id]
-            if you is None:
-                settings.pdb()
-            sets = dict(
-                mfrd = set(me.friends),
-                mfol = set(me.followers),
-                yfrd = set(you.friends),
-                yfol = set(you.followers),
-                )
-            all = (sets['mfrd']|sets['mfol'])&(sets['yfrd']|sets['yfol'])
-            dist = coord_in_miles(user.median_loc,amigos[your_id])
-            d = dict(dist=dist, all=len(all), uid=user._id, aid=your_id)
-            for k,v in sets.iteritems():
-                d['l'+k]= len(v)
-                d[k] = list(all&v)
-            data[key].append(d)
-        data[key].sort(key=itemgetter('dist'))
-        with open('geo_tri_%s'%key,'w') as f:
-            for d in data[key]:
-                print>>f, json.dumps(d)
-        print 'saved file'
+    field = keys[key]
+    field_ids = getattr(user,field)
+    if not field_ids:
+        return None
+
+    your_id = field_ids[0]
+    me = Edges.get_id(user._id)
+    you = Edges.get_id(your_id)
+    your_profile = User.get_id(your_id, fields=['gnp'])
+    your_gnp = your_profile.geonames_place.to_d()
+
+    mfrd = set(me.friends)
+    mfol = set(me.followers)
+    yfrd = set(you.friends)
+    yfol = set(you.followers)
+    all = (mfrd|mfol) & (yfrd|yfol)
+    sets = dict(mfrd=mfrd, mfol=mfol, yfrd=yfrd, yfol=yfol)
+
+    dist = coord_in_miles(user.median_loc,your_gnp)
+    d = dict(
+            dist=dist,
+            all=len(all),
+            uid=user._id,
+            aid=your_id,
+            mdist=your_gnp['mdist'],
+            )
+    for k,v in sets.iteritems():
+        d['l'+k]= len(v)
+        d[k] = list(all&v)
+    return d
        
 def startup_usgeo():
     TwitterModel.database = mongo('usgeo')
@@ -216,7 +223,7 @@ def startup_usgeo():
 
 def save_user_json(func):
     startup_usgeo()
-    users = User.find_connected(timeout=False)
+    users = User.find_connected(timeout=False, where="this._id % 10 <=6")
     p = Pool(8,initializer=startup_usgeo)
     with open(func,'w') as f:
         for item in p.imap_unordered(globals()[func],users):
@@ -226,15 +233,16 @@ def save_user_json(func):
 
 def save_user_debug(func):
     startup_usgeo()
-    users = User.find_connected(timeout=False,limit=100)
+    settings.pdb()
+    users = User.find_connected(timeout=False, where="this._id % 10 <=6", limit=100)
     for item in map(globals()[func],users):
         if item:
             print json.dumps(item)
 
 
 def rfr_triads(me):
+    #./do.py save_user_json rfr_triads
     me_rfr = set(me.rfriends).intersection(me.neighbors)
-    print len(me_rfr)
     if len(me_rfr)<3:
         return None
     for you_id in me_rfr:
@@ -258,6 +266,7 @@ def rfr_triads(me):
 
 
 def rfr_net(me):
+    #./do.py save_user_json rfr_net 
     me_rfr = set(me.rfriends).intersection(me.neighbors)
     rfrs = []
     for you_id in me_rfr:
@@ -266,6 +275,7 @@ def rfr_net(me):
         rfrs.append(dict(
             lat=gnp['lat'],
             lng=gnp['lng'],
+            mdist=gnp['mdist'],
             _id=you_id,
             fols=list(me_rfr.intersection(edges.followers)),
             ))

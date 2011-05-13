@@ -20,7 +20,7 @@ except:
 from settings import settings
 import twitter as twitter
 from models import *
-from maroon import ModelCache, MongoDB
+from maroon import ModelCache, MongoDB, Model
 
 
 def all_users():
@@ -34,6 +34,11 @@ def grouper(n, iterable, fillvalue=None):
 
 def couch(name):
     return CouchDB(settings.couchdb_root+name,True)
+
+
+def use_mongo(name):
+    Model.database = mongo(name)
+
 
 def mongo(name):
     return MongoDB(name=name,host=settings.db_host,slave_okay=True)
@@ -145,6 +150,12 @@ def coord_in_miles(p1, p2):
 def read_json(path=None):
     file = open(path) if path else sys.stdin
     return (json.loads(l) for l in file)
+
+def write_json(it, path=None):
+    file = open(path,'w') if path else sys.stdout
+    for d in it:
+        print>>file, json.dumps(d)
+    file.close()
 
 def peek(iterable):
     it = iter(iterable)

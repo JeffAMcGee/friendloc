@@ -23,13 +23,13 @@ import base.twitter as twitter
 import base.gisgraphy as gisgraphy
 from base.models import *
 from maroon import ModelCache
+from explore.fixgis import gisgraphy_mdist
 from base.utils import *
-
 
 
 def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-',
-        label_len=False, **kwargs):
+        label_len=False, auto_ls=False, **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -61,12 +61,16 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         if known in kwargs:
             hargs[known] = kwargs[known]
 
-    for key in sorted(data.iterkeys()):
+    for index,key in enumerate(sorted(data.iterkeys())):
         if isinstance(key,basestring):
             hargs['label'] = key
         else:
             for k,v in zip(['label','color','linestyle','linewidth'],key):
                 hargs[k] = v
+
+        if auto_ls:
+            hargs['linestyle'] = ('solid','dashed','dashdot','dotted')[index/7]
+
         row = data[key]
         if sample:
             row = random.sample(row,sample)
@@ -140,23 +144,29 @@ def graph_rtt(path=None):
 def compare_edge_types():
     TwitterModel.database = MongoDB(name='usgeo',slave_okay=True)
     users = User.find_connected()
+    collection = User.database.User
     dests = dict(
         (user['_id'],user['gnp'])
-        for user in User.database.User.find(fields=['gnp']))
+        for user in collection.find({'gnp':{'$exists':1}},fields=['gnp']))
     logging.info("read gnp")
-    keys = ('just_followers','just_friends','rfriends')
+    keys = ('just_followers','just_friends','rfriends','just_mentioned')
     data = defaultdict(list)
     for user in users:
         for key in keys:
-            amigo_id = getattr(user,key)[0]
-            place = dests[amigo_id]
-            dist = coord_in_miles(user.median_loc,place)
-            data[key].append(1+dist)
+            amigo_ids = getattr(user,key)
+            if amigo_ids is None:
+                continue
+            place = dests[amigo_ids[0]]
+            if place['mdist']<100:
+                dist = coord_in_miles(user.median_loc,place)
+                data[key].append(1+dist)
     graph_hist(data,
-            "geo_edges_rfr",
+            "geo_edges_med",
             bins=dist_bins(),
             xlim=(1,30000),
             #ylim=6000,
+            normed=True,
+            label_len=True,
             kind="logline",
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
@@ -164,15 +174,17 @@ def compare_edge_types():
 
 def gen_rand_dists():
     users = list(User.find_connected())
+    collection = User.database.User
     dests = dict(
         (user['_id'],user['gnp'])
-        for user in User.database.User.find(fields=['gnp']))
+        for user in collection.find({'gnp':{'$exists':1}},fields=['gnp']))
     keys = ('just_followers','just_friends','rfriends') 
     for user in users:
         for key in keys:
             amigo_id = getattr(user,key)[0]
-            other = random.choice(users)
-            print coord_in_miles(other.median_loc,dests[amigo_id])
+            if dests[amigo_id]['mdist']<100:
+                other = random.choice(users)
+                print coord_in_miles(other.median_loc,dests[amigo_id])
 
 
 def find_urls():
@@ -206,6 +218,8 @@ def simplify_tris():
         out = open('geo_%s_simp'%edge_type,'w')
         counts = []
         for edge in read_json(path):
+            if edge['mdist']>100:
+                continue
             mfrd = set(edge['mfrd'])
             mfol = set(edge['mfol'])
             yfrd = set(edge['yfrd'])
@@ -296,7 +310,7 @@ def gr_local_ratio():
             ax.tick_params(labelsize="x-small")
             ax.set_title('%s %s'%(edge_labels[edge_type],conv_label))
             print 'grahped %d,%d'%(row,col)
-    fig.savefig('../www/local_ratio.png')
+    fig.savefig('../www/local_ratio_med.png')
 
 
 def gr_locals(edge_type='rfrd'):
@@ -339,11 +353,11 @@ def gr_locals(edge_type='rfrd'):
         #data[key] = numpy.cumsum(data[key])
         ax.plot((bins[:-1]*bins[1:])**.5, data[key], '-', **hargs)
     ax.set_xlim(1,30000)
-    #ax.set_ylim(0,1)
+    ax.set_ylim(0,800)
     ax.legend(loc=9)
     ax.set_xlabel("1+distance between edges in miles")
     ax.set_ylabel("number of users")
-    fig.savefig("../www/geo_local_"+edge_type)
+    fig.savefig("../www/md_geo_local_"+edge_type)
 
 
 def gr_split_types(edge_type='rfrd'):
@@ -394,22 +408,53 @@ def gr_tri_degree(key="mfrd",top=200,right=800):
     fig.savefig('../www/tri_deg_%s.png'%key)
 
 
-def diff_gnp_gps(path=None):
-    users = User.find(
-            User.median_loc.exists() & User.geonames_place.exists(),
-            fields=['gnp','mloc'])
-    dists = defaultdict(list)
+def eval_mdist(item=2,kind=5):
+    item,kind = int(item),int(kind)
+    # this is broken
+    gisgraphy_mdist(item,kind)
+    users = (User(u) for u in read_json('gnp_gps_46'))
+    mdist = gisgraphy.GisgraphyResource()
+    dists = []
+    mdists = []
     for user in users:
-        d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
-        dists[user.geonames_place.feature_code].append(d+1)
-    for k in dists.keys():
-        if len(dists[k])<1000:
-            dists['other'].extend(dists.pop(k))
+        md = mdist.mdist(user.geonames_place)
+        d = coord_in_miles(user.geonames_place.to_d(), user.median_loc)
+        dists.append(1+d)
+        mdists.append(1+md)
+        if 35<md<40:
+            print md
+    
+    fig = plt.figure(figsize=(12,12))
+    ax = fig.add_subplot(111)
+    ax.loglog(dists, mdists, '+',
+            color='k',
+            alpha='.05',
+            markersize=10,
+            )
+    ax.set_xlim(1,30000)
+    ax.set_ylim(1,30000)
+    ax.set_xlabel("dist")
+    ax.set_ylabel("mdist")
+    fig.savefig('../www/mdist_%d_%d.png'%(item,kind))
+    
+
+def diff_gnp_gps(path=None):
+    users = (User(u) for u in read_json('gnp_gps_46'))
+    mdist = gisgraphy.GisgraphyResource()
+    dists = defaultdict(list)
+    labels = ["<1",'<10','<100','<1000']
+    for user in users:
+            d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
+            md = mdist.mdist(user.geonames_place)
+            bin = len(str(int(md))) if md>=1 else 0
+            for key in labels[bin:]:
+                dists[key].append(d+1)
+            dists[('all','k','solid',2)].append(d+1)
+            dists[('mdist','.6','dashed',1)].append(md+1)
     graph_hist(dists,
             "diff_gnp_gps",
-            bins = dist_bins(80),
+            bins = dist_bins(120),
             kind="cumulog",
-            marker = 'o-',
             normed=True,
             label_len=True,
             xlim=(1,30000),
@@ -435,16 +480,41 @@ def gr_rfr_tris():
             )
 
 
+def mine_ours_img():
+    bins = dist_bins(40)
+    data = numpy.zeros((len(bins),len(bins)))
+    for quad in read_json('rfr_triads'):
+        if quad['my']['loc']['mdist']<100  and quad['our']['loc']['mdist']<100:
+            spot = [
+                bisect.bisect_left(bins, 1+coord_in_miles(quad['me']['loc'],quad[key]['loc']))
+                for key in ('our','my')
+            ]
+            data[tuple(spot)]+=1
+    
+    data = data-numpy.transpose(data)
+    fig = plt.figure(figsize=(24,24))
+    ax = fig.add_subplot(111)
+    ax.imshow(data,interpolation='nearest')
+
+    ax.set_xlim(0,160)
+    ax.set_ylim(0,160)
+    ax.set_xlabel("mine")
+    ax.set_ylabel("ours")
+    ax.set_title("closed vs. open triads")
+    fig.savefig('../www/mine_ours.png')
+    
+
 def plot_mine_ours():
-    ours,mine = [],[]
-    for quad in read_json('rfrd_tris'):
-        for key,l in [('our',ours), ('my',mine)]:
-            dist = coord_in_miles(quad['me']['loc'],quad[key]['loc'])
-            l.append(1+dist)
+    data = dict(our=[],my=[])
+    for quad in read_json('rfr_triads'):
+        if quad['my']['loc']!=quad['our']['loc'] and quad['my']['loc']['mdist']<100  and quad['our']['loc']['mdist']<100:
+            for key in data:
+                dist = coord_in_miles(quad['me']['loc'],quad[key]['loc'])
+                data[key].append(1+dist)
     
     fig = plt.figure(figsize=(24,24))
     ax = fig.add_subplot(111)
-    ax.loglog(ours, mine,'+',
+    ax.loglog(data['our'],data['my'],'+',
             color='k',
             alpha=.05,
             markersize=10,
@@ -496,6 +566,8 @@ def rel_prox():
             )
 
 def near_edges_nearby():
+    labels = ["0-1",'1-10','10-100','100-1000','1000+']
+
     data = defaultdict(list)
     for net in read_json('rfr_net_10k'):
         g = graph_from_net(net)
@@ -503,19 +575,17 @@ def near_edges_nearby():
             if fn==tn: continue
             edist = coord_in_miles(g.node[fn], g.node[tn])
             real = g.has_edge(fn,tn)
-            if edist<30:
-                label='real near' if real else 'fake near'
-            elif edist>300:
-                label='real far' if real else 'fake far'
-            else:
-                continue
+            color = 'r' if real else 'b'
+            bin = min(4,len(str(int(edist))) if edist>=1 else 0)
+            label = '%s %s'%('real' if real else 'fake',labels[bin])
             dist = coord_in_miles(net['mloc'],g.node[fn])
-            data[label].append(1+dist)
+            data[label,color,'solid',1.4**bin].append(1+dist)
     graph_hist(data,
             "near_near",
-            bins=dist_bins(),
+            bins=dist_bins(80),
             xlim=(1,30000),
-            kind="logline",
+            kind="cumulog",
+            label_len=True,
             normed=True,
             xlabel = "distance between edges in miles",
             ylabel = "number of users",

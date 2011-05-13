@@ -25,9 +25,10 @@ class SplitProcess(object):
       get passed to consume.  You could make self._done a JoinableQueue .
     """
     def __init__(self, label="proc", slaves=8, buffer_size=0, 
-            log_path="logs", log_level=None, *args, **kwargs):
+            log_path="logs", log_level=None, debug=False, *args, **kwargs):
         self.slave_id = -1
         self.halting = multiprocessing.Event()
+        self.debug = debug
         self._proc_label = label
         self._log_path = log_path
         self._log_level = log_level
@@ -58,7 +59,8 @@ class SplitProcess(object):
             pass
         
     def run(self):
-        ""
+        if self.debug:
+            return self.run_single()
         slaves = self._start_slaves()
         self._setup_logging(self._proc_label)
         self.startup(*self._args,**self._kwargs)

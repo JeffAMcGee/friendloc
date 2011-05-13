@@ -42,13 +42,14 @@ class GeonamesPlace(ModelPart):
     ignored = [
         'country_code','country_flag_url','country_name','elevation',
         'feature_class','fully_qualified_name','google_map_url','gtopo30',
-        'name_ascii','placetype','score','timezone','yahoo_map_url',
+        'name_ascii','placetype','score','timezone','yahoo_map_url','zipcode',
     ]
+    feature_id = IntProperty('fid')
     lat = FloatProperty('lat')
     lng = FloatProperty('lng')
     feature_code = TextProperty('code')
     name = TextProperty('name')
-    population = IntProperty('pop')
+    mdist = FloatProperty('mdist')
 
 class User(TwitterModel):
     _id = TwitterIdProperty('_id')
@@ -79,6 +80,7 @@ class User(TwitterModel):
     just_mentioned = ListProperty('jats')
     mentioned = ListProperty('ated')
     neighbors = ListProperty('nebrs')
+    many_edges = BoolProperty('mne')
     
     #properties from twitter
     verified = BoolProperty("ver")
@@ -170,6 +172,8 @@ class Edges(TwitterModel):
     _id = TwitterIdProperty('_id') #user id
     friends = ListProperty('frs',int)
     followers = ListProperty('fols',int)
+    #This is only used if many_edges is true for the user
+    lookups = ListProperty('lkus',int)
     
     @classmethod
     def get_for_user_id(cls, _id):
