@@ -15,20 +15,23 @@
 
 \maketitle
 \begin{abstract}
-We investigate the relationship between 
+We investigate the relationship between the stregth of the connection between a pair of users, and the distance between the pair.
 We use what we have observed about the edges of the social graph to improve a location estimation system.
 
 goal: estimate location of users on twitter
-special sauce: people live neare friends, some rels are more important than others
+special sauce: people live near friends, some relationships are more important than others
 \end{abstract}
 
 
 
 
 \section{INTRODUCTION}
-\section{RELATED WORK}
-\section{DATA COLLECTION}
 
+
+\section{RELATED WORK}
+
+
+\section{DATA COLLECTION}
 \subsection{houston}
 snowball sample starting from a handful of users done in November 2010
 visited @mentioned users and rfriends
@@ -40,7 +43,7 @@ Ignored accounts that were protected
 160k users - 80k definite, 80k probable
 
 
-\subsection{geocrawl}
+\subsection{Data from Twitter}
 We used Twitter's Streaming API to obtain tweets that contain geographic information.
 We used 19877804 tweets posted between April 7 until April 16,2011.
 We ignored tweets from users who made their account private, had neither friends nor followers, or posted fewer than two tweets.
@@ -54,7 +57,6 @@ We divided these geo-located users into three groups based on the last digit of 
 \item[7--9] 40861 users, also in the US, to evaluate FriendlyLocation.
 \end{description}
 
-All of the analysis in the investigation section of this document was done on 104214 who lived in the US and were in the first two groups.
 
 We considered users to be in the US based on a simple bounding box.  If their median latitude was between 24 and 50 degrees and their median longitude was between -126 and -66 degrees, then their home location was considered inside the continental US.
 For all of the geo-located users who lived in the US, we used Twitter's API to download the users' friends, followers, and 100 most recent tweets. We also downloaded the profiles for 100 randomly chosen friends, followers, and people they mention in their tweets.
@@ -67,7 +69,17 @@ From the 100 profiles, we kept the users with a decodable locaion field and thre
 \end{description}
 For each relationship, we stored their friends, followers, and 100 most recent tweets.
 
+\subsection{Reverse Geocoding}
+We used gisgraphy to do reverse geocoding. Gisgraphy does full-text search on the GeoNames database, and runs locally, which means we are not limited to a certain number of queries per day.
+
+The location field on a user's profile is just a text field that asks the user to respond to "Where in the world are you?". Repsonses vary from latitude and longitude coordinates to geographical regions to jokes and nonsense. Often, the geocoder found reasonable locations for meaningless locations such as "mars".
+We noticed that some locations are significantly more useful than others. For example, even thogh Rhode Island and Montana are both states with aronud one million people, Rhode Island is smaller, and as a result, much more useful in estimating the location of a user.
+
+To make the results of the geocoder more useful, we used a portion of the 
+
 \section{INVESTIGATION}
+
+All of the analysis in this section of this document was done on 104214 users with a home location inside the US bounding box, and in the first two groups of users (the last digit of their user id was between 0 and 6).
 
 What type of friendship is closest?
 
