@@ -34,24 +34,23 @@ class UsersToLookupFinder(SplitProcess):
             edges = Edges.get_id(user._id)
             tweets = Tweets.get_id(user._id,fields=['ats'])
             uids = set(itertools.chain(
-                edges.friends,
-                edges.followers,
-                tweets.mentioned))
+                edges.friends or [],
+                edges.followers or [],
+                tweets.ats or []))
             if len(uids)>2000:
                 chosen = random.sample(uids,2000)
-                user = User.get_id(uid)
+                user = User.get_id(user._id)
                 user.many_edges = True
                 user.save()
                 edges.lookups = chosen
                 edges.save()
-                yield chosen
+                yield set(chosen)
             else:
                 yield uids
 
     def _filter_old_uids(self, uid_sets):
         logging.info("began to read old uids")
         done = set(u['_id'] for u in User.database.User.find(fields=[]))
-        settings.pdb()
         logging.info("read old uids")
         for s in uid_sets:
             new = s-done
@@ -79,7 +78,7 @@ class _ChunckLookup(SplitProcess):
     def map(self, chunks):
         for chunk in chunks:
             self.twitter.sleep_if_needed()
-            users = filter(None,self.twitter.user_lookup(user_ids=list(uids)))
+            users = filter(None,self.twitter.user_lookup(user_ids=list(chunk)))
             saved = 0
             for amigo in filter(None,users):
                 if not amigo or amigo.protected: continue
@@ -97,6 +96,6 @@ if __name__ == '__main__':
     proc = UsersToLookupFinder("usgeo",
             label='geolookup',
             log_level=logging.INFO,
-            slaves=8,
-            debug=True)
+            slaves=6,
+            )
     proc.run()
