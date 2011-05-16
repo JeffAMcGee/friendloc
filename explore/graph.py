@@ -16,6 +16,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.transforms import Bbox
+from matplotlib.patches import Patch
 import numpy
 
 from settings import settings
@@ -254,9 +255,75 @@ def dist_bins(per_decade=10):
     return numpy.insert(10**numpy.linspace(0,5,1+5*per_decade),0,0)
 
 
+def all_ratio_subplot(ax, edges, key, ated):
+    CUTOFF=100
+    #if key[0]=='p': return
+    for kind,color in [['folc','r'],['frdc','b']]:
+        dists = defaultdict(list)
+        for edge in edges:
+            amigo = edge.get(key)
+            if amigo and amigo['ated']==ated and amigo['mdist']<1000:
+                dist = coord_in_miles(edge['mloc'],amigo)
+                bits = min(10, int(math.log((amigo[kind] or 1),4)))
+                dists[bits].append(dist)
+        users = 0
+        for i in xrange(11):
+            row = dists[i]
+            if not row: continue
+            height = 1.0*sum(1 for d in row if d<CUTOFF)/len(row)
+            ax.bar(users,height,len(row),color=color,edgecolor=color,alpha=.3)
+            users+=len(row)
+    ax.set_xlim(0,users)
+    ax.set_ylim(0,.8)
+
+
+def gr_ratio_all():
+    edges = list(read_json('edges_json_10k'))
+    print "read edges"
+    
+    conv_labels = [
+            "Public I talk to",
+            "Public I ignore",
+            "Protected I talk to",
+            "Protected I ignore"]
+    edge_labels = ('just followers','recip friends','just friends','just mentioned')
+    edge_types = ('jfol','rfrd','jfrd','jat')
+
+    fig = plt.figure(figsize=(24,12))
+    for row, edge_type, edge_label in zip(range(4), edge_types, edge_labels):
+        for col,conv_label in enumerate(conv_labels):
+            ated = (col%2==0)
+            if not ated and row==3:
+                continue # this case is a contradiction
+            ax = fig.add_subplot(4,4,1+col+row*4)
+            edge_key = 'p'+edge_type if col>=2 else edge_type
+
+            all_ratio_subplot(ax, edges, edge_key, ated)
+            if col==0:
+                ax.set_ylabel('fraction of local users')
+            if row==3:
+                ax.set_xlabel('count of users')
+            ax.tick_params(labelsize="x-small")
+            ax.set_title('%s %s I %s'%(
+                'protected' if col>=2 else 'public', 
+                edge_label,
+                'talk to' if ated else 'ignore',
+                ))
+            print 'graphed %d,%d'%(row,col)
+    ax = fig.add_subplot(4,4,16,frame_on=False)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.legend(
+        [Patch(color=c,alpha=.3) for c in "rb"],
+        ("follower count","friend count"),
+        4)
+    fig.savefig('../www/local_all.png')
+
+
 def prep_nonloc(x):
     cutoff = 25
     return (x[cutoff:])
+
 
 def _kinds_for_et(edge_type):
     #if edge_type in ['frd','jat']:
@@ -267,7 +334,7 @@ def _kinds_for_et(edge_type):
 def local_ratio_subplot(ax, dists, rand_dists, rand_nonloc, edge_type, iat, youat):
     for kind,color in _kinds_for_et(edge_type):
         users = 0
-        rows = [dists.get((kind,i,iat,youat),[]) for i in xrange(10)]
+        rows = [dists.get((kind,i,iat,youat),[]) for i in xrange(16)]
         size = sum(len(r) for r in rows)
         for row in rows:
             if not row: continue

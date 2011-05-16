@@ -312,7 +312,7 @@ def edges_json(me):
     #get the protected users - this will be SLOW
     pusers = User.find(
             User._id.is_in(lookups) & (User.protected==True),
-            fields =['gnp']
+            fields =['gnp','frdc','folc']
             )
     puser_groups = defaultdict(list)
     #pick random protected users
