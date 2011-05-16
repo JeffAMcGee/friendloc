@@ -27,11 +27,17 @@ special sauce: people live near friends, some relationships are more important t
 
 \section{INTRODUCTION}
 
+
 Publically available data.
-
-
+@mention
+efficient
 
 \section{RELATED WORK}
+\cite{scellato2011socio}
+\cite{scellato2010distance}
+\cite{backstrom2010find}
+\cite{cheng2010you}
+Gilbert ?
 
 
 \section{DATA COLLECTION}
@@ -141,20 +147,57 @@ A Country&37&3935\\
 \centering
 \epsfig{file=diff_gnp_gps.eps, width=\linewidth}
 \caption{
-The dashed line shows the cumulative distribution of the predicted location error.
-The other lines show the  cumulative distribution function of the actual location error for the geocoding evalutation group. The colored lines show how the location prediction improves when we remove users with a high PLE. For example, all the users in the "PLE<1" category have a predicted location error(PLE) of less than one mile.
+The dashed line shows the cumulative distribution function(CDF) of the predicted location error.
+The other lines show the CDF of the actual location error for the geocoding evalutation group. The colored lines show how the location prediction improves when we remove users with a high PLE. For example, all the users in the "PLE<1" category have a predicted location error(PLE) of less than one mile.
 In the legend, the number in parenthesis is the number of users in that category.
 }
 \label{fig:DiffGnpGps}
 \end{figure}
 
 \section{INVESTIGATION}
+All of the analysis in this section was done on the 104214 users with a home location inside the US bounding box. We used their friends, followers, and the people they mention with a PLE of less than 1000 miles.
 
-All of the analysis in this section of this document was done on 104214 users with a home location inside the US bounding box
+\subsection{What type of relationship is closest?}
+\begin{figure}
+\centering
+\epsfig{file=edge_types_cuml.eps, width=\linewidth}
+\caption{
+CDF of distance from geo-located users to users they have some relationship
+with.
+}
+\label{fig:EdgeTypesCum}
+\end{figure}
 
 
-What type of friendship is closest?
+\subsection{What is the distribution of related users?}
+\begin{figure}
+\centering
+\epsfig{file=edge_types.eps, width=\linewidth}
+\caption{
+Fraction of users at a given distance. The curves in Figure
+\ref{fig:EdgeTypesCum} are the integrals of these curves. The black line was created by shuffling pairs of rfriends.  For large distances, the distance between randomly picked pairs of users have the same distribution as real friends.
+}
+\label{fig:EdgeTypes}
+\end{figure}
+When plotted on a logarithmic scale all of the 
 
+
+In the previous subsection, we looked at the 
+In this subsection, we propose a model for explaining where friends come from.
+
+\subsection{What is the effect of comunicating with someone?}
+
+\subsection{Are you closer to private accounts?}
+\begin{figure}
+\centering
+\epsfig{file=edge_types_prot.eps, width=\linewidth}
+\caption{ Solid lines represent protected accounts, and dashed lines represent
+public accounts. If a user follows a protected account, they tend to be closer.}
+\label{fig:EdgeTypesProt}
+\end{figure}
+When plotted on a logarithmic scale all of the 
+
+\subsection{What is }
 What is the relationship between friendship and distance?
 mixed social network and news network
 some connections are based on 
