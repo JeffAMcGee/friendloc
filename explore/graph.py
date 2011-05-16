@@ -141,25 +141,36 @@ def graph_rtt(path=None):
         )
 
 
-def compare_edge_types(cuml=False):
+def compare_edge_types(cuml=False,prot=False):
     labels = ('just followers','just friends','recip friends','just mentioned')
     keys = ('jfol','jfrd','rfrd','jat')
     colors = "gbrc"
     data = defaultdict(list)
     edges = list(read_json('edges_json'))
+    if cuml:
+        path = "_prot" if prot else "_cuml"
+    else:
+        path=""
     for user in edges:
         for key,label,color in zip(keys,labels,colors):
+            #protected amigo
+            pam = user.get('p'+key)
+            if prot and pam and pam['mdist']<1000:
+                dist = coord_in_miles(user['mloc'],pam)
+                data[(label,color,'solid')].append(dist)
+ 
+            #public amigo
             amigo = user.get(key)
             if amigo and amigo['mdist']<1000:
                 dist = coord_in_miles(user['mloc'],amigo)
-                if cuml:
+                if not cuml:
                     dist+=1
-                data[(label,color)].append(dist)
+                data[(label,color,'dashed' if prot else 'solid')].append(dist)
     if not cuml:
         data[('random rfrd','k')] = 1 + shuffled_dists(edges)
     graph_hist(data,
-            "edge_types%s.eps"%("_cuml" if cuml else ""),
-            bins=dist_bins(80) if cuml else dist_bins(),
+            "edge_types%s.eps"%path,
+            bins=dist_bins(120) if cuml else dist_bins(),
             xlim=(1,30000),
             normed=True,
             label_len=True,
@@ -175,7 +186,7 @@ def shuffled_dists(edges,kind="rfrd"):
         coord_in_miles(me['mloc'],you[kind])
         for me,you in zip(good, random.sample(good, len(good)))
         )
-    return numpy.fromiter(dists, float)#, len(good))
+    return numpy.fromiter(dists, float, len(good))
 
 
 def gen_rand_dists():

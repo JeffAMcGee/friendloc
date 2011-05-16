@@ -289,6 +289,9 @@ def rfr_net(me):
 
 def edges_json(me):
     #./do.py save_user_json edges_json 
+    tweets = Tweets.get_id(me._id,fields=['ats'])
+    ats = set(tweets.ats or [])
+
     #store public users
     keys = {'just_followers':'jfol',
             'just_friends':'jfrd',
@@ -298,14 +301,12 @@ def edges_json(me):
     for long,short in keys.iteritems():
         amigos = getattr(me,long)
         if amigos:
-            rels[short] = _rel_d(User.get_id(amigos[0]))
+            rels[short] = _rel_d(User.get_id(amigos[0]),ats)
 
     #get a list of all the user's relationships
     edges = Edges.get_id(me._id)
-    tweets = Tweets.get_id(me._id,fields=['ats'])
     frds = set(edges.friends or [])
     fols = set(edges.followers or [])
-    ats = set(tweets.ats or [])
     lookups = edges.lookups if edges.lookups else list(ats|frds|fols)
     
     #get the protected users - this will be SLOW
@@ -322,16 +323,19 @@ def edges_json(me):
             label = 'pjfol' if puser._id in fols else 'pjat'
         puser_groups[label].append(puser)
     for label,users in puser_groups.iteritems():
-        rels[label] = _rel_d(random.choice(users))
+        rels[label] = _rel_d(random.choice(users),ats)
     return rels
 
-def _rel_d(user):
+def _rel_d(user,ats):
     gnp = user.geonames_place.to_d()
     if 'mdist' not in gnp:
         gnp['mdist'] = gis.mdist(user.geonames_place)
     return dict(
+        folc=user.followers_count,
+        frdc=user.friends_count,
         lat=gnp['lat'],
         lng=gnp['lng'],
         mdist=gnp['mdist'],
+        ated=user._id in ats,
         _id=user._id,
         )
