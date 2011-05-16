@@ -27,7 +27,7 @@ from explore.fixgis import gisgraphy_mdist
 from base.utils import *
 
 
-def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False,
+def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-',
         label_len=False, auto_ls=False, **kwargs):
     fig = plt.figure(figsize=figsize)
@@ -51,7 +51,7 @@ def graph_hist(data,path,kind="sum",figsize=(18,12),legend_loc=None,normed=False
         ax.set_xscale('log')
         hargs['cumulative']=True
         if legend_loc is None:
-            legend_loc = 2
+            legend_loc = 4
     else:
         hargs['cumulative']=True
         if legend_loc is None:
@@ -141,36 +141,42 @@ def graph_rtt(path=None):
         )
 
 
-def compare_edge_types():
-    TwitterModel.database = MongoDB(name='usgeo',slave_okay=True)
-    users = User.find_connected()
-    collection = User.database.User
-    dests = dict(
-        (user['_id'],user['gnp'])
-        for user in collection.find({'gnp':{'$exists':1}},fields=['gnp']))
-    logging.info("read gnp")
-    keys = ('just_followers','just_friends','rfriends','just_mentioned')
+def compare_edge_types(cuml=False):
+    labels = ('just followers','just friends','recip friends','just mentioned')
+    keys = ('jfol','jfrd','rfrd','jat')
+    colors = "gbrc"
     data = defaultdict(list)
-    for user in users:
-        for key in keys:
-            amigo_ids = getattr(user,key)
-            if amigo_ids is None:
-                continue
-            place = dests[amigo_ids[0]]
-            if place['mdist']<100:
-                dist = coord_in_miles(user.median_loc,place)
-                data[key].append(1+dist)
+    edges = list(read_json('edges_json'))
+    for user in edges:
+        for key,label,color in zip(keys,labels,colors):
+            amigo = user.get(key)
+            if amigo and amigo['mdist']<1000:
+                dist = coord_in_miles(user['mloc'],amigo)
+                if cuml:
+                    dist+=1
+                data[(label,color)].append(dist)
+    if not cuml:
+        data[('random rfrd','k')] = 1 + shuffled_dists(edges)
     graph_hist(data,
-            "geo_edges_med",
-            bins=dist_bins(),
+            "edge_types%s.eps"%("_cuml" if cuml else ""),
+            bins=dist_bins(80) if cuml else dist_bins(),
             xlim=(1,30000),
-            #ylim=6000,
             normed=True,
             label_len=True,
-            kind="logline",
+            kind="cumulog" if cuml else "logline",
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
+
+
+def shuffled_dists(edges,kind="rfrd"):
+    good = [e for e in edges if kind in e and e[kind]['mdist']<1000]
+    dists = (
+        coord_in_miles(me['mloc'],you[kind])
+        for me,you in zip(good, random.sample(good, len(good)))
+        )
+    return numpy.fromiter(dists, float)#, len(good))
+
 
 def gen_rand_dists():
     users = list(User.find_connected())
@@ -182,7 +188,7 @@ def gen_rand_dists():
     for user in users:
         for key in keys:
             amigo_id = getattr(user,key)[0]
-            if dests[amigo_id]['mdist']<100:
+            if dests[amigo_id]['mdist']<1000:
                 other = random.choice(users)
                 print coord_in_miles(other.median_loc,dests[amigo_id])
 
@@ -442,23 +448,23 @@ def diff_gnp_gps(path=None):
     users = (User(u) for u in read_json('gnp_gps_46'))
     mdist = gisgraphy.GisgraphyResource()
     dists = defaultdict(list)
-    labels = ["<1",'<10','<100','<1000']
+    labels = ["1",'10','100','1000']
     for user in users:
             d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
             md = mdist.mdist(user.geonames_place)
             bin = len(str(int(md))) if md>=1 else 0
             for key in labels[bin:]:
-                dists[key].append(d+1)
-            dists[('all','k','solid',2)].append(d+1)
-            dists[('mdist','.6','dashed',1)].append(md+1)
+                dists['PLE<'+key].append(d)
+            dists[('all','k','solid',2)].append(d)
+            dists[('PLE','.6','dashed',1)].append(md)
     graph_hist(dists,
-            "diff_gnp_gps",
+            "diff_gnp_gps.eps",
             bins = dist_bins(120),
             kind="cumulog",
             normed=True,
             label_len=True,
             xlim=(1,30000),
-            xlabel = "1+distance between geonames and tweets in miles",
+            xlabel = "location error in miles",
             ylabel = "fraction of users",
             )
 
