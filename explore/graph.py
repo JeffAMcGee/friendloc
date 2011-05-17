@@ -104,7 +104,7 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         ax.legend(loc=legend_loc)
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
-    fig.savefig('../www/'+path)
+    fig.savefig('../www/'+path,bbox_inches='tight')
 
 
 def filter_rtt(path=None):
@@ -147,7 +147,7 @@ def compare_edge_types(cuml=False,prot=False):
     keys = ('jfol','jfrd','rfrd','jat')
     colors = "gbrc"
     data = defaultdict(list)
-    edges = list(read_json('edges_json'))
+    edges = list(read_json('data/edges_json'))
     if cuml:
         path = "_prot" if prot else "_cuml"
     else:
@@ -257,7 +257,6 @@ def dist_bins(per_decade=10):
 
 def all_ratio_subplot(ax, edges, key, ated):
     CUTOFF=100
-    #if key[0]=='p': return
     for kind,color in [['folc','r'],['frdc','b']]:
         dists = defaultdict(list)
         for edge in edges:
@@ -278,7 +277,7 @@ def all_ratio_subplot(ax, edges, key, ated):
 
 
 def gr_ratio_all():
-    edges = list(read_json('edges_json_10k'))
+    edges = list(read_json('edges_json'))
     print "read edges"
     
     conv_labels = [
@@ -300,15 +299,15 @@ def gr_ratio_all():
 
             all_ratio_subplot(ax, edges, edge_key, ated)
             if col==0:
-                ax.set_ylabel('fraction of local users')
+                ax.set_ylabel(edge_label)
             if row==3:
                 ax.set_xlabel('count of users')
-            ax.tick_params(labelsize="x-small")
-            ax.set_title('%s %s I %s'%(
-                'protected' if col>=2 else 'public', 
-                edge_label,
-                'talk to' if ated else 'ignore',
-                ))
+            elif row==0:
+                ax.set_title('%s users I %s'%(
+                    'protected' if col>=2 else 'public', 
+                    'talk to' if ated else 'ignore',
+                    ))
+            ax.tick_params(labelsize="small")
             print 'graphed %d,%d'%(row,col)
     ax = fig.add_subplot(4,4,16,frame_on=False)
     ax.set_xticks([])
@@ -317,7 +316,7 @@ def gr_ratio_all():
         [Patch(color=c,alpha=.3) for c in "rb"],
         ("follower count","friend count"),
         4)
-    fig.savefig('../www/local_all.png')
+    fig.savefig('../www/local_all.pdf',bbox_inches='tight')
 
 
 def prep_nonloc(x):
@@ -522,7 +521,7 @@ def eval_mdist(item=2,kind=5):
     fig.savefig('../www/mdist_%d_%d.png'%(item,kind))
     
 
-def diff_gnp_gps(path=None):
+def diff_gnp_gps():
     users = (User(u) for u in read_json('gnp_gps_46'))
     mdist = gisgraphy.GisgraphyResource()
     dists = defaultdict(list)
