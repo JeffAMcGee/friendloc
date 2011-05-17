@@ -9,14 +9,17 @@ from settings import settings
 from base.models import *
 from base.utils import use_mongo, write_json
 
+def save_mod_group():
+    for u in User.find(User.median_loc.exists()):
+        u.mod_group = u._id%100
+        u.save()
 
 def prep_eval_users(key='50'):
     use_mongo('usgeo')
-    users = User.find(
-            {'mloc':{'$exists':1}, '_id':{'$mod':[100,int(key)]}},
-            timeout=False)
-
+    logging.info('started %s',key)
+    users = User.find(User.mod_group == int(key))
     write_json(itertools.imap(_edges_d, users), "data/eval"+key)
+    logging.info('saved %s',key)
 
 
 def _edges_d(me):

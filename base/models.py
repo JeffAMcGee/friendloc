@@ -81,6 +81,7 @@ class User(TwitterModel):
     mentioned = ListProperty('ated')
     neighbors = ListProperty('nebrs')
     many_edges = BoolProperty('mne')
+    mod_group = IntProperty('mdg')
     
     #properties from twitter
     verified = BoolProperty("ver")
