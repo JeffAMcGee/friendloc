@@ -15,7 +15,7 @@ def prep_eval_users(key='50'):
     users = User.find(
             {'mloc':{'$exists':1}, '_id':{'$mod':[100,int(key)]}},
             timeout=False)
-
+    settings.pdb()
     write_json(itertools.imap(_edges_d, users), "data/eval"+key)
 
 

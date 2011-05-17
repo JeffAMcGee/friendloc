@@ -22,6 +22,13 @@ settings = SettingsBunch(
     crawl_ratio = .1,
     log_dir = 'logs',
     pdb = pdb.set_trace,
+    default_loc = dict(
+        mdist=1159.8,
+        name="United States",
+        code="PCLI",
+        lng=-98.5,
+        lat=39.76,
+        ),
     
     #just for localcrawl
     utc_offset = -21600,

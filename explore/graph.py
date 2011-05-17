@@ -257,16 +257,17 @@ def dist_bins(per_decade=10):
 
 def all_ratio_subplot(ax, edges, key, ated):
     CUTOFF=100
+    BUCKETS=10
     for kind,color in [['folc','r'],['frdc','b']]:
         dists = defaultdict(list)
         for edge in edges:
             amigo = edge.get(key)
             if amigo and amigo['ated']==ated and amigo['mdist']<1000:
                 dist = coord_in_miles(edge['mloc'],amigo)
-                bits = min(10, int(math.log((amigo[kind] or 1),4)))
+                bits = min(BUCKETS-1, int(math.log((amigo[kind] or 1),4)))
                 dists[bits].append(dist)
         users = 0
-        for i in xrange(11):
+        for i in xrange(BUCKETS):
             row = dists[i]
             if not row: continue
             height = 1.0*sum(1 for d in row if d<CUTOFF)/len(row)
