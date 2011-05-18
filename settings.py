@@ -22,6 +22,10 @@ settings = SettingsBunch(
     crawl_ratio = .1,
     log_dir = 'logs',
     pdb = pdb.set_trace,
+
+    #for predictor
+    local_max_dist = 100,
+    fol_count_buckets = 8,
     default_loc = dict(
         mdist=1159.8,
         name="United States",
@@ -40,6 +44,7 @@ settings = SettingsBunch(
     tweets_per_crawl = 200,
     max_hours = 360, # 15 days
     min_tweet_id = 25000000000000000,
+
 )
 
 try:

@@ -106,6 +106,23 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
     ax.set_ylabel(kwargs.get('ylabel'))
     fig.savefig('../www/'+path,bbox_inches='tight')
 
+def graph_results(path="results"):
+    linestyle = defaultdict(lambda: 'solid')
+    linestyle['median'] = 'dotted'
+    linestyle['geocoding'] = 'dotted'
+    data = defaultdict(list)
+    for block in read_json(path):
+        for k,v in block.iteritems():
+            data[(k,None,linestyle[k])].extend(v)
+    graph_hist(data,
+            "results.png",
+            bins=dist_bins(120),
+            xlim=(1,30000),
+            kind="cumulog",
+            xlabel = "error in prediction in miles",
+            ylabel = "number of users",
+            )
+
 
 def filter_rtt(path=None):
     format = "%a %b %d %H:%M:%S +0000 %Y"
@@ -256,8 +273,8 @@ def dist_bins(per_decade=10):
 
 
 def all_ratio_subplot(ax, edges, key, ated):
-    CUTOFF=100
-    BUCKETS=10
+    CUTOFF=settings.local_max_dist
+    BUCKETS=settings.fol_count_buckets
     for kind,color in [['folc','r'],['frdc','b']]:
         dists = defaultdict(list)
         for edge in edges:

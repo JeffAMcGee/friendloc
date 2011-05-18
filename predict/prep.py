@@ -3,11 +3,28 @@ import sys
 import random
 import logging
 from collections import defaultdict
-from multiprocessing import Pool
+
+import numpy
 
 from settings import settings
 from base.models import *
-from base.utils import use_mongo, write_json
+from base.utils import *
+
+def train_local_prob(*paths):
+    buckets = settings.fol_count_buckets
+    cutoff = settings.local_max_dist
+    locals = numpy.zeros((16,buckets),numpy.int)
+    rels = numpy.zeros((16,buckets),numpy.int)
+
+    for user in itertools.chain.from_iterable(read_json(p) for p in paths):
+        for rel in user['rels']:
+            kind = rel['kind']
+            bits = min(buckets-1, int(math.log(max(rel['folc'],1),4)))
+            rels[kind,bits]+=1
+            if coord_in_miles(user['mloc'],rel)<cutoff:
+                locals[kind,bits]+=1
+    probs = numpy.true_divide(locals,rels).tolist()
+    write_json([probs], 'local_probs')
 
 
 def prep_eval_users(key='50'):
