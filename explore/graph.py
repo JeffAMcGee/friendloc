@@ -30,7 +30,7 @@ from base.utils import *
 
 def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-',
-        label_len=False, auto_ls=False, **kwargs):
+        label_len=False, auto_ls=False, dist_scale=False, **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -46,7 +46,10 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         pass
     elif kind == 'logline':
         ax.set_xscale('log')
-        if legend_loc is None:
+        if dist_scale:
+            ax.set_yscale('log')
+            legend_loc = 4
+        elif legend_loc is None:
             legend_loc = 9
     elif kind == 'cumulog':
         ax.set_xscale('log')
@@ -88,6 +91,8 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
             hist,b = numpy.histogram(row,kwargs['bins'])
             if normed:
                 hist = hist*weight
+            if dist_scale:
+                hist = hist/b[1:]
             ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
         else:
             ax.hist(row, histtype=histtype, **hargs)
@@ -159,16 +164,50 @@ def graph_rtt(path=None):
         )
 
 
-def compare_edge_types(cuml=False,prot=False):
+def compare_mdist():
+    X, Y = [], []
+    for user in read_json('data/edges_json'):
+        amigo = user.get('rfrd')
+        if amigo and amigo['mdist']<100:
+            dist = coord_in_miles(user['mloc'],amigo)
+            r, theta = dist/amigo['mdist'], random.uniform(0,math.pi/2)
+            X.append(r*math.cos(theta))
+            Y.append(r*math.sin(theta))
+
+    fig = plt.figure(figsize=(12,12))
+    ax = fig.add_subplot(111)
+    ax.plot(X, Y, '+',
+            color='k',
+            alpha='.1',
+            markersize=4,
+            )
+    ax.set_xlim(0,2)
+    ax.set_ylim(0,2)
+    fig.savefig('../www/mdist_plot.png')
+    
+
+
+
+def compare_edge_types(cmd=""):
+    #set flags
+    if cmd=="cuml":
+        cuml, prot, mdist = True, False, False
+        bins = dist_bins(120)
+    elif cmd=="prot":
+        cuml, prot, mdist = True, True, False
+        bins = dist_bins()
+    elif cmd=="mdist":
+        cuml, prot, mdist = False, False, True
+        bins = numpy.insert(10**numpy.linspace(-2,4,61),0,0)
+    else:
+        cuml, prot, mdist = False, False, False
+        bins = dist_bins(120)
+
     labels = ('just followers','just friends','recip friends','just mentioned')
     keys = ('jfol','jfrd','rfrd','jat')
     colors = "gbrc"
     data = defaultdict(list)
     edges = list(read_json('data/edges_json'))
-    if cuml:
-        path = "_prot" if prot else "_cuml"
-    else:
-        path=""
     for user in edges:
         for key,label,color in zip(keys,labels,colors):
             #protected amigo
@@ -181,17 +220,20 @@ def compare_edge_types(cuml=False,prot=False):
             amigo = user.get(key)
             if amigo and amigo['mdist']<1000:
                 dist = coord_in_miles(user['mloc'],amigo)
-                if not cuml:
+                if mdist:
+                    dist = dist/amigo['mdist']
+                if not cuml and not mdist:
                     dist+=1
                 data[(label,color,'dashed' if prot else 'solid')].append(dist)
-    if not cuml:
+    if not cuml and not mdist:
         data[('random rfrd','k')] = 1 + shuffled_dists(edges)
     graph_hist(data,
-            "edge_types%s.eps"%path,
-            bins=dist_bins(120) if cuml else dist_bins(),
-            xlim=(1,30000),
+            "edge_types_%s.png"%cmd,
+            bins=bins,
+            xlim=(.01,10000) if mdist else (1,30000),
             normed=True,
             label_len=True,
+            dist_scale = mdist,
             kind="cumulog" if cuml else "logline",
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
