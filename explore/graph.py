@@ -114,6 +114,7 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
 def graph_results(path="results"):
     linestyle = defaultdict(lambda: 'solid')
     linestyle['median'] = 'dotted'
+    linestyle['omniscient'] = 'dotted'
     linestyle['geocoding'] = 'dotted'
     data = defaultdict(list)
     for block in read_json(path):
@@ -186,6 +187,16 @@ def compare_mdist():
     fig.savefig('../www/mdist_plot.png')
     
 
+def fake_dist():
+    data = numpy.append(numpy.random.rand(100000),1/numpy.random.rand(100000))
+    graph_hist(data,
+            "fake_dist.png",
+            bins = numpy.arange(0,20,.1),
+            #xlim=(.0001,10000),
+            #normed=True,
+            #dist_scale = True,
+            kind="linear",
+            )
 
 
 def compare_edge_types(cmd=""):
@@ -198,7 +209,7 @@ def compare_edge_types(cmd=""):
         bins = dist_bins()
     elif cmd=="mdist":
         cuml, prot, mdist = False, False, True
-        bins = numpy.insert(10**numpy.linspace(-2,4,61),0,0)
+        bins = numpy.insert(10**numpy.linspace(-2.95,2.95,60),0,0)
     else:
         cuml, prot, mdist = False, False, False
         bins = dist_bins(120)
@@ -230,8 +241,8 @@ def compare_edge_types(cmd=""):
     graph_hist(data,
             "edge_types_%s.png"%cmd,
             bins=bins,
-            xlim=(.01,10000) if mdist else (1,30000),
-            normed=True,
+            xlim=(.0001,10000) if mdist else (1,30000),
+            #normed=True,
             label_len=True,
             dist_scale = mdist,
             kind="cumulog" if cuml else "logline",

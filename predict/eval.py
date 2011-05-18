@@ -9,7 +9,6 @@ from settings import settings
 from base.models import *
 from base.utils import *
 
-
 def eval_block(*args):
     preds, block = args[:-1],args[-1]
 
@@ -17,7 +16,7 @@ def eval_block(*args):
     dists = defaultdict(list)
 
     for user in users:
-        mloc = user.pop('mloc')
+        mloc = user['mloc']
         if 'gnp' not in user or user['gnp']['code']=="COORD":
             user['gnp'] = settings.default_loc
         for predictor in preds:
@@ -35,3 +34,8 @@ def pred_median(user):
 def pred_geocoding(user):
     return user['gnp']
 
+def pred_omniscient(user):
+    if not user['rels']:
+        return user['gnp']
+    return min(user['rels'], key=lambda rel: coord_in_miles(user['mloc'],rel))
+    
