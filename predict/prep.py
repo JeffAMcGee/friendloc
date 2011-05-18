@@ -47,13 +47,17 @@ def _edges_d(me):
             fields =['gnp','folc'],
             )
 
-    rels = [_rel_d(amigo,_group(amigo._id)) for amigo in amigos]
-    return dict(
-            _id = me._id,
-            mloc = me.median_loc,
-            rels = rels,
-            lu_len = len(lookups)
-            )
+    res = dict(
+        _id = me._id,
+        mloc = me.median_loc,
+        lu_len = len(lookups),
+        rels = [
+            _rel_d(amigo, _group(amigo._id) + (8 if amigo.protected else 0))
+            for amigo in amigos],
+        )
+    if me.geonames_place:
+        res['gnp'] = me.geonames_place.to_d()
+    return res
 
 
 def _rel_d(user, kind):
