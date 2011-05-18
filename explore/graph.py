@@ -106,6 +106,23 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
     ax.set_ylabel(kwargs.get('ylabel'))
     fig.savefig('../www/'+path,bbox_inches='tight')
 
+def graph_results(path="results"):
+    linestyle = defaultdict(lambda: 'solid')
+    linestyle['median'] = 'dotted'
+    linestyle['geocoding'] = 'dotted'
+    data = defaultdict(list)
+    for block in read_json(path):
+        for k,v in block.iteritems():
+            data[(k,None,linestyle[k])].extend(v)
+    graph_hist(data,
+            "results.png",
+            bins=dist_bins(120),
+            xlim=(1,30000),
+            kind="cumulog",
+            xlabel = "error in prediction in miles",
+            ylabel = "number of users",
+            )
+
 
 def filter_rtt(path=None):
     format = "%a %b %d %H:%M:%S +0000 %Y"
@@ -256,17 +273,18 @@ def dist_bins(per_decade=10):
 
 
 def all_ratio_subplot(ax, edges, key, ated):
-    CUTOFF=100
+    CUTOFF=settings.local_max_dist
+    BUCKETS=settings.fol_count_buckets
     for kind,color in [['folc','r'],['frdc','b']]:
         dists = defaultdict(list)
         for edge in edges:
             amigo = edge.get(key)
             if amigo and amigo['ated']==ated and amigo['mdist']<1000:
                 dist = coord_in_miles(edge['mloc'],amigo)
-                bits = min(10, int(math.log((amigo[kind] or 1),4)))
+                bits = min(BUCKETS-1, int(math.log((amigo[kind] or 1),4)))
                 dists[bits].append(dist)
         users = 0
-        for i in xrange(11):
+        for i in xrange(BUCKETS):
             row = dists[i]
             if not row: continue
             height = 1.0*sum(1 for d in row if d<CUTOFF)/len(row)

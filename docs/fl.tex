@@ -1,8 +1,8 @@
 \documentclass{sig-alternate}
 \usepackage{url}
 
-\title{FriendlyLocation: User Location Estimation Based on the Social Graph}
-
+\title{FriendlyLocation: Using Tie Strength to Geo-locate Users
+}
 \numberofauthors{1} 
 \author{
     \alignauthor Jeffrey McGee, James Caverlee\\
@@ -15,11 +15,19 @@
 
 \maketitle
 \begin{abstract}
-We investigate the relationship between the stregth of the connection between a pair of users, and the distance between the pair.
-We use what we have observed about the edges of the social graph to improve a location estimation system.
+Providing localized content for online users is a useful goal, but it can be
+difficult for third-party services to acquire accurate location information.
+We use publicly available data to investigate the relationship between the
+strength of the tie between a pair of users, and the distance between the pair.
 
-goal: estimate location of users on twitter
-special sauce: people live near friends, some relationships are more important than others, some locations are more precise than others
+Like many bloging platforms, Twitter is both a social networking and news
+distribution website.  As a result, sometimes users form online ties based on
+real-world, in-person connections. Other times, they form ties based on common
+interests.  We identify several factors that can predict the distance between a
+pair of users.  Some kinds of common relationships are strongly correlated with
+living in the same area while others are not.  We use this to build and
+evaluate a system for estimating the location of users on Twitter.
+
 \end{abstract}
 
 
@@ -27,11 +35,17 @@ special sauce: people live near friends, some relationships are more important t
 
 \section{INTRODUCTION}
 
-Publically available data.
 
-
+Publicly available data.
+@mention
+efficient
 
 \section{RELATED WORK}
+\cite{scellato2011socio}
+\cite{scellato2010distance}
+\cite{backstrom2010find}
+\cite{cheng2010you}
+Gilbert ?
 
 
 \section{DATA COLLECTION}
@@ -51,7 +65,7 @@ We used Twitter's Streaming API to obtain tweets that contain geographic informa
 We used 19877804 tweets posted between April 7 until April 16,2011.
 We ignored tweets from users who made their account private, had neither friends nor followers, or posted fewer than two tweets.
 We found the median latitude and median longitude for each user, and use this as an approximation of the home location of the user.
-We noticed that some Twitter accounts, such as accounts that posted jobs, would move around faster than a human could possibly move. To account for this, we calculated the distance beteen each tweet and the user's home location. We ignored users if the median distance from their tweets to their home location was greater than 50 miles.
+We noticed that some Twitter accounts, such as accounts that posted jobs, would move around faster than a human could possibly move. To account for this, we calculated the distance between each tweet and the user's home location. We ignored users if the median distance from their tweets to their home location was greater than 50 miles.
 
 We considered users to be in the US based on a simple bounding box.  If their median latitude was between 24 and 50 degrees and their median longitude was between -126 and -66 degrees, then their home location was considered inside the continental US.
 We divided these geo-located users into groups based on the last digit of their twitter user id:
@@ -59,16 +73,16 @@ We divided these geo-located users into groups based on the last digit of their 
 \item[0--6] The training group had 104214 users with a home location in the US bounding box. Some of these users were also used to evaluate the quality of geocoding. For geocoding, we chose users from around the world with a decodable location field and split them into two groups:
 \begin{description}
 \item[0--3] The geocoding training group has 131295 users.
-\item[4--6] The geocoding evalution group has 85664 users.
+\item[4--6] The geocoding evaluation group has 85664 users.
 \end{description}
 \item[7--9] The evaluation group had 40861 users with a home location in the US.
 \end{description}
 
 For all of the geo-located users who lived in the US, we used Twitter's API to download the users' friends, followers, and 100 most recent tweets.
 We also downloaded the profiles for up to 2000 friends, followers, and people they mention in their tweets. If they had over 2000, we chose a random sample of 2000 profiles that included at least 25 of each of the four categories listed below.
-From the profiles, we kept the users with a decodable locaion field and threw away the rest. From what was left, we randomly picked one relationship from each of these four categories:
+From the profiles, we kept the users with a decodable location field and threw away the rest. From what was left, we randomly picked one relationship from each of these four categories:
 \begin{description}
-\item[reciprical friend (rfrd)] The geo-located user follows this user and is followed back.
+\item[reciprocal friend (rfrd)] The geo-located user follows this user and is followed back.
 \item[just friend (jfrd)] The geo-located user follows this user and is not followed back.
 \item[just follower (jfol)]The geo-located user is followed by this user, but does not follow them.
 \item[just mentioned (jat)] The users do not follow each other, but the geo-located user mentioned the name of the other user in a tweet.
@@ -81,21 +95,21 @@ Gisgraphy does full-text search on the GeoNames\footnote{\url{http://www.geoname
 database using Lucene. Since
 it runs locally we are not limited to a certain number of queries per day.
 Gisgraphy's geocoder returns ranked results based on a full text search
-over millions of geographical features such as countries, citys, and schools. 
+over millions of geographical features such as countries, cities, and schools. 
 
 The location field on a user's profile is just a text field that asks the user to respond to "Where in the world are you?".
-Repsonses vary from precise latitude and longitude coordinates entered automattically by smart phone apps to jokes and nonsense.
-We had to do some preproccessing before sending user-submited locations to the geocoder.
+Responses vary from precise latitude and longitude coordinates entered automatically by smart phone apps to jokes and nonsense.
+We had to do some preproccessing before sending user-submitted locations to the geocoder.
 First, we used a regular expression to find latitude and longitude coordinates. These are treated as if they were a unique type of location returned by the geocoder.
-Occasionally, users would put two locations seperated by a slash, dash or a conjunction. If the geocoder did not return any results for a user, we tried to geocode both locations and used the first location that the geocoder understood.
+Occasionally, users would put two locations separated by a slash, dash or a conjunction. If the geocoder did not return any results for a user, we tried to geocode both locations and used the first location that the geocoder understood.
 
 We noticed that some locations are significantly more useful than others.
-For example, even thogh Rhode Island and Montana are both states with aronud
+For example, even though Rhode Island and Montana are both states with around
 one million people, Rhode Island is smaller, and as a result, much more useful
 in estimating the location of a user.
 To make the results of the geocoder more useful, we devised a method to estimate the accuracy of a location returned by the geocoder.
 For the users in the geocoding training and evaluation groups, we have both the
-home location based on geolocated tweets, and the free-response location field
+home location based on geo-located tweets, and the free-response location field
 that we did geocoding on.
 Originally, we planned to just use the users in the US, but we found that users
 in the US had friends outside of the US, so we need to estimate the quality of
@@ -107,7 +121,7 @@ The location error can vary from less than a mile to over ten thousand miles.
 We ran the geocoder on each user in the geocoding training group, and then grouped users based on the result of the geocoder.
 For the 3866 locations that had at least three users, we calculated the median location error for that location.
 Next, we grouped all of the locations that had the same type and had one or two users, and calculated the median error for the location type.
-We choose the median over average or standard devation because those metrics are strongly affected by large outliers.
+We choose the median over average or standard deviation because those metrics are strongly affected by large outliers.
 We choose to make the cutoff three because that is the smallest value where the median is not just an average.
 Table \ref{tab:MedianLocErr} shows the median location error for a few example locations and location types.
 
@@ -141,59 +155,107 @@ A Country&37&3935\\
 \centering
 \epsfig{file=diff_gnp_gps.eps, width=\linewidth}
 \caption{
-The dashed line shows the cumulative distribution of the predicted location error.
-The other lines show the  cumulative distribution function of the actual location error for the geocoding evalutation group. The colored lines show how the location prediction improves when we remove users with a high PLE. For example, all the users in the "PLE<1" category have a predicted location error(PLE) of less than one mile.
+The dashed line shows the cumulative distribution function(CDF) of the predicted location error.
+The other lines show the CDF of the actual location error for the geocoding evaluation group. The colored lines show how the location prediction improves when we remove users with a high PLE. For example, all the users in the "PLE<1" category have a predicted location error(PLE) of less than one mile.
 In the legend, the number in parenthesis is the number of users in that category.
 }
 \label{fig:DiffGnpGps}
 \end{figure}
 
+
+\begin{figure*}
+\centering
+\epsfig{file=local_all.pdf, width=\linewidth}
+\caption{
+Hi!
+}
+\label{fig:LocalAll}
+\end{figure*}
+
 \section{INVESTIGATION}
+Every user who has multiple relationships will have some people who are much
+closer than others. In order to estimate the locations of users, we would like
+to find out which users are most likely to live nearby.  In this section, we
+investigate how various types of relationships correlate with proximity.
+All of the analysis in this section was done on the 104214 users with a home location inside the US bounding box. We used their friends, followers, and the people they mention with a PLE of less than 1000 miles.
 
-All of the analysis in this section of this document was done on 104214 users with a home location inside the US bounding box
+\subsection{What type of relationship is closest?}
+\begin{figure}
+\centering
+\epsfig{file=edge_types_cuml.eps, width=\linewidth}
+\caption{
+CDF of distance from geo-located users to users they have some relationship
+with.
+}
+\label{fig:EdgeTypesCum}
+\end{figure}
+In Figure \ref{fig:EdgeTypesCum} we look at the cumulative distribution function(CDF) of the distance between a geo-located user and someone they have a relationship with.
+Reciprocal friends are the closest, followed by followers, friends, and finally users who are just mentioned.
+While it may seem that since being followed by someone and following someone should be identical, they are not.
+Famous users on Twitter often have large numbers of followers, but they do not follow a large number of users back.
+Since the geo-located user was selected randomly, they are usually an average user and not a celebrity.
+If they follow someone, it might be a celebrity; however, if someone follows them, it is probably someone who knows them.
+
+There is a strange corner in the top right corner of all the graphs at approximately 2500 miles. This is caused by the large population living on the coast, and the tiny number of people posting tweets from the Atlantic and pacific oceans.
+
+\subsection{What is the distribution of related users?}
+\begin{figure}
+\centering
+\epsfig{file=edge_types.eps, width=\linewidth}
+\caption{
+Smoothed histogram of distance to users.  The curves in Figure
+\ref{fig:EdgeTypesCum} are the integrals of these curves. The black line was created by calculating the distance between random, unrelated users. Notice how it has a similar shape to the other curves for distances greater than 100 miles.
+}
+\label{fig:EdgeTypes}
+\end{figure}
+Instead of looking at the CDF, we will now turn our attention to Figure
+\ref{fig:EdgeTypes}: a smoothed histogram of the distance to related users.
+Distance is once again plotted on a logarithmic scale to show both local and
+global effects.
+All four types of relationships follow roughly the same bimodal distribution:
+one peak around 10 miles from people who live nearby, and another peak around
+2500 miles.
+\textsc{reference chart in bracstrom paper here}
+
+The red line in Figure \ref{fig:EdgeTypes} is based on the distance between
+89655 geo-located users and their reciprocal friends. We shuffled the
+geo-located users so that they would be paired with someone who was probably
+not their friend and then calculated the distance between them. The black line
+shows the results of this procedure. For distances greater than around five
+hundred miles, the red line and the black line have roughly the same shape,
+which suggests that people when people are far away, their physical location no longer matters.
+
+One reasonable explanation for this is that Twitter is not just a social
+network; it is also an news distribution network.  This bimodal distribution
+suggests that users have two types of relationships: people who they met in
+real life, and people who they met online or know about via mainstream media.
+The former group is useful for predicting location and the latter group is not.
+
+\subsection{What is the effect of communicating with someone?}
+
+\subsection{Are you closer to private accounts?}
+\begin{figure}
+\centering
+\epsfig{file=edge_types_prot.eps, width=\linewidth}
+\caption{ Solid lines represent protected accounts, and dashed lines represent
+public accounts. If a user follows a protected account, they tend to be closer.}
+\label{fig:EdgeTypesProt}
+\end{figure}
+
+Like many social networks, Twitter allows users to mark their account as protected. The specifics differ from network to network, but in Twitter's case a user has to be approved to follow a protected user.
+In most of this section we are only concerned with public accounts, but in this subsection, we investigate how protected accounts compare to public accounts.
+
+The most dramatic difference between private and public occurs if a user follows a protected account.
+Since users generally only allow people they know to follow a protected account, this brings the users almost as close together as if they were reciprocal friends. On the other hand, if a protected account follows the geo-located user, this is almost insignificant.
+
+One possible explanation for the \textsc{red lines crisscrossing} is that a protected account is more likely to live in a rural, unpopulated area. \textsc{cite Gilbert}
+
+\subsection{If two mutual friends live near each other, does that increase the chance that they live near you?}
 
 
-What type of friendship is closest?
+\subsection{Are you closer to people you communicate with?}
 
-What is the relationship between friendship and distance?
-mixed social network and news network
-some connections are based on 
-
-Are you closer to people you commmunicate with?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-analysis of Houston:
-most users stay within 8 miles of home
-users tweet along roadways
-geolocoated tweets show map starting at houston expanding out
-looked at triangles posting distance of two sides on x-y axis
-strong concentration at 0,0
-compared fake triangles to real triangles:
-    real triangles have high concentration near origin
-    fake triangles spread out
-%hou_gis: where locations tend to resolve to
-Since people often say they live in a city, there are large clusters.
-
-For houston, I picked a friend for each user and went from there.
-In houston data, having stars in common hurts the chances that two users are nearby.  It doesn't matter for the geo data. In Houston, we are only looking at up to 100 miles. Does this matter?
-
-
-%normed_edges.png:
-conv>ated>at>rfrd>fol>frd>random
-why is rfrd so close to fol in the hou data? Because we know they live near eachother?
+\subsection{Does the number of friends and followers a person have affect how close they are?}
 
 %tpu_hist: tweets per user is zipfian
 
