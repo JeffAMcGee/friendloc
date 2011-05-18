@@ -19,6 +19,9 @@ from base.models import *
 from base.utils import *
 
 
+gis = GisgraphyResource()
+
+
 def find_geo_ats():
     "create geo_ats.json"
     for tweets in Tweets.find({},fields=['ats']):
@@ -221,23 +224,22 @@ def startup_usgeo():
     TwitterModel.database = mongo('usgeo')
 
 
-def save_user_json(func):
+def save_user_json(func,debug=False):
     startup_usgeo()
-    users = User.find_connected(timeout=False, where="this._id % 10 <=6")
-    p = Pool(8,initializer=startup_usgeo)
-    with open(func,'w') as f:
-        for item in p.imap_unordered(globals()[func],users):
-            if item:
-                print>>f, json.dumps(item)
-
-
-def save_user_debug(func):
-    startup_usgeo()
-    settings.pdb()
-    users = User.find_connected(timeout=False, where="this._id % 10 <=6", limit=100)
-    for item in map(globals()[func],users):
+    if debug:
+        settings.pdb()
+    users = User.find(
+            User.median_loc.exists(),
+            timeout=False,
+            where="this._id % 10 <=6")
+    if debug:
+        _map, f = itertools.imap, sys.stdout
+    else:
+        p = Pool(8,initializer=startup_usgeo)
+        _map, f = p.imap_unordered, open(func,'w')
+    for item in _map(globals()[func],users):
         if item:
-            print json.dumps(item)
+            print>>f, json.dumps(item)
 
 
 def rfr_triads(me):
@@ -283,4 +285,57 @@ def rfr_net(me):
         _id=me._id,
         mloc = me.median_loc,
         rfrs = rfrs,
+        )
+
+def edges_json(me):
+    #./do.py save_user_json edges_json 
+    tweets = Tweets.get_id(me._id,fields=['ats'])
+    ats = set(tweets.ats or [])
+
+    #store public users
+    keys = {'just_followers':'jfol',
+            'just_friends':'jfrd',
+            'rfriends':'rfrd',
+            'just_mentioned':'jat'}
+    rels = dict(_id = me._id, mloc = me.median_loc)
+    for long,short in keys.iteritems():
+        amigos = getattr(me,long)
+        if amigos:
+            rels[short] = _rel_d(User.get_id(amigos[0]),ats)
+
+    #get a list of all the user's relationships
+    edges = Edges.get_id(me._id)
+    frds = set(edges.friends or [])
+    fols = set(edges.followers or [])
+    lookups = edges.lookups if edges.lookups else list(ats|frds|fols)
+    
+    #get the protected users - this will be SLOW
+    pusers = User.find(
+            User._id.is_in(lookups) & (User.protected==True),
+            fields =['gnp','frdc','folc']
+            )
+    puser_groups = defaultdict(list)
+    #pick random protected users
+    for puser in pusers:
+        if puser._id in frds:
+            label = 'prfrd' if puser._id in fols else 'pjfrd'
+        else:
+            label = 'pjfol' if puser._id in fols else 'pjat'
+        puser_groups[label].append(puser)
+    for label,users in puser_groups.iteritems():
+        rels[label] = _rel_d(random.choice(users),ats)
+    return rels
+
+def _rel_d(user,ats):
+    gnp = user.geonames_place.to_d()
+    if 'mdist' not in gnp:
+        gnp['mdist'] = gis.mdist(user.geonames_place)
+    return dict(
+        folc=user.followers_count,
+        frdc=user.friends_count,
+        lat=gnp['lat'],
+        lng=gnp['lng'],
+        mdist=gnp['mdist'],
+        ated=user._id in ats,
+        _id=user._id,
         )

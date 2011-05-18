@@ -21,8 +21,9 @@ gis = GisgraphyResource()
 def fix_user_mdist():
     users = User.find(User.geonames_place.exists(), timeout=False)
     for user in users:
-        user.geonames_place.mdist = gis.mdist(user.geonames_place)
-        user.save()
+        if not user.geonames_place.mdist:
+            user.geonames_place.mdist = gis.mdist(user.geonames_place)
+            user.save()
 
 
 def print_gnp_gps(eval=False):

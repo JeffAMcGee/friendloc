@@ -28,6 +28,7 @@ from localcrawl.admin import *
 from explore.graph import *
 from explore.peek import *
 from explore.fixgis import *
+from predict.prep import *
 from base.utils import *
 
 logging.basicConfig(level=logging.INFO)
