@@ -92,7 +92,8 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
             if normed:
                 hist = hist*weight
             if dist_scale:
-                hist = hist/b[1:]
+                step_size = b[2]/b[1]
+                hist = hist/b[1:]*(step_size/(step_size-1))
             ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
         else:
             ax.hist(row, histtype=histtype, **hargs)
@@ -188,14 +189,15 @@ def compare_mdist():
     
 
 def fake_dist():
-    data = numpy.append(numpy.random.rand(100000),1/numpy.random.rand(100000))
+    data = numpy.append(numpy.random.rand(10**5),1/numpy.random.rand(10**5))
     graph_hist(data,
             "fake_dist.png",
-            bins = numpy.arange(0,20,.1),
-            #xlim=(.0001,10000),
-            #normed=True,
-            #dist_scale = True,
-            kind="linear",
+            #bins=numpy.arange(0,10,.1),
+            bins = numpy.insert(3**numpy.linspace(-5,5,101),0,0),
+            dist_scale = True,
+            normed=True,
+            #kind="linear",
+            kind="logline",
             )
 
 
