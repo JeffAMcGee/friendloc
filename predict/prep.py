@@ -61,7 +61,7 @@ def _edges_d(me):
     #get the users - this will be SLOW
     amigos = User.find(
             User._id.is_in(lookups) & User.geonames_place.exists(),
-            fields =['gnp','folc'],
+            fields =['gnp','folc','prot'],
             )
 
     res = dict(

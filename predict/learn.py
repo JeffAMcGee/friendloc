@@ -30,7 +30,7 @@ class Trainer():
         self.total = numpy.zeros((16,self.buckets),numpy.int)
 
     def train(self, key):
-        users = User.find(User.mod_group == int(self.key))
+        users = User.find(User.mod_group == int(key))
         for user in users:
             self.train_user(user)
         result = dict(
@@ -38,7 +38,7 @@ class Trainer():
             power = self.power.tolist(),
             total = self.total.tolist(),
             )
-        write_json([result], "data/model%s"%self.key)
+        write_json([result], "data/model%s"%key)
 
     def train_user(self,me):
         tweets = Tweets.get_id(me._id,fields=['ats'])
@@ -58,7 +58,7 @@ class Trainer():
             #get the users - this will be SLOW
             amigos = User.find(
                 User._id.is_in(lookups) & User.geonames_place.exists(),
-                fields =['gnp','folc'],
+                fields =['gnp','folc','prot'],
                 )
             for amigo in amigos:
                 kind = _group(amigo._id) + (8 if amigo.protected else 0)
@@ -82,6 +82,6 @@ class Trainer():
     def reduce(self):
         for d in read_json("model"):
             for k in ('inner','power','total'):
-                getattr(self,k) += d[k]
+                getattr(self,k).__iadd__(d[k])
         inner = numpy.true_divide(self.inner, self.total)
 
