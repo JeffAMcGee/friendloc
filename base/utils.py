@@ -27,10 +27,16 @@ def all_users():
     return User.get_all()
 
 
-def grouper(n, iterable, fillvalue=None):
+def grouper(n, iterable, fillvalue=None, dontfill=False):
     "grouper(3, 'ABCDEFG', 'x') --> ABC DEF Gxx"
+    if dontfill:
+        sentinel = object()
+        fillvalue = sentinel
     args = [iter(iterable)] * n
-    return itertools.izip_longest(*args, fillvalue=fillvalue)
+    res = itertools.izip_longest(*args, fillvalue=fillvalue)
+    if dontfill:
+        res = itertools.ifilter(lambda x: x is not sentinel,res)
+    return res
 
 def couch(name):
     return CouchDB(settings.couchdb_root+name,True)

@@ -202,11 +202,12 @@ def fake_dist():
             kind="logline",
             )
 
+
 def _plot_dist_model(ax, row, *ignored):
     inner = 1.0*sum(1 for r in row if r<1)/len(row)
-    ax.plot([.001,1],[inner,inner],'-')
+    ax.plot([.001,1000],[inner,inner],'-',color='k',alpha=.5)
 
-    bins = 10**numpy.linspace(0,1,10)
+    bins = 10**numpy.linspace(0,1,11)
     hist,bins = numpy.histogram(row,bins)
     step_size = bins[2]/bins[1]
     centers = numpy.sqrt(bins[1:]*bins[:-1])
@@ -215,26 +216,9 @@ def _plot_dist_model(ax, row, *ignored):
     a,b = numpy.polyfit(numpy.log10(centers),numpy.log10(line),1)
     
     #data = [(10**b)*(x**a) for x in bins]
-    data = (10**b) * (bins**a)
-    ax.plot(bins, data, '-', color='r')
-  
-
-
-def _plot_dist_model(ax, row, *ignored):
-    inner = 1.0*sum(1 for r in row if r<1)/len(row)
-    ax.plot([.001,1],[inner,inner],'-',color='k',alpha=.5)
-
-    bins = 10**numpy.linspace(0,1,10)
-    hist,bins = numpy.histogram(row,bins)
-    step_size = bins[2]/bins[1]
-    centers = numpy.sqrt(bins[1:]*bins[:-1])
-    #scale for distance and the width of the bucket
-    line = hist/bins[1:] * (step_size/(step_size-1)/len(row))
-    a,b = numpy.polyfit(numpy.log10(centers),numpy.log10(line),1)
-    
-    #data = [(10**b)*(x**a) for x in bins]
-    data = (10**b) * (bins**a)
-    ax.plot(bins, data, '-', color='k',alpha=.5)
+    X = 10**numpy.linspace(0,2,21)
+    Y = (10**b) * (X**a)
+    ax.plot(X, Y, '-', color='k',alpha=.5)
 
 
 def compare_edge_types(cmd=""):
@@ -263,7 +247,7 @@ def compare_edge_types(cmd=""):
             )
 
     labels = ('just followers','just friends','recip friends','just mentioned')
-    keys = ['rfrd']#('jfol','jfrd','rfrd','jat')
+    keys = ('jfol','jfrd','rfrd','jat')
     colors = "gbrc"
     data = defaultdict(list)
     edges = list(read_json('data/edges_json'))
