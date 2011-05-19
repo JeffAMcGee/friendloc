@@ -15,19 +15,21 @@ from base.utils import *
 def learn_user_model(key='50'):
     use_mongo('usgeo')
     logging.info('started %s',key)
-    Trainer(int(key)).train()
+    Trainer().train(key)
     logging.info('saved %s',key)
 
+def build_user_model():
+    Trainer().reduce()
+
 class Trainer():
-    def __init__(self, key):
-        self.key = key
+    def __init__(self):
         self.bins = 10**numpy.linspace(0,1,11)
         self.buckets = settings.fol_count_buckets
         self.inner = numpy.zeros((16,self.buckets),numpy.int)
         self.power = numpy.zeros((16,self.buckets,len(self.bins)-1),numpy.int)
         self.total = numpy.zeros((16,self.buckets),numpy.int)
 
-    def train(self):
+    def train(self, key):
         users = User.find(User.mod_group == int(self.key))
         for user in users:
             self.train_user(user)
@@ -36,8 +38,7 @@ class Trainer():
             power = self.power.tolist(),
             total = self.total.tolist(),
             )
-        write_json([result], "data/model%d"%self.key)
-        settings.pdb()
+        write_json([result], "data/model%s"%self.key)
 
     def train_user(self,me):
         tweets = Tweets.get_id(me._id,fields=['ats'])
@@ -77,3 +78,10 @@ class Trainer():
             bin = bisect(self.bins,dist)-1
             if bin < len(self.bins)-1:
                 self.power[kind,bits,bin]+=1
+
+    def reduce(self):
+        for d in read_json("model"):
+            for k in ('inner','power','total'):
+                getattr(self,k) += d[k]
+        inner = numpy.true_divide(self.inner, self.total)
+
