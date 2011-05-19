@@ -213,11 +213,11 @@ def _plot_dist_model(ax, row, *ignored):
     centers = numpy.sqrt(bins[1:]*bins[:-1])
     #scale for distance and the width of the bucket
     line = hist/bins[1:] * (step_size/(step_size-1)/len(row))
-    a,b = numpy.polyfit(numpy.log10(centers),numpy.log10(line),1)
+    a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
     
     #data = [(10**b)*(x**a) for x in bins]
     X = 10**numpy.linspace(0,2,21)
-    Y = (10**b) * (X**a)
+    Y = (math.e**b) * (X**a)
     ax.plot(X, Y, '-', color='k',alpha=.5)
 
 
@@ -236,7 +236,7 @@ def compare_edge_types(cmd=""):
     elif cmd=="mdist":
         cuml, prot, mdist = False, False, True
         kwargs = dict(
-            bins = numpy.insert(10**numpy.linspace(-1.975,2.975,100),0,0),
+            bins = numpy.insert(10**numpy.linspace(-1.975,3.975,120),0,0),
             dist_scale = True,
             logline_fn = _plot_dist_model,
             )
@@ -272,7 +272,7 @@ def compare_edge_types(cmd=""):
         data[('random rfrd','k')] = 1 + shuffled_dists(edges)
     graph_hist(data,
             "edge_types_%s.png"%cmd,
-            xlim=(.01,1000) if mdist else (1,30000),
+            xlim=(.01,10**4) if mdist else (1,30000),
             normed=True,
             label_len=True,
             kind="cumulog" if cuml else "logline",

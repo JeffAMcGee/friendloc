@@ -25,19 +25,17 @@ class Trainer():
     def __init__(self):
         self.bins = 10**numpy.linspace(0,1,11)
         self.buckets = settings.fol_count_buckets
-        self.inner = numpy.zeros((16,self.buckets),numpy.int)
-        self.power = numpy.zeros((16,self.buckets,len(self.bins)-1),numpy.int)
-        self.total = numpy.zeros((16,self.buckets),numpy.int)
+        self.power = numpy.zeros((16,self.buckets,len(self.bins)-1), numpy.int)
+        self.inner = numpy.zeros((16,self.buckets), numpy.int)
+        self.total = numpy.zeros_like(self.inner)
+        self.a = numpy.zeros_like(self.inner, numpy.float)
+        self.b = numpy.zeros_like(self.a)
 
     def train(self, key):
         users = User.find(User.mod_group == int(key))
         for user in users:
             self.train_user(user)
-        result = dict(
-            inner = self.inner.tolist(),
-            power = self.power.tolist(),
-            total = self.total.tolist(),
-            )
+        result = self.to_d('inner', 'power', 'total')
         write_json([result], "data/model%s"%key)
 
     def train_user(self,me):
@@ -80,8 +78,42 @@ class Trainer():
                 self.power[kind,bits,bin]+=1
 
     def reduce(self):
+        input_keys = ('inner','power','total')
         for d in read_json("model"):
-            for k in ('inner','power','total'):
+            for k in input_keys:
                 getattr(self,k).__iadd__(d[k])
-        inner = numpy.true_divide(self.inner, self.total)
+        #HACK: we set this one value because of one noisy outlier
+        self.power[12,7,7]+=1
+        #merge tiny bins into bigger bin
+        for folc_bin, last in ((9,5), (11,0), (13,0), (15,5)):
+            for k in input_keys:
+                patch = getattr(self,k)[folc_bin]
+                patch[last] = sum(patch[last:])
+                patch[last+1:] = 0
+
+        #calculate inner
+        self.inner = numpy.true_divide(self.inner, self.total)
+
+        bins = self.bins
+        step_size = bins[2]/bins[1]
+        centers = numpy.sqrt(bins[1:]*bins[:-1])
+        for i,bucket in enumerate(self.power):
+            for j,row in enumerate(bucket):
+                if not self.total[i,j]:
+                    continue
+                #scale for distance and the width of the bucket
+                scale = step_size/(step_size-1)/self.total[i,j]
+                line = row/bins[1:] * scale
+                a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
+                self.a[i,j] = a
+                self.b[i,j] = b
+
+        self.rand = 1-self.inner+(math.e**self.b)/(self.a+1)
+        result = self.to_d('a', 'b', 'inner', 'rand')
+        write_json([result], "params")
+        numpy.set_printoptions(precision=3, linewidth=160)
+        settings.pdb()
+
+    def to_d(self, *keys):
+        return dict((k,getattr(self,k).tolist()) for k in keys)
 
