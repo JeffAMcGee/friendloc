@@ -29,7 +29,7 @@ from base.utils import *
 
 
 def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
-        sample=None, histtype='step', marker='-',
+        sample=None, histtype='step', marker='-', logline_fn=None,
         label_len=False, auto_ls=False, dist_scale=False, **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
@@ -48,7 +48,7 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         ax.set_xscale('log')
         if dist_scale:
             ax.set_yscale('log')
-            legend_loc = 4
+            legend_loc = 3
         elif legend_loc is None:
             legend_loc = 9
     elif kind == 'cumulog':
@@ -94,6 +94,8 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
             if dist_scale:
                 step_size = b[2]/b[1]
                 hist = hist/b[1:]*(step_size/(step_size-1))
+            if logline_fn:
+                logline_fn(ax, row, b, hist)
             ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
         else:
             ax.hist(row, histtype=histtype, **hargs)
@@ -201,20 +203,47 @@ def fake_dist():
             )
 
 
+def _plot_dist_model(ax, row, *ignored):
+    inner = 1.0*sum(1 for r in row if r<1)/len(row)
+    ax.plot([.001,1],[inner,inner],'-',color='k',alpha=.5)
+
+    bins = 10**numpy.linspace(0,1,10)
+    hist,bins = numpy.histogram(row,bins)
+    step_size = bins[2]/bins[1]
+    centers = numpy.sqrt(bins[1:]*bins[:-1])
+    #scale for distance and the width of the bucket
+    line = hist/bins[1:] * (step_size/(step_size-1)/len(row))
+    a,b = numpy.polyfit(numpy.log10(centers),numpy.log10(line),1)
+    
+    #data = [(10**b)*(x**a) for x in bins]
+    data = (10**b) * (bins**a)
+    ax.plot(bins, data, '-', color='k',alpha=.5)
+
+
 def compare_edge_types(cmd=""):
     #set flags
     if cmd=="cuml":
         cuml, prot, mdist = True, False, False
-        bins = dist_bins(120)
+        kwargs = dict(
+            bins = dist_bins(120),
+            )
     elif cmd=="prot":
         cuml, prot, mdist = True, True, False
-        bins = dist_bins()
+        kwargs = dict(
+            bins = dist_bins(),
+            )
     elif cmd=="mdist":
         cuml, prot, mdist = False, False, True
-        bins = numpy.insert(10**numpy.linspace(-2.95,2.95,60),0,0)
+        kwargs = dict(
+            bins = numpy.insert(10**numpy.linspace(-1.975,2.975,100),0,0),
+            dist_scale = True,
+            logline_fn = _plot_dist_model,
+            )
     else:
         cuml, prot, mdist = False, False, False
-        bins = dist_bins(120)
+        kwargs = dict(
+            bins = dist_bins(120),
+            )
 
     labels = ('just followers','just friends','recip friends','just mentioned')
     keys = ('jfol','jfrd','rfrd','jat')
@@ -242,14 +271,13 @@ def compare_edge_types(cmd=""):
         data[('random rfrd','k')] = 1 + shuffled_dists(edges)
     graph_hist(data,
             "edge_types_%s.png"%cmd,
-            bins=bins,
-            xlim=(.0001,10000) if mdist else (1,30000),
-            #normed=True,
+            xlim=(.01,1000) if mdist else (1,30000),
+            normed=True,
             label_len=True,
-            dist_scale = mdist,
             kind="cumulog" if cuml else "logline",
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
+            **kwargs
             )
 
 
