@@ -50,6 +50,14 @@ def eval_block(*args):
     #print skipped
 
 
+class Mode():
+    def pred(self, user):
+        counts = defaultdict(int)
+        for r in user['rels']:
+            counts[(r['lng'],r['lat'])]+=1
+        spot, count =  max(counts.iteritems(),key=itemgetter(1))
+        return spot
+
 class Median():
     def pred(self, user):
         return median_2d((r['lng'],r['lat']) for r in user['rels'])

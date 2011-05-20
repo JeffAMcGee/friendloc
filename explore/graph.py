@@ -117,9 +117,9 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
 
 def graph_results(path="results"):
     linestyle = defaultdict(lambda: 'solid')
-    linestyle['median'] = 'dotted'
-    linestyle['omniscient'] = 'dotted'
-    linestyle['geocoding'] = 'dotted'
+    linestyle['Median'] = 'dotted'
+    linestyle['Omniscient'] = 'dotted'
+    linestyle['Mode'] = 'dotted'
     data = defaultdict(list)
     for block in read_json(path):
         for k,v in block.iteritems():
