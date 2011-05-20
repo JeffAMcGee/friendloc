@@ -215,6 +215,7 @@ def _plot_dist_model(ax, row, *ignored):
     #scale for distance and the width of the bucket
     line = hist/bins[1:] * (step_size/(step_size-1)/len(row))
     a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
+    print a, b, len(row), inner
     
     #data = [(10**b)*(x**a) for x in bins]
     X = 10**numpy.linspace(0,2,21)
@@ -271,6 +272,7 @@ def compare_edge_types(cmd=""):
                 data[(label,color,'dashed' if prot else 'solid')].append(dist)
     if not cuml and not mdist:
         data[('random rfrd','k')] = 1 + shuffled_dists(edges)
+    data['all'] = [x for v in data.values() for x in v]
     graph_hist(data,
             "edge_types_%s.png"%cmd,
             xlim=(.01,10**4) if mdist else (1,30000),

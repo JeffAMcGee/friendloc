@@ -20,7 +20,7 @@ def eval_block(*args):
     dists = defaultdict(list)
     skipped=0
 
-    for user in list(users)[:100]:
+    for user in users:#list(users)[:100]:
         mloc = user['mloc']
         if not user['rels']:
             skipped+=1
@@ -50,7 +50,9 @@ class Omniscient():
 
 
 class FriendlyLocationBase():
-    def __init__(self, ):
+    def __init__(self, use_mdist, use_bins):
+        self.use_mdist = use_mdist
+        self.use_bins = use_bins
         params = list(read_json("params"))[0]
         for k,v in params.iteritems():
             setattr(self,k,v)
@@ -71,16 +73,38 @@ class FriendlyLocationBase():
 
     def _edge_prob(self,center,edge):
         dist = coord_in_miles(center,edge)
-        kind, folc, mdist = edge['kind'], edge['folc'], max(1,edge['mdist'])
-        if dist<mdist:
-            local = self.inner[kind][folc]
+        kind, folc = edge['kind'], edge['folc']
+        mdist = max(3,edge['mdist']) if self.use_mdist else 6
+
+        if self.use_bins:
+            if dist<mdist:
+                local = self.inner[kind][folc]
+            else:
+                a,b = self.a[kind][folc],self.b[kind][folc]
+                local = (math.e**b) * (dist**a)
+            rand = self.rand[kind][folc]/2750
         else:
-            a,b = self.a[kind][folc],self.b[kind][folc]
-            local = (math.e**b) * (dist**a)
-        rand = self.rand[kind][folc]/2750
+            if dist<mdist:
+                local = .133
+            else:
+                a,b = -1.423,-2.076
+                local = (math.e**b) * (dist**a)
+            rand = .568
         return math.log(local/mdist+rand)
 
 
-class FriendlyLocation(FriendlyLocationBase):
+class FriendLocMdistBins(FriendlyLocationBase):
     def __init__(self):
-        FriendlyLocationBase.__init__(self)
+        FriendlyLocationBase.__init__(self,True,True)
+
+class FriendLocMdist(FriendlyLocationBase):
+    def __init__(self):
+        FriendlyLocationBase.__init__(self,False,True)
+
+class FriendLocBins(FriendlyLocationBase):
+    def __init__(self):
+        FriendlyLocationBase.__init__(self,True,False)
+
+class FriendLocSimp(FriendlyLocationBase):
+    def __init__(self):
+        FriendlyLocationBase.__init__(self,False,False)
