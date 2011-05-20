@@ -10,6 +10,21 @@ from base.models import *
 from base.utils import *
 
 
+def _haversine(lng1, lng2, lat1, lat2):
+    dlng = lng2 - lng1
+    dlat = lat2 - lat1
+    a = numpy.sin(dlat/2)**2 + numpy.cos(lat1)*numpy.cos(lat2)*numpy.sin(dlng/2)**2
+    c = 2 * numpy.arctan2(numpy.sqrt(a), numpy.sqrt(1-a)) 
+    return 3959 * c
+
+def _calc_dists(rels):
+    lats = [math.radians(r['lat']) for r in rels]
+    lngs = [math.radians(r['lng']) for r in rels]
+    lat1,lat2 = numpy.meshgrid(lats,lats)
+    lng1,lng2 = numpy.meshgrid(lngs,lngs)
+    return _haversine(lng1,lng2,lat1,lat2)
+
+
 def eval_block(*args):
     block = args[-1]
     #make predictior objects from class names in args
@@ -20,18 +35,19 @@ def eval_block(*args):
     dists = defaultdict(list)
     skipped=0
 
-    for user in users:#list(users)[:100]:
+    for i,user in enumerate(users):
         mloc = user['mloc']
         if not user['rels']:
             skipped+=1
             continue
+        user['dists'] = _calc_dists(user['rels'])
         if 'gnp' not in user or user['gnp']['code']=="COORD":
             user['gnp'] = settings.default_loc
         for predictor,label in zip(predictors,pred_names):
             res = predictor.pred(user)
             dists[label].append(coord_in_miles(mloc, res))
     write_json([dists],"data/res"+block)
-    print skipped
+    #print skipped
 
 
 class Median():
@@ -62,35 +78,30 @@ class FriendlyLocationBase():
         #redefine folc as the folc bin
         buckets = settings.fol_count_buckets
         for rel in self.rels:
-            folc = max(rel['folc'],1)
-            rel['folc'] = min(buckets-1, int(math.log(folc,4)))
-        best_i, best = max(enumerate(self.rels), key=self._user_prob)
+            if self.use_bins:
+                kind = rel['kind']
+                folc = min(buckets-1, int(math.log(max(rel['folc'],1),4)))
+                rel['inner'] = self.inner[kind][folc]
+                rel['a'] = self.a[kind][folc]
+                rel['e_b'] = math.e**self.b[kind][folc]
+                rel['rand'] = self.rand[kind][folc]/2750
+            else:
+                rel['inner'] = .133
+                rel['a'] = -1.423
+                rel['e_b'] = math.e**-2.076
+                rel['rand'] = .568/2750
+            rel['md_fixed'] = max(2,rel['mdist']) if self.use_mdist else 6
+        best, unused = max(zip(self.rels,user['dists']), key=self._user_prob)
         return best
 
-    def _user_prob(self, i_rel):
-        i, rel = i_rel
-        return sum(self._edge_prob(rel,edge) for edge in self.rels)
+    def _user_prob(self, rel_dists):
+        rel, dists = rel_dists
+        return sum(self._edge_prob(edge,dist) for edge,dist in zip(self.rels,dists))
 
-    def _edge_prob(self,center,edge):
-        dist = coord_in_miles(center,edge)
-        kind, folc = edge['kind'], edge['folc']
-        mdist = max(3,edge['mdist']) if self.use_mdist else 6
-
-        if self.use_bins:
-            if dist<mdist:
-                local = self.inner[kind][folc]
-            else:
-                a,b = self.a[kind][folc],self.b[kind][folc]
-                local = (math.e**b) * (dist**a)
-            rand = self.rand[kind][folc]/2750
-        else:
-            if dist<mdist:
-                local = .133
-            else:
-                a,b = -1.423,-2.076
-                local = (math.e**b) * (dist**a)
-            rand = .568
-        return math.log(local/mdist+rand)
+    def _edge_prob(self, edge, dist):
+        mdist = edge['md_fixed']
+        local = edge['inner'] if dist<mdist else edge['e_b'] * (dist**edge['a']) 
+        return math.log(local/mdist+edge['rand'])
 
 
 class FriendLocMdistBins(FriendlyLocationBase):

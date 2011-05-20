@@ -21,6 +21,7 @@ def learn_user_model(key='50'):
 def build_user_model():
     Trainer().reduce()
 
+
 class Trainer():
     def __init__(self):
         self.bins = 10**numpy.linspace(0,1,11)
