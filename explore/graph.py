@@ -70,7 +70,8 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
             hargs['label'] = key
         else:
             for k,v in zip(['label','color','linestyle','linewidth'],key):
-                hargs[k] = v
+                if v is not None:
+                    hargs[k] = v
 
         if auto_ls:
             hargs['linestyle'] = ('solid','dashed','dashdot','dotted')[index/7]
