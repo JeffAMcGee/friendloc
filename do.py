@@ -11,6 +11,7 @@ import logging
 import sys
 import getopt
 import pdb
+import numpy
 
 try:
     import beanstalkc
@@ -34,6 +35,7 @@ from predict.eval import *
 from base.utils import *
 
 logging.basicConfig(level=logging.INFO)
+numpy.set_printoptions(precision=3, linewidth=160)
 
 if len(sys.argv)>1:
     try:

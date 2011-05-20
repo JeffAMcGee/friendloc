@@ -78,18 +78,20 @@ class Trainer():
                 self.power[kind,bits,bin]+=1
 
     def reduce(self):
-        input_keys = ('inner','power','total')
+        input_keys = 'inner','power','total'
         for d in read_json("model"):
             for k in input_keys:
                 getattr(self,k).__iadd__(d[k])
         #HACK: we set this one value because of one noisy outlier
         self.power[12,7,7]+=1
         #merge tiny bins into bigger bin
-        for folc_bin, last in ((9,5), (11,0), (13,0), (15,5)):
+        too_small = (9,5), (11,0), (13,0), (15,5)
+        for folc_bin, last in too_small:
             for k in input_keys:
                 patch = getattr(self,k)[folc_bin]
-                patch[last] = sum(patch[last:])
-                patch[last+1:] = 0
+                summed = sum(patch[last:])
+                for i in range(last,len(patch)):
+                    patch[i] = summed
 
         #calculate inner
         self.inner = numpy.true_divide(self.inner, self.total)
@@ -107,13 +109,13 @@ class Trainer():
                 a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
                 self.a[i,j] = a
                 self.b[i,j] = b
+        
 
-        self.rand = 1-self.inner+(math.e**self.b)/(self.a+1)
+        self.rand = numpy.maximum(0,1-self.inner+(math.e**self.b)/(self.a+1))
         result = self.to_d('a', 'b', 'inner', 'rand')
         write_json([result], "params")
-        numpy.set_printoptions(precision=3, linewidth=160)
-        settings.pdb()
 
     def to_d(self, *keys):
         return dict((k,getattr(self,k).tolist()) for k in keys)
 
+    
