@@ -4,6 +4,7 @@ import random
 import logging
 from collections import defaultdict
 from multiprocessing import Pool
+from operator import itemgetter
 
 from settings import settings
 from base.models import *
@@ -25,17 +26,22 @@ def _calc_dists(rels):
     return _haversine(lng1,lng2,lat1,lat2)
 
 
-def eval_block(*args):
-    block = args[-1]
-    #make predictior objects from class names in args
-    pred_names = args[:-1]
-    predictors = [globals()[p]() for p in pred_names]
-
+def eval_block(block):
+    pred_names, predictors = zip(
+        ('Mode',Mode()),
+        ('Median',Median()),
+        ('Omniscient',Omniscient()),
+        ('FL (Full)',FriendlyLocation(True,True)),
+        ('FL (Relationship Types)',FriendlyLocation(True,False)),
+        ('FL (Median Dist)',FriendlyLocation(False,True)),
+        ('FL (Simple)',FriendlyLocation(False,False)),
+    ) 
     users = read_json("data/eval"+block)
     dists = defaultdict(list)
     skipped=0
 
     for i,user in enumerate(users):
+        print i
         mloc = user['mloc']
         if not user['rels']:
             skipped+=1
@@ -47,7 +53,7 @@ def eval_block(*args):
             res = predictor.pred(user)
             dists[label].append(coord_in_miles(mloc, res))
     write_json([dists],"data/res"+block)
-    #print skipped
+    print "saved %s"%block
 
 
 class Mode():
@@ -63,30 +69,26 @@ class Median():
         return median_2d((r['lng'],r['lat']) for r in user['rels'])
 
 
-class Geocoding():
-    def pred(self, user):
-        return user['gnp']
-
-
 class Omniscient():
     def pred(self, user):
-        return min(user['rels'], key=lambda rel: coord_in_miles(user['mloc'],rel))
+        best = min(user['rels'], key=lambda rel: coord_in_miles(user['mloc'],rel))
+        return best
 
 
-class FriendlyLocationBase():
-    def __init__(self, use_mdist, use_bins):
+class FriendlyLocation():
+    def __init__(self, use_params, use_mdist, ):
         self.use_mdist = use_mdist
-        self.use_bins = use_bins
-        params = list(read_json("params"))[0]
-        for k,v in params.iteritems():
-            setattr(self,k,v)
+        self.use_params = use_params
+        if use_params:
+            params = list(read_json("params"))[0]
+            for k,v in params.iteritems():
+                setattr(self,k,v)
 
     def pred(self, user):
         self.rels = user['rels']
-        #redefine folc as the folc bin
         buckets = settings.fol_count_buckets
         for rel in self.rels:
-            if self.use_bins:
+            if self.use_params:
                 kind = rel['kind']
                 folc = min(buckets-1, int(math.log(max(rel['folc'],1),4)))
                 rel['inner'] = self.inner[kind][folc]
@@ -98,7 +100,8 @@ class FriendlyLocationBase():
                 rel['a'] = -1.423
                 rel['e_b'] = math.e**-2.076
                 rel['rand'] = .568/2750
-            rel['md_fixed'] = max(2,rel['mdist']) if self.use_mdist else 6
+            rel['md_fixed'] = max(5,rel['mdist']) if self.use_mdist else 5
+
         best, unused = max(zip(self.rels,user['dists']), key=self._user_prob)
         return best
 
@@ -110,20 +113,3 @@ class FriendlyLocationBase():
         mdist = edge['md_fixed']
         local = edge['inner'] if dist<mdist else edge['e_b'] * (dist**edge['a']) 
         return math.log(local/mdist+edge['rand'])
-
-
-class FriendLocMdistBins(FriendlyLocationBase):
-    def __init__(self):
-        FriendlyLocationBase.__init__(self,True,True)
-
-class FriendLocMdist(FriendlyLocationBase):
-    def __init__(self):
-        FriendlyLocationBase.__init__(self,False,True)
-
-class FriendLocBins(FriendlyLocationBase):
-    def __init__(self):
-        FriendlyLocationBase.__init__(self,True,False)
-
-class FriendLocSimp(FriendlyLocationBase):
-    def __init__(self):
-        FriendlyLocationBase.__init__(self,False,False)

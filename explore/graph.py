@@ -129,6 +129,7 @@ def graph_results(path="results"):
             bins=dist_bins(120),
             xlim=(1,30000),
             kind="cumulog",
+            normed=True,
             xlabel = "error in prediction in miles",
             ylabel = "number of users",
             )
