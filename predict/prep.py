@@ -10,21 +10,6 @@ from settings import settings
 from base.models import *
 from base.utils import *
 
-def train_local_prob(*paths):
-    buckets = settings.fol_count_buckets
-    cutoff = settings.local_max_dist
-    locals = numpy.zeros((16,buckets),numpy.int)
-    rels = numpy.zeros((16,buckets),numpy.int)
-
-    for user in itertools.chain.from_iterable(read_json(p) for p in paths):
-        for rel in user['rels']:
-            kind = rel['kind']
-            bits = min(buckets-1, int(math.log(max(rel['folc'],1),4)))
-            rels[kind,bits]+=1
-            if coord_in_miles(user['mloc'],rel)<cutoff:
-                locals[kind,bits]+=1
-    probs = numpy.true_divide(locals,rels).tolist()
-    write_json([probs], 'local_probs')
 
 def save_mod_group():
     for u in User.find(User.median_loc.exists()):
@@ -33,10 +18,8 @@ def save_mod_group():
 
 def prep_eval_users(key='50'):
     use_mongo('usgeo')
-    logging.info('started %s',key)
     users = User.find(User.mod_group == int(key))
-    write_json(itertools.imap(_edges_d, users), "data/eval"+key)
-    logging.info('saved %s',key)
+    write_json(itertools.imap(_edges_d, users), "data/samp"+key)
 
 
 def _edges_d(me):
@@ -55,7 +38,7 @@ def _edges_d(me):
     #pick the 100 best users
     lookups = edges.lookups if edges.lookups else list(ats|frds|fols)
     random.shuffle(lookups)
-    lookups.sort(key=_group, reverse=True)
+    #lookups.sort(key=_group, reverse=True)
     lookups = lookups[:100]
 
     #get the users - this will be SLOW

@@ -26,7 +26,7 @@ def _calc_dists(rels):
     return _haversine(lng1,lng2,lat1,lat2)
 
 
-def eval_block(block):
+def eval_block(prefix, block):
     pred_names, predictors = zip(
         ('Mode',Mode()),
         ('Median',Median()),
@@ -36,7 +36,7 @@ def eval_block(block):
         ('FL (Median Dist)',FriendlyLocation(False,True)),
         ('FL (Simple)',FriendlyLocation(False,False)),
     ) 
-    users = read_json("data/eval"+block)
+    users = read_json("data/"+prefix+block)
     dists = defaultdict(list)
     skipped=0
 
