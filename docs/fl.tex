@@ -15,18 +15,26 @@
 
 \maketitle
 \begin{abstract}
-Providing localized content for online users is a useful goal, but it can be
-difficult for third-party services to acquire accurate location information.
-We use publicly available data to investigate the relationship between the
-strength of the tie between a pair of users, and the distance between the pair.
-
-Like many bloging platforms, Twitter is both a social networking and news
-distribution website.  As a result, sometimes users form online ties based on
-real-world, in-person connections. Other times, they form ties based on common
-interests.  We identify several factors that can predict the distance between a
-pair of users.  Some kinds of common relationships are strongly correlated with
-living in the same area while others are not.  We use this to build and
-evaluate a system for estimating the location of users on Twitter.
+With the rise of volunteered user location information through services like
+Foursquare, Google Latitude, and Facebook Places, we face unprecedented access
+to the trails and connections among millions of social media users. This
+location information is increasingly being incorporated in social media for
+providing localized content, location-aware recommendations, and other
+geo-spatial enabled services. In this paper, we investigate the interplay of
+distance and tie strength through an examination of 20 million geo-encoded
+tweets collected from Twitter and 6 million user profiles. Concretely, we
+investigate the relationship between the strength of the tie between a pair of
+users, and the distance between the pair. We identify several factors --
+including following, mentioning, and actively engaging in conversations with
+another user -- that can strongly reveal the distance between a pair of users.
+We find a bimodal distribution in Twitter, with one peak around 10 miles from
+people who live nearby, and another peak around 2500 miles, further validating
+Twitter's use as both a social network (with geographically nearby friends) and
+as a news distribution network (with very distant relationships). Based on
+these findings, we propose and evaluate a method for predicting location for
+users based purely on an analysis of the user's social network, which has great
+significance for augmenting traditional social media and enriching
+location-based services with more refined and accurate location estimates.
 
 \end{abstract}
 
