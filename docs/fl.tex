@@ -168,7 +168,7 @@ A Country&37&3935\\
 
 \begin{figure}
 \centering
-\epsfig{file=diff_gnp_gps.eps, width=\linewidth}
+\epsfig{file=diff_gnp_gps.pdf, width=\linewidth}
 \caption{
 The dashed line shows the cumulative distribution function(CDF) of the predicted location error.
 The other lines show the CDF of the actual location error for the geocoding evaluation group. The colored lines show how the location prediction improves when we remove users with a high PLE. For example, all the users in the "PLE<1" category have a predicted location error(PLE) of less than one mile.
@@ -197,7 +197,7 @@ All of the analysis in this section was done on the 104214 users with a home loc
 \subsection{What type of contact is closest?}
 \begin{figure}
 \centering
-\epsfig{file=edge_types_cuml.eps, width=\linewidth}
+\epsfig{file=edge_types_cuml.pdf, width=\linewidth}
 \caption{
 CDF of distance from geo-located users to users they have some contact
 with.
@@ -216,7 +216,7 @@ There is a strange corner in the top right corner of all the graphs at approxima
 \subsection{What is the distribution of related users?}
 \begin{figure}
 \centering
-\epsfig{file=edge_types.eps, width=\linewidth}
+\epsfig{file=edge_types.pdf, width=\linewidth}
 \caption{
 Smoothed histogram of distance to users.  The curves in Figure
 \ref{fig:EdgeTypesCum} are the integrals of these curves. The black line was created by calculating the distance between random, unrelated users. Notice how it has a similar shape to the other curves for distances greater than 100 miles.
@@ -246,12 +246,14 @@ suggests that users have two types of contacts: people who they met in
 real life, and people who they met online or know about via mainstream media.
 The former group is useful for predicting location and the latter group is not.
 
-\subsection{What is the effect of communicating with someone?}
 
-\subsection{Are you closer to private accounts?}
+\subsection{Are users closer to people they communicate with?}
+yes
+
+\subsection{Are users closer to private accounts?}
 \begin{figure}
 \centering
-\epsfig{file=edge_types_prot.eps, width=\linewidth}
+\epsfig{file=edge_types_prot.pdf, width=\linewidth}
 \caption{ Solid lines represent protected accounts, and dashed lines represent
 public accounts. If a user follows a protected account, they tend to be closer.}
 \label{fig:EdgeTypesProt}
@@ -279,9 +281,6 @@ loop
 star v. non-star matters a lot for friend case, but not so much in others
 
 
-
-\subsection{Are you closer to people you communicate with?}
-yes
 
 \subsection{Does the number of friends and followers a person have affect how close they are?}
 
