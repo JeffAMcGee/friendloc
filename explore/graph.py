@@ -616,25 +616,21 @@ def triad_types():
         counts = list(read_json('geo_%s_simp'%edge_type))
         data = {}
         for field,color in zip(("star","fan","path","loop"),'rbgk'):
-            #sort is stable - make it not so stable
-            random.shuffle(counts)
-            counts.sort(key=itemgetter(field))
-            split = len(counts)/3
-
-            steps = zip(
-                [counts[i*split:(i+1)*split] for i in xrange(3)],
-                ('dotted','solid','solid'),
-                (.5,.5,1),
-                )
-            #steps = (counts[split:],'dotted',1), (counts[:split],'solid',1)
-            for part,style,lw in steps:
-                label = "%s %d-%d"%(field, part[0][field], part[-1][field])
+            steps = [
+                (False,'dotted',.5,"no"),
+                (True,'solid',1,"has"), ]
+            for part,style,lw,prefix in steps:
+                label = "%s %s"%(prefix,field)
                 key = (label, color, style, lw)
-                data[key] = [1+d['dist'] for d in part]
+                data[key] = [
+                    1+d['dist']
+                    for d in counts
+                    if part==bool(d[field])]
         graph_hist(data, "", ax=ax,
                 bins=dist_bins(80),
                 kind="cumulog",
                 xlim=(1,30000),
+                label_len=True,
                 normed=True,
                 xlabel = "1+distance between edges in miles",
                 ylabel = "number of users",
