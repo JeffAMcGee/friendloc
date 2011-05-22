@@ -182,7 +182,7 @@ In the legend, the number in parenthesis is the number of users in that category
 \centering
 \epsfig{file=local_all.pdf, width=\linewidth}
 \caption{
-Hi!
+Hi! This needs to move!
 }
 \label{fig:LocalAll}
 \end{figure*}
@@ -216,7 +216,7 @@ There is a strange corner in the top right corner of all the graphs at approxima
 \subsection{What is the distribution of related users?}
 \begin{figure}
 \centering
-\epsfig{file=edge_types.pdf, width=\linewidth}
+\epsfig{file=edge_types_norm.pdf, width=\linewidth}
 \caption{
 Smoothed histogram of distance to users.  The curves in Figure
 \ref{fig:EdgeTypesCum} are the integrals of these curves. The black line was created by calculating the distance between random, unrelated users. Notice how it has a similar shape to the other curves for distances greater than 100 miles.
@@ -289,6 +289,13 @@ star v. non-star matters a lot for friend case, but not so much in others
 \label{sec:model}
 
 Power law
+\begin{figure}
+\centering
+\epsfig{file=edge_types_mdist.pdf, width=\linewidth}
+\caption{}
+\label{fig:EdgeTypesMdist}
+\end{figure}
+
 
 
 \section{EVALUATION}
@@ -308,10 +315,10 @@ set we removed users with both zero friends and zero followers.)
 
 We investigate several implementations of the FriendlyLocation sytem:
 \begin{description}
-\item[Full] This is the system described in the previous section.
+\item[Simple] This system treats all contacts equally---we ignore their median location error and any information about what type of contact it is.
 \item[Location Error] This shows the value of calculating the median location error.
-\item[Relationship Types] Returns the contact that is physically closest to the user.
-\item[Simple] This system treats all contacts equally---we ignore their median location error and 
+\item[Relationship Types] This 
+\item[Full] This is the system described in the previous section.
 \end{description}
 
 In adddition to using the FriendlyLocation system as described in the previous section, we created a few baseline location predictors:
@@ -322,8 +329,24 @@ In adddition to using the FriendlyLocation system as described in the previous s
 \end{description}
 
 \subsection{Results}
+\begin{figure}
+\centering
+\epsfig{file=final_results.pdf, width=\linewidth}
+\caption{
+}
+\label{fig:FinalResults}
+\end{figure}
 
 It works! Kinda.
+
+Mode 0.452793220837
+FriendlyLocation (Full) * 0.607357155103
+FriendlyLocation (Relationship Types) * 0.566603805932
+FriendlyLocation (Median Dist) 0.547745585462
+Median 0.25539418579
+FriendlyLocation (Simple) 0.512502755259
+Omniscient * 0.88851607847
+
 
 \section{FUTURE WORK}
 combine other factors
