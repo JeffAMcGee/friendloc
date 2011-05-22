@@ -363,12 +363,19 @@ def simplify_tris():
             mfol = set(edge['mfol'])
             yfrd = set(edge['yfrd'])
             yfol = set(edge['yfol'])
+            star = mfrd&yfrd
+            path = mfrd&yfol
+            fan  = mfol&yfol
+            loop = mfol&yfrd
             print >>out,json.dumps(dict(
                 uid=edge['uid'],
                 aid=edge['aid'],
                 dist=edge['dist'],
-                star=len((mfrd&yfrd) - (mfol|yfol)),
                 norm=len(mfol|yfol),
+                star=len(star - fan),
+                fan=len(fan - star),
+                path=len(path - loop),
+                loop=len(loop - path),
                 ))
 
 
@@ -568,26 +575,26 @@ def gr_locals(edge_type='rfrd'):
 def gr_split_types(edge_type='rfrd'):
     counts = list(read_json('geo_%s_simp'%edge_type))
     data = {}
-    for field,color in zip(("star","norm"),'rb'):
+    for field,color in zip(("star","fan","path","loop"),'rbgk'):
         #sort is stable - make it not so stable
         random.shuffle(counts)
         counts.sort(key=itemgetter(field))
-        split = len(counts)/4
+        split = len(counts)/3
 
         steps = zip(
-            [counts[i*split:(i+1)*split] for i in xrange(4)],
-            ('solid','solid','solid','dotted'),
-            (4,2,1,1),
+            [counts[i*split:(i+1)*split] for i in xrange(3)],
+            ('solid','solid','dotted'),
+            (2,1,1),
             )
+        #steps = (counts[split:],'dotted',1), (counts[:split],'solid',1)
         for part,style,lw in steps:
             label = "%s %d-%d"%(field, part[0][field], part[-1][field])
             key = (label, color, style, lw)
             data[key] = [1+d['dist'] for d in part]
     graph_hist(data,
             "geo_tri_"+edge_type+"_sp",
-            #bins=numpy.insert(10**numpy.linspace(0,5,51),0,0),
-            bins=dist_bins(),
-            kind="logline",
+            bins=dist_bins(80),
+            kind="cumulog",
             xlim=(1,30000),
             xlabel = "1+distance between edges in miles",
             ylabel = "number of users",
