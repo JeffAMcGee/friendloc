@@ -31,7 +31,7 @@ from base.utils import *
 def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-', logline_fn=None,
         label_len=False, auto_ls=False, dist_scale=False, ax=None,
-        **kwargs):
+        window=None, **kwargs):
     if ax:
         fig = None
     else:
@@ -94,11 +94,14 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
                 if k in hargs:
                     del hargs[k]
             hist,b = numpy.histogram(row,kwargs['bins'])
+            step_size = b[2]/b[1]
+            hist = hist*(1.0*step_size/(step_size-1))
+            if window is not None:
+                hist = numpy.convolve(hist,window,mode='same')/sum(window)
             if normed:
                 hist = hist*weight
             if dist_scale:
-                step_size = b[2]/b[1]
-                hist = hist/b[1:]*(step_size/(step_size-1))
+                hist = hist/b[1:]
             if logline_fn:
                 logline_fn(ax, row, b, hist)
             ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
@@ -261,8 +264,9 @@ def compare_edge_types(cmd=""):
         cuml, prot, mdist = False, False, False
         kwargs = dict(
             xlabel = "distance to contact in miles",
-            bins = dist_bins(10),
-            ylim=.12,
+            bins = dist_bins(40),
+            ylim = .6,
+            window = numpy.bartlett(7),
             )
 
     labels = ('just followers','just friends','recip friends','just mentioned')
@@ -290,7 +294,7 @@ def compare_edge_types(cmd=""):
     if not cuml and not mdist:
         rands = 1 + shuffled_dists(edges)
         scaled_rands = [r if random.random()<.459 else 40000 for r in rands]
-        data[('random rfrd','k','dotted',2)] = scaled_rands
+        data[('random recip friend','k','dotted',3)] = scaled_rands
     graph_hist(data,
             "edge_types_%s.pdf"%cmd,
             xlim=(.01,10**4) if mdist else (1,30000),
@@ -593,7 +597,7 @@ def com_types():
         simp = read_json('geo_%s_simp'%edge_type)
         data = defaultdict(list)
         for d in simp:
-            data[d['com_type']].append(1+d['dist'])
+            data[d['com_type']].append(d['dist'])
         graph_hist(data, "", ax=ax,
                 legend_loc=2,
                 bins=dist_bins(80),
@@ -601,7 +605,7 @@ def com_types():
                 xlim=(1,30000),
                 normed=True,
                 label_len=True,
-                xlabel = "1+distance between edges in miles",
+                xlabel = "distance between edges in miles",
                 ylabel = "number of users",
                 )
         ax.set_title(titles[edge_type])
@@ -623,7 +627,7 @@ def triad_types():
                 label = "%s %s"%(prefix,field)
                 key = (label, color, style, lw)
                 data[key] = [
-                    1+d['dist']
+                    d['dist']
                     for d in counts
                     if part==bool(d[field])]
         graph_hist(data, "", ax=ax,
@@ -632,7 +636,7 @@ def triad_types():
                 xlim=(1,30000),
                 label_len=True,
                 normed=True,
-                xlabel = "1+distance between edges in miles",
+                xlabel = "distance between edges in miles",
                 ylabel = "number of users",
                 )
         ax.set_title(titles[edge_type])
@@ -826,7 +830,7 @@ def near_triads():
             bin = min(4,len(str(int(edist))))
             label = '%s %s'%(key,labels[bin])
             dist = coord_in_miles(quad[key]['loc'],quad['me']['loc'])
-            data[label,color,'solid',1.6**(bin-1)].append(1+dist)
+            data[label,color,'solid',1.6**(bin-1)].append(dist)
     graph_hist(data,
             "near_triads.pdf",
             bins=dist_bins(120),
