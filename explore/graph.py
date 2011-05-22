@@ -103,7 +103,10 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
     if normed and kind!='logline':
         ax.set_ylim(0,1)
     elif 'ylim' in kwargs:
-        ax.set_ylim(0,kwargs['ylim'])
+        try:
+            ax.set_ylim(*kwargs['ylim'])
+        except TypeError:
+            ax.set_ylim(0,kwargs['ylim'])
     if 'xlim' in kwargs:
         try:
             ax.set_xlim(*kwargs['xlim'])
@@ -208,7 +211,7 @@ def fake_dist():
 
 def _plot_dist_model(ax, row, *ignored):
     inner = 1.0*sum(1 for r in row if r<1)/len(row)
-    ax.plot([.001,1000],[inner,inner],'-',color='k',alpha=.5)
+    ax.plot([.001,1000],[inner,inner],'-',color='k',alpha=.2)
 
     bins = 10**numpy.linspace(0,1,11)
     hist,bins = numpy.histogram(row,bins)
@@ -217,12 +220,13 @@ def _plot_dist_model(ax, row, *ignored):
     #scale for distance and the width of the bucket
     line = hist/bins[1:] * (step_size/(step_size-1)/len(row))
     a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
-    print a, b, len(row), inner
     
     #data = [(10**b)*(x**a) for x in bins]
     X = 10**numpy.linspace(0,2,21)
     Y = (math.e**b) * (X**a)
-    ax.plot(X, Y, '-', color='k',alpha=.5)
+    ax.plot(X, Y, '-', color='k',alpha=.2)
+    
+    rand = 1-inner+(math.e**b)/(a+1)
 
 
 def compare_edge_types(cmd=""):
@@ -230,24 +234,30 @@ def compare_edge_types(cmd=""):
     if cmd=="cuml":
         cuml, prot, mdist = True, False, False
         kwargs = dict(
+            xlabel = "distance to contact in miles",
             bins = dist_bins(120),
             )
     elif cmd=="prot":
         cuml, prot, mdist = True, True, False
         kwargs = dict(
-            bins = dist_bins(),
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(80),
             )
     elif cmd=="mdist":
         cuml, prot, mdist = False, False, True
         kwargs = dict(
+            xlabel = "distance to contact divided by location error",
             bins = numpy.insert(10**numpy.linspace(-1.975,3.975,120),0,0),
             dist_scale = True,
             logline_fn = _plot_dist_model,
+            ylim=(10**-7,1),
             )
     else:
         cuml, prot, mdist = False, False, False
         kwargs = dict(
-            bins = dist_bins(120),
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(10),
+            ylim=.12,
             )
 
     labels = ('just followers','just friends','recip friends','just mentioned')
@@ -273,16 +283,16 @@ def compare_edge_types(cmd=""):
                     dist+=1
                 data[(label,color,'dashed' if prot else 'solid')].append(dist)
     if not cuml and not mdist:
-        data[('random rfrd','k')] = 1 + shuffled_dists(edges)
-    data['all'] = [x for v in data.values() for x in v]
+        rands = 1 + shuffled_dists(edges)
+        scaled_rands = [r if random.random()<.459 else 40000 for r in rands]
+        data[('random rfrd','k','dotted',2)] = scaled_rands
     graph_hist(data,
-            "edge_types_%s.png"%cmd,
+            "edge_types_%s.pdf"%cmd,
             xlim=(.01,10**4) if mdist else (1,30000),
             normed=True,
             label_len=True,
             kind="cumulog" if cuml else "logline",
-            xlabel = "distance between edges in miles",
-            ylabel = "number of users",
+            ylabel = "fraction of users",
             **kwargs
             )
 
