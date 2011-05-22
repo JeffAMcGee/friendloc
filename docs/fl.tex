@@ -49,6 +49,16 @@ Publicly available data.
 @mention
 efficient
 
+\begin{figure}
+\centering
+\epsfig{file=edge_types_norm.pdf, width=\linewidth}
+\caption{
+Smoothed histogram of distance to users for different types of relationships.
+The dotted black line was created by calculating the distance between random, unrelated users.
+}
+\label{fig:EdgeTypes}
+\end{figure}
+
 
 \section{RELATED WORK}
 \cite{scellato2011socio}
@@ -178,14 +188,6 @@ In the legend, the number in parenthesis is the number of users in that category
 \end{figure}
 
 
-\begin{figure*}
-\centering
-\epsfig{file=local_all.pdf, width=\linewidth}
-\caption{
-Hi! This needs to move!
-}
-\label{fig:LocalAll}
-\end{figure*}
 
 \section{INVESTIGATION}
 Every user who has multiple contacts will have some people who are much
@@ -201,6 +203,7 @@ All of the analysis in this section was done on the 104214 users with a home loc
 \caption{
 CDF of distance from geo-located users to users they have some contact
 with.
+The curves in Figure \ref{fig:EdgeTypes} are the integrals of these curves.
 }
 \label{fig:EdgeTypesCum}
 \end{figure}
@@ -214,15 +217,6 @@ If they follow someone, it might be a celebrity; however, if someone follows the
 There is a strange corner in the top right corner of all the graphs at approximately 2500 miles. This is caused by the large population living on the coast, and the tiny number of people posting tweets from the Atlantic and pacific oceans.
 
 \subsection{What is the distribution of related users?}
-\begin{figure}
-\centering
-\epsfig{file=edge_types_norm.pdf, width=\linewidth}
-\caption{
-Smoothed histogram of distance to users.  The curves in Figure
-\ref{fig:EdgeTypesCum} are the integrals of these curves. The black line was created by calculating the distance between random, unrelated users. Notice how it has a similar shape to the other curves for distances greater than 100 miles.
-}
-\label{fig:EdgeTypes}
-\end{figure}
 Instead of looking at the CDF, we will now turn our attention to Figure
 \ref{fig:EdgeTypes}: a smoothed histogram of the distance to related users.
 Distance is once again plotted on a logarithmic scale to show both local and
@@ -231,6 +225,8 @@ All four types of contacts follow roughly the same bimodal distribution:
 one peak around 10 miles from people who live nearby, and another peak around
 2500 miles.
 \textsc{reference chart in bracstrom paper here}
+
+Notice how it has a similar shape to the other curves for distances greater than 100 miles.
 
 The red line in Figure \ref{fig:EdgeTypes} is based on the distance between
 89655 geo-located users and their reciprocal friends. We shuffled the
@@ -248,6 +244,14 @@ The former group is useful for predicting location and the latter group is not.
 
 
 \subsection{Are users closer to people they communicate with?}
+\begin{figure*}
+\centering
+\epsfig{file=com_types.pdf, width=\linewidth}
+\caption{
+}
+\label{fig:ComTypes}
+\end{figure*}
+
 yes
 
 \subsection{Are users closer to private accounts?}
@@ -268,9 +272,24 @@ Since users generally only allow people they know to follow a protected account,
 One possible explanation for the \textsc{red lines crisscrossing} is that a protected account is more likely to live in a rural, unpopulated area. \textsc{cite Gilbert}
 
 \subsection{If two mutual friends live near each other, does that increase the chance that they live near you?}
-yes, but it doesn't matter
+sometimes
+\begin{figure}
+\centering
+\epsfig{file=near_triads.pdf, width=\linewidth}
+\caption{
+}
+\label{fig:NearTriads}
+\end{figure}
 
 \subsection{Does the type of triangle matter?}
+\begin{figure*}
+\centering
+\epsfig{file=triad_types.pdf, width=\linewidth}
+\caption{
+}
+\label{fig:TriadTypes}
+\end{figure*}
+
 
 The number of triangles formed is NOT a function of the number of edges a user has; therefore talking about the ratio of people involved in a type of triangle is stupid.
 
@@ -284,6 +303,14 @@ star v. non-star matters a lot for friend case, but not so much in others
 
 \subsection{Does the number of friends and followers a person have affect how close they are?}
 
+\begin{figure*}
+\centering
+\epsfig{file=local_all.pdf, width=\linewidth}
+\caption{
+Hi!
+}
+\label{fig:LocalAll}
+\end{figure*}
 
 \section{RELATIONSHIP MODEL}
 \label{sec:model}
