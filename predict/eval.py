@@ -27,21 +27,20 @@ def _calc_dists(rels):
 
 
 def eval_block(prefix, block):
-    pred_names, predictors = zip(
-        ('Mode',Mode()),
-        ('Median',Median()),
-        ('Omniscient',Omniscient()),
-        ('FL (Full)',FriendlyLocation(True,True)),
-        ('FL (Relationship Types)',FriendlyLocation(True,False)),
-        ('FL (Median Dist)',FriendlyLocation(False,True)),
-        ('FL (Simple)',FriendlyLocation(False,False)),
+    predictors = (
+        ('Mode', 'samp', Mode()),
+        ('Median', 'samp', Median()),
+        ('Omniscient *', 'rel', Omniscient()),
+        ('FL (Full) *', 'rel', FriendlyLocation(True,True)),
+        ('FL (Relationship Types) *', 'rel', FriendlyLocation(True,False)),
+        ('FL (Median Dist)', 'samp', FriendlyLocation(False,True)),
+        ('FL (Simple)', 'samp', FriendlyLocation(False,False)),
     ) 
     users = read_json("data/"+prefix+block)
     dists = defaultdict(list)
     skipped=0
 
     for i,user in enumerate(users):
-        print i
         mloc = user['mloc']
         if not user['rels']:
             skipped+=1
@@ -49,10 +48,12 @@ def eval_block(prefix, block):
         user['dists'] = _calc_dists(user['rels'])
         if 'gnp' not in user or user['gnp']['code']=="COORD":
             user['gnp'] = settings.default_loc
-        for predictor,label in zip(predictors,pred_names):
+        for label, myprefix, predictor in predictors:
+            if myprefix!=prefix:
+                continue
             res = predictor.pred(user)
             dists[label].append(coord_in_miles(mloc, res))
-    write_json([dists],"data/res"+block)
+    write_json([dists],"data/%s_res%s"%(prefix,block))
     print "saved %s"%block
 
 
