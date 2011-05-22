@@ -572,33 +572,41 @@ def gr_locals(edge_type='rfrd'):
     fig.savefig("../www/md_geo_local_"+edge_type)
 
 
-def gr_split_types(edge_type='rfrd'):
-    counts = list(read_json('geo_%s_simp'%edge_type))
-    data = {}
-    for field,color in zip(("star","fan","path","loop"),'rbgk'):
-        #sort is stable - make it not so stable
-        random.shuffle(counts)
-        counts.sort(key=itemgetter(field))
-        split = len(counts)/3
+def triad_types():
+    fig = plt.figure(figsize=(24,8))
+    titles = dict(fol="Follower", rfrd="Reciprical Friend", frd="Friend")
+    for col,edge_type in enumerate(['fol','rfrd','frd']):
+        ax = fig.add_subplot(1,3,1+col)
+        counts = list(read_json('geo_%s_simp'%edge_type))
+        data = {}
+        for field,color in zip(("star","fan","path","loop"),'rbgk'):
+            #sort is stable - make it not so stable
+            random.shuffle(counts)
+            counts.sort(key=itemgetter(field))
+            split = len(counts)/3
 
-        steps = zip(
-            [counts[i*split:(i+1)*split] for i in xrange(3)],
-            ('solid','solid','dotted'),
-            (2,1,1),
-            )
-        #steps = (counts[split:],'dotted',1), (counts[:split],'solid',1)
-        for part,style,lw in steps:
-            label = "%s %d-%d"%(field, part[0][field], part[-1][field])
-            key = (label, color, style, lw)
-            data[key] = [1+d['dist'] for d in part]
-    graph_hist(data,
-            "geo_tri_"+edge_type+"_sp",
-            bins=dist_bins(80),
-            kind="cumulog",
-            xlim=(1,30000),
-            xlabel = "1+distance between edges in miles",
-            ylabel = "number of users",
-            )
+            steps = zip(
+                [counts[i*split:(i+1)*split] for i in xrange(3)],
+                ('dotted','solid','solid'),
+                (1,1,2),
+                )
+            #steps = (counts[split:],'dotted',1), (counts[:split],'solid',1)
+            for part,style,lw in steps:
+                label = "%s %d-%d"%(field, part[0][field], part[-1][field])
+                key = (label, color, style, lw)
+                data[key] = [1+d['dist'] for d in part]
+        graph_hist(data, "", ax=ax,
+                legend_loc=2,
+                bins=dist_bins(80),
+                kind="cumulog",
+                xlim=(1,30000),
+                normed=True,
+                xlabel = "1+distance between edges in miles",
+                ylabel = "number of users",
+                )
+        ax.set_title(titles[edge_type])
+        ax.set_ylim(0,1.1)
+    fig.savefig("../www/triad_types.pdf",bbox_inches='tight')
 
 
 def gr_tri_degree(key="mfrd",top=200,right=800):
