@@ -30,9 +30,13 @@ from base.utils import *
 
 def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-', logline_fn=None,
-        label_len=False, auto_ls=False, dist_scale=False, **kwargs):
-    fig = plt.figure(figsize=figsize)
-    ax = fig.add_subplot(111)
+        label_len=False, auto_ls=False, dist_scale=False, ax=None,
+        **kwargs):
+    if ax:
+        fig = None
+    else:
+        fig = plt.figure(figsize=figsize)
+        ax = fig.add_subplot(111)
     
     if not isinstance(data,dict):
         data = {"":data}
@@ -116,7 +120,8 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         ax.legend(loc=legend_loc)
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
-    fig.savefig('../www/'+path,bbox_inches='tight')
+    if fig is not None:
+        fig.savefig('../www/'+path,bbox_inches='tight')
 
 def graph_results(path="results"):
     linestyle = defaultdict(lambda: 'solid')
@@ -764,28 +769,51 @@ def rel_prox():
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
-
-def near_edges_nearby():
-    labels = ["0-1",'1-10','10-100','100-1000','1000+']
+ 
+def near_triads():
+    labels = ["",'0-10','10-100','100-1000','1000+']
 
     data = defaultdict(list)
-    for net in read_json('rfr_net_10k'):
+ 
+    for quad in read_json('rfr_triads'):
+        for key,color in (('my','r'),('our','b')):
+            edist = coord_in_miles(quad[key]['loc'],quad['you']['loc'])
+            bin = min(4,len(str(int(edist))))
+            label = '%s %s'%(key,labels[bin])
+            dist = coord_in_miles(quad[key]['loc'],quad['me']['loc'])
+            data[label,color,'solid',1.6**(bin-1)].append(1+dist)
+    graph_hist(data,
+            "near_triads.pdf",
+            bins=dist_bins(120),
+            xlim=(1,30000),
+            label_len=True,
+            kind="cumulog",
+            normed=True,
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )
+
+ 
+def near_edges_nearby():
+    labels = ["",'0-10','10-100','100-1000','1000+']
+
+    data = defaultdict(list)
+    for net in read_json('rfr_net'):
         g = graph_from_net(net)
         for fn,tn in itertools.product(g,g):
-            if fn==tn: continue
+            if fn==tn or g.has_edge(tn,fn)!=g.has_edge(fn,tn): continue
             edist = coord_in_miles(g.node[fn], g.node[tn])
             real = g.has_edge(fn,tn)
             color = 'r' if real else 'b'
-            bin = min(4,len(str(int(edist))) if edist>=1 else 0)
-            label = '%s %s'%('real' if real else 'fake',labels[bin])
+            bin = min(4,len(str(int(edist))))
+            label = '%s %s'%('rfriends' if real else 'none',labels[bin])
             dist = coord_in_miles(net['mloc'],g.node[fn])
-            data[label,color,'solid',1.4**bin].append(1+dist)
+            data[label,color,'solid',1.6**(bin-1)].append(1+dist)
     graph_hist(data,
             "near_near",
-            bins=dist_bins(80),
+            bins=dist_bins(120),
             xlim=(1,30000),
             kind="cumulog",
-            label_len=True,
             normed=True,
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
