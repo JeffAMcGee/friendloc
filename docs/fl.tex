@@ -41,11 +41,11 @@ location-based services with more refined and accurate location estimates.
 
 
 
-\section{INTRODUCTION}
+\section{Introduction}
 
+put things in context
 
-
-Publicly available data.
+Publicly available data
 @mention
 efficient
 
@@ -64,15 +64,20 @@ The dotted black line was created by calculating the distance between random, un
 \end{figure}
 
 
-\section{RELATED WORK}
+\section{Related Work}
 \cite{scellato2011socio}
 \cite{scellato2010distance}
 \cite{backstrom2010find}
 \cite{cheng2010you}
+\cite{backstrom2008spatial}
+\cite{gilbert2009predicting}
+\cite{cranshaw2010bridging}
+\cite{java2007we}
+The triad paper?
 Gilbert ?
 
 
-\section{DATA COLLECTION}
+\section{Data Collection}
 We collecetd 
 
 social networking and blogging sites.
@@ -194,7 +199,7 @@ In Figure \ref{fig:DiffGnpGps}, we show the result of using the PLE to ignore us
 The solid black line represents the normal results of geocoding where the location error is less than 1000 miles for 88\% of the users.
 The cyan line represents what happens when we remove locations with a PLE greater than or equal to 1000 miles. Now, after removing only 6\% of the users, 93\% of them are within 1000 miles.
 
-\section{INVESTIGATION}
+\section{Investigation}
 Every user who has multiple contacts will have some people who are much
 closer than others. In order to estimate the locations of users, we would like
 to find out which users are most likely to live nearby.  In this section, we
@@ -337,29 +342,39 @@ We searched for a specific pattern in the social network of the reciprical frien
 We found this pattern in 57152 of the users in the training set. If a user had multiple instances of this pattern, we picked one of them randomly so that particular users would not bias the results.
 Since we only had friend and folllower information for at most seven reciprical friends per user, it is likely that this pattern is much more common, but the sample that we have is more than enough data to draw reasonable conclusions.
 
-In Figure \ref{fig:NearTriads}, we plot the results of this 
-We report one very simple result: if two users are close (within 10 miles),
-then their mutual friends probably live nearby.  Otherwise, it doesn't matter.
+In Figure \ref{fig:NearTriads}, we plot the results of these groups of users.
+For each of the "my" users and the "our" users, we put them into one of four logarithmically scaled bins based on their distance from the "you" user. Then we plot the CDF for the distance to "me" for each user in the set. This allows us to investigate the effect of mutual friendship on distance.
+We report one very simple result: if two of your friends are close (within 10 miles), then whether they know each other or not is strongly affects how close you are to them. If they are farther apart, it doesn't matter.
 
 \subsection{Does the type of triangle matter?}
 \begin{figure*}
 \centering
 \epsfig{file=triad_types.pdf, width=\linewidth}
 \caption{
+Comparison of various types of triangles.
 }
 \label{fig:TriadTypes}
 \end{figure*}
+In the previous section we looked at the relationships between groups of reciprical friends.
+In this section, we will look at the various types of triangles where at least one of the six possible directed edges is missing.
+For the geo-located users and their contacts, we had the user ids for up to 5000of their friends and followers. As a result, we could detect these triangles by looking at user ids even if we knew nothing about the third user in the set.
 
+For the geolocated user and his contact, we look at four types of triangles:
+\begin{description}
+\item[star] Both users follow somone. (This person is probably a star.)
+\item[fan] Someone follows both users. (This person is a fan of both users.)
+\item[path] The geo-located user follows someone who follows the contact.
+\item[loop] The contact follows someone who follows the geo-located user.
+\end{description}
 
-The number of triangles formed is NOT a function of the number of edges a user has; therefore talking about the ratio of people involved in a type of triangle is stupid.
+For each of the users and their four types of contacts, we examined their
+friends and followers to find these triangles.
+We ignore any triangles where both sides are reciprical friends, since these are relatively common, and were investigated in the previous section.
+Since the number of users who have the types of triangles is about the same magnitude as the number of users who do not have it, we investigate the presence or abscence of each of the four triangle types rather than the number of triagles or the ratio of one type of triangle to another.
 
-star
-mutual fan
-path
-loop 
-star v. non-star matters a lot for friend case, but not so much in others
-
-
+We find that these triangles are not useful for decscriminating between close and far users for the reciprical friend case, but they are more useful for other types of friendships.
+In general, the star case is the most common type of triangle, and it is also the least useful. This is particularly true in the just friends case where the with star and without star curves are close.
+The prescence or abscence of the triangles is the most significant for the just mentioned and just friend cases.
 
 \subsection{Does the number of friends and followers a person have affect how close they are?}
 
@@ -367,13 +382,15 @@ star v. non-star matters a lot for friend case, but not so much in others
 \centering
 \epsfig{file=local_all.pdf, width=\linewidth}
 \caption{
-\textsc{Do we want to show friend count?}
+
+\textsc{Do we want to show friend count or just follower count?}
 }
 \label{fig:LocalAll}
 \end{figure*}
 
 
-\section{RELATIONSHIP MODEL}
+\section{FriendlyLocation}
+\subsection{Model}
 \label{sec:model}
 
 Power law
@@ -383,10 +400,11 @@ Power law
 \caption{}
 \label{fig:EdgeTypesMdist}
 \end{figure}
+\subsection{Estimator}
 
 
 
-\section{EVALUATION}
+\section{Evaluation}
 \subsection{Procedure}
 The geolocated users we used to do the evalutation are less concerned about the
 privacy of their location information than the average twitter user.
@@ -436,7 +454,7 @@ FriendlyLocation (Simple) 0.512502755259
 Omniscient * 0.88851607847
 
 
-\section{FUTURE WORK}
+\section{Future Work}
 combine other factors
 
 \bibliographystyle{abbrv}
