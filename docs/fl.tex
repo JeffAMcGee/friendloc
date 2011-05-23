@@ -49,6 +49,10 @@ Publicly available data.
 @mention
 efficient
 
+
+Discuss bimodal distribution.
+talk about sections in document
+
 \begin{figure}
 \centering
 \epsfig{file=edge_types_norm.pdf, width=\linewidth}
@@ -80,10 +84,10 @@ In those platforms, it would be fairly straightforward to use that information i
 
 Any given contact can be categorized into precisely one of these four disjoint sets:
 \begin{description}
-\item[reciprocal friend (rfrd)] The geo-located user follows this user and is followed back.
-\item[just friend (jfrd)] The geo-located user follows this user and is not followed back.
-\item[just follower (jfol)]The geo-located user is followed by this user, but does not follow them.
-\item[just mentioned (jat)] The users do not follow each other, but the geo-located user mentioned the name of the other user in a tweet.
+\item[reciprocal friend] The geo-located user follows this user and is followed back.
+\item[just friend] The geo-located user follows this user and is not followed back.
+\item[just follower]The geo-located user is followed by this user, but does not follow them.
+\item[just mentioned] The users do not follow each other, but the geo-located user mentioned the name of the other user in a tweet.
 \end{description}
 
 We used Twitter's Streaming API to obtain 19877804 tweets that contain
@@ -111,7 +115,7 @@ We divided these geo-located users into groups based on the last digit of their 
 
 For all of the geo-located users who lived in the US, we used Twitter's API to download the users' friends, followers, and 100 most recent tweets.
 We also downloaded the profiles for up to 2000 friends, followers, and people they mention in their tweets. If they had over 2000, we chose a random sample of 2000 profiles that included at least 25 of each of the four categories listed below.
-From the profiles, we kept the users with a decodable location field and threw away the rest. From what was left, we randomly picked one contact from each of these four categories of contacts defined in the Introduction.
+From the profiles, we kept the users with a decodable location field and threw away the rest. From what was left, we randomly picked one Friend, one Follower, one Just Mentioned, and up to seven reciprical friends.
 For each of these contacts, we stored their friends, followers, and 100 most recent tweets.
 
 \subsection{Geocoding}
@@ -140,23 +144,6 @@ Originally, we planned to just use the users in the US, but we found that users
 in the US had friends outside of the US, so we need to estimate the quality of
 locations outside of the US as well.
 As a result, we trained on geographic data from around the world.
-
-We define the location error to be the distance between a user's home location and the result from the geocoder.
-The location error can vary from less than a mile to over ten thousand miles.
-We ran the geocoder on each user in the geocoding training group, and then grouped users based on the result of the geocoder.
-For the 3866 locations that had at least three users, we calculated the median location error for that location.
-Next, we grouped all of the locations that had the same type and had one or two users, and calculated the median error for the location type.
-We choose the median over average or standard deviation because those metrics are strongly affected by large outliers.
-We choose to make the cutoff three because that is the smallest value where the median is not just an average.
-Table \ref{tab:MedianLocErr} shows the median location error for a few example locations and location types.
-
-We now have a method to predict the quality of a coordinate returned by Gisgraphy.
-We define the predicted location error(PLE) for a given location to be median location error if it is one of the 3866 locations that had three users; otherwise, it is the median location error for the location's type.
-For example one user had "PDX,OR" in his location field. Gisgraphy identifies this as "Portland International Airport". Since it is not one of the most common locations, its PLE is determined by its place type to be 31 miles as seen in Table \ref{tab:MedianLocErr}.
-
-In Figure \ref{fig:DiffGnpGps}, we show the result of using the PLE to ignore users who have low quality locations such as "Pluto".
-The solid black line represents the normal results of geocoding where the location error is less than 1000 miles for 88\% of the users.
-The cyan line represents what happens when we remove locations with a PLE greater than or equal to 1000 miles. Now, after removing only 6\% of the users, 93\% of them are within 1000 miles.
 
 \begin{table}
 \centering
@@ -188,13 +175,33 @@ In the legend, the number in parenthesis is the number of users in that category
 \end{figure}
 
 
+\textsc{HAVERSINE!}
+
+We define the location error to be the distance between a user's home location and the result from the geocoder.
+The location error can vary from less than a mile to over ten thousand miles.
+We ran the geocoder on each user in the geocoding training group, and then grouped users based on the result of the geocoder.
+For the 3866 locations that had at least three users, we calculated the median location error for that location.
+Next, we grouped all of the locations that had the same type and had one or two users, and calculated the median error for the location type.
+We choose the median over average or standard deviation because those metrics are strongly affected by large outliers.
+We choose to make the cutoff three because that is the smallest value where the median is not just an average.
+Table \ref{tab:MedianLocErr} shows the median location error for a few example locations and location types.
+
+We now have a method to predict the quality of a coordinate returned by Gisgraphy.
+We define the predicted location error(PLE) for a given location to be median location error if it is one of the 3866 locations that had three users; otherwise, it is the median location error for the location's type.
+For example one user had "PDX,OR" in his location field. Gisgraphy identifies this as "Portland International Airport". Since it is not one of the most common locations, its PLE is determined by its place type to be 31 miles as seen in Table \ref{tab:MedianLocErr}.
+
+In Figure \ref{fig:DiffGnpGps}, we show the result of using the PLE to ignore users who have low quality locations such as "Pluto".
+The solid black line represents the normal results of geocoding where the location error is less than 1000 miles for 88\% of the users.
+The cyan line represents what happens when we remove locations with a PLE greater than or equal to 1000 miles. Now, after removing only 6\% of the users, 93\% of them are within 1000 miles.
 
 \section{INVESTIGATION}
 Every user who has multiple contacts will have some people who are much
 closer than others. In order to estimate the locations of users, we would like
 to find out which users are most likely to live nearby.  In this section, we
 investigate how various types of contacts correlate with proximity.
-All of the analysis in this section was done on the 104214 users with a home location inside the US bounding box. We used their friends, followers, and the people they mention with a PLE of less than 1000 miles.
+All of the analysis in this section was done on the 104214 users with a home
+location inside the US bounding box. We used their friends, followers, and the
+people they mention with a PLE of less than 1000 miles.
 
 \subsection{What type of contact is closest?}
 \begin{figure}
@@ -203,83 +210,136 @@ All of the analysis in this section was done on the 104214 users with a home loc
 \caption{
 CDF of distance from geo-located users to users they have some contact
 with.
-The curves in Figure \ref{fig:EdgeTypes} are the integrals of these curves.
+The curves in this figure are the integrals of the curve in Figure \ref{fig:EdgeTypes}.
+\textsc{Do we need this figure?}
 }
 \label{fig:EdgeTypesCum}
 \end{figure}
-In Figure \ref{fig:EdgeTypesCum} we look at the cumulative distribution function(CDF) of the distance between a geo-located user and several types of contacts.
-Reciprocal friends are the closest, followed by followers, friends, and finally users who are just mentioned.
-While it may seem that since being followed by someone and following someone should be identical, they are not.
-Famous users on Twitter often have large numbers of followers, but they do not follow a large number of users back.
-Since the geo-located user was selected randomly, they are usually an average user and not a celebrity.
-If they follow someone, it might be a celebrity; however, if someone follows them, it is probably someone who knows them.
-
-There is a strange corner in the top right corner of all the graphs at approximately 2500 miles. This is caused by the large population living on the coast, and the tiny number of people posting tweets from the Atlantic and pacific oceans.
-
-\subsection{What is the distribution of related users?}
-Instead of looking at the CDF, we will now turn our attention to Figure
-\ref{fig:EdgeTypes}: a smoothed histogram of the distance to related users.
-Distance is once again plotted on a logarithmic scale to show both local and
+In Figure \ref{fig:EdgeTypesCum} we look at the cumulative distribution
+function(CDF) of the distance between a geo-located user and several types of
+contacts.
+Distance is plotted on a logarithmic scale to show both local and
 global effects.
+
+In general, reciprocal friends are the closest, followed by followers, friends,
+and finally users who are just mentioned.
+34\% of reciprical friends live within 25 miles while only 18\% of users who are
+just mentioned live within that radius.
+While it may seem that since being followed by someone and following someone
+should be identical, they are not.
+Famous users on Twitter often have large numbers of followers, but they do not
+follow a large number of users back.
+Since the geo-located user was selected randomly, they are usually an average
+user and not a celebrity.
+If they follow someone, it might be a celebrity; however, if someone follows
+them, it is probably someone who knows them.
+
+There is a strange corner in the top right corner of all the graphs at
+approximately 2500-2750 miles. This is caused by the large population living on the
+coast, and the miniscule number of people posting tweets from the Atlantic and
+pacific oceans.
+
+\subsection{What is the distribution of contacts?}
+To understand the distribution of, we created a smoothed histogram 
+First, we sorted the distances into 200 logarithmically scaled bins (40 bins for each power of 10). Next, we convolved it with a seven element triangular window to smooth out the curve.
+We used this procedure to plot each of the curves in Figure \ref{fig:EdgeTypes}.
+
 All four types of contacts follow roughly the same bimodal distribution:
 one peak around 10 miles from people who live nearby, and another peak around
-2500 miles.
-\textsc{reference chart in bracstrom paper here}
+2750 miles.
 
-Notice how it has a similar shape to the other curves for distances greater than 100 miles.
-
-The red line in Figure \ref{fig:EdgeTypes} is based on the distance between
-89655 geo-located users and their reciprocal friends. We shuffled the
-geo-located users so that they would be paired with someone who was probably
-not their friend and then calculated the distance between them. The black line
+We shuffled the geo-located users and their reciprical friends so that they
+would be paired with someone who was probably not their friend and then
+calculated the distance between the pair.
+The dotted black line
 shows the results of this procedure. For distances greater than around five
 hundred miles, the red line and the black line have roughly the same shape,
-which suggests that people when people are far away, their physical location no longer matters.
+which suggests that people when people are far away, their physical location no
+longer matters.
+The random line also has a similar shape to the other curves for distances
+greater than 100 miles.
 
 One reasonable explanation for this is that Twitter is not just a social
 network; it is also an news distribution network.  This bimodal distribution
 suggests that users have two types of contacts: people who they met in
 real life, and people who they met online or know about via mainstream media.
 The former group is useful for predicting location and the latter group is not.
-
+In section \ref{sec:model}, we use this idea that there are two types of
+contacts to build our model.
 
 \subsection{Are users closer to people they communicate with?}
 \begin{figure*}
 \centering
 \epsfig{file=com_types.pdf, width=\linewidth}
 \caption{
+CDF of the distance between a geo-located user and various types of contacts ploted on a logarithmic scale.
+In these graphs, "I" refers to the geo-located user. "You" refers to their contact. 
 }
 \label{fig:ComTypes}
 \end{figure*}
+In Figure \ref{fig:ComTypes}, we investigate the relationship between various 
+types of communication patterns.
+Each of the four graphs visualize the same number of edges on the social graph with the exception of the Just Mentioned graph. Approximately one-third of our geo-located users never mentioned someone who was not a friend or a follower.
 
-yes
+In almost every case, increased communication increases the probability that two users live near each other. There is one exception: when an average user mentions someone they follow who does not follow them back, it has no effect.
+In other words, if a random user mentions a celebrity who does not bother to reply, they probably do not live in the same area. This can be seen by the blue and green lines that are right on top of each other in the Just Friend graph.
+On the other hand, in the rare event that someone who is just a friend replies
+to their follower, then the probablity that they live near each other is much higiher.
+
+The weakest type of contact for users who are just mentioned, but never replied to, but if the person is mentioned, then 31\% of users with no friend/follow relationship who have a conversation live within 25 miles.
+31\% of reciprical friends who ignore each other live within 25 miles.
+Unsurprisingly, the strongest type of connection is reciprical friends who communicate.
 
 \subsection{Are users closer to private accounts?}
 \begin{figure}
 \centering
 \epsfig{file=edge_types_prot.pdf, width=\linewidth}
-\caption{ Solid lines represent protected accounts, and dashed lines represent
+\caption{Solid lines represent protected accounts, and dashed lines represent
 public accounts. If a user follows a protected account, they tend to be closer.}
 \label{fig:EdgeTypesProt}
 \end{figure}
 
 Like many social networks, Twitter allows users to mark their account as protected. The specifics differ from network to network, but in Twitter's case a user has to be approved to follow a protected user.
 In most of this section we are only concerned with public accounts, but in this subsection, we investigate how protected accounts compare to public accounts.
+In the case of protected accounts on Twitter, we can download basic information
+about their profile such as their location and the number of friends and
+followers, but we cannot get their friends list, followers list, or the text of their tweets.
 
 The most dramatic difference between private and public occurs if a user follows a protected account.
 Since users generally only allow people they know to follow a protected account, this brings the users almost as close together as if they were reciprocal friends. On the other hand, if a protected account follows the geo-located user, this is almost insignificant.
 
-One possible explanation for the \textsc{red lines crisscrossing} is that a protected account is more likely to live in a rural, unpopulated area. \textsc{cite Gilbert}
+\textsc{One possible explanation for the red lines crisscrossing is that a
+protected account is more likely to live in a rural, unpopulated area. cite
+Gilbert}
 
-\subsection{If two mutual friends live near each other, does that increase the chance that they live near you?}
-sometimes
+\subsection{If two of your friends live near each other, does that increase the chance that they live near you?}
 \begin{figure}
 \centering
 \epsfig{file=near_triads.pdf, width=\linewidth}
 \caption{
+Comparison between distance to a mutual friend, labeled "our", and someone who is not a mutual friend, labeled "my".
 }
 \label{fig:NearTriads}
 \end{figure}
+In this section we turn our attention to triangles of users.
+In our first attempt at analyizing the relationship between the distances of the sides of a triangle, 
+Unfortuanately, it is fairly simple to show that if two users are 1000 miles apart, then the third member of the triangle has to be at least 500 miles from one of the other two.
+
+Since this isn't a useful result, we designed a more complex experiment to analyze the relationship between the sides of the triangle.
+We searched for a specific pattern in the social network of the reciprical friends.  We needed four users who fit the following criteria:
+\begin{itemize}
+\item "me" is the geo-located user
+\item "you" is reciprical friends with "me"
+\item "my" has no relationship with "you" and is reciprical friends with "me"
+\item "our" is reciprical friends with both "me" and "you"
+\end{itemize}
+
+We found this pattern in 57152 of the users in the training set. If a user had multiple instances of this pattern, we picked one of them randomly so that particular users would not bias the results.
+Since we only had friend and folllower information for at most seven reciprical friends per user, it is likely that this pattern is much more common, but the sample that we have is more than enough data to draw reasonable conclusions.
+
+In Figure \ref{fig:NearTriads}, we plot the results of this 
+We report one very simple result: if two users are close (within 10 miles),
+then their mutual friends probably live nearby.  Otherwise, it doesn't matter.
 
 \subsection{Does the type of triangle matter?}
 \begin{figure*}
@@ -307,10 +367,11 @@ star v. non-star matters a lot for friend case, but not so much in others
 \centering
 \epsfig{file=local_all.pdf, width=\linewidth}
 \caption{
-Hi!
+\textsc{Do we want to show friend count?}
 }
 \label{fig:LocalAll}
 \end{figure*}
+
 
 \section{RELATIONSHIP MODEL}
 \label{sec:model}
