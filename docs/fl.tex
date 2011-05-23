@@ -381,26 +381,45 @@ The prescience or absence of the triangles is the most significant for the just 
 \centering
 \epsfig{file=local_all.pdf, width=\linewidth}
 \caption{
-Hi!
-%\textsc{Do we want to show friend count or just follower count?}
+This shows the fraction of users who live within 25 miles for various contact types. Moving from right to left within a chart shows the effects of increasing numbers of friends or followers.
 }
 \label{fig:LocalAll}
 \end{figure*}
 
+Since the primary goal of this research is to predict the location of users, we focus our attention on the number of friends and followers a contact has rather than the counts for the geo-located user. 
+Users are split into bins based on their number of at 4, 16, 64, 256, 1024, and 4096.
+We use this to create a histogram where the height of the bin represents the fraction of users who live within 25 miles, and the width of the bin is the number of users in the bin.
+In each graph, the red area must be equal to the blue area since the same set of users was used to create each of them.
+
+In general, people who are more promiscuous followers and friends are less likely to live nearby. This makes sense because it is easy to meet 5 Twitter users in real life, but very few people know 500 twitter users who live in the same town.
+
+Mainstream media and celebrity accounts such as the New York Times and Lady Gaga have millions of followers while normal users rarely have more than a few hundred.
+Follower count is a good way to distinguish celebrity and news accounts which are useless for location prediction.
+For example, if a just friend contact has fewer than or equal to 64 followers, there is almost a fifty percent chance that the users live within 25 miles. On the other hand, if the just friend contact has more than 4096 followers, then there is less than a ten percent chance that they live within 25 miles.
 
 \section{FriendlyLocation}
-HOWDY!
+Based on the questions we answerd in the previous section, we have enough
+information to build a system for location prediction, which we call FriendlyLocation.
+Since the location predictions system will be run on a large number of of users, we need it to be fast and scalable.
+For the purposes of location prediction, we limit ourselves to just four factors per edge: the type of contact, if the target user mentioned the contact, the number of followers the contact has, and the location error of the contact.
+We do not use any information about the contact's friends, followers, or who they mentioned since the amount of data this involves grows quadratically with the number of contacts.
+Most of the gains that we get from looking at triangles are also visible by looking at the count of followers.
+We use the number of followers for a contact instead of the number of friends since it was more significant as seen in Figure \ref{fig:LocalAll}.
+
 \subsection{Model}
 \label{sec:model}
 
-Power law
 \begin{figure}
 \centering
 \epsfig{file=edge_types_mdist.pdf, width=\linewidth}
 \caption{}
 \label{fig:EdgeTypesMdist}
 \end{figure}
-\subsection{Estimator}
+
+Power law
+
+
+\subsection{System}
 
 
 
