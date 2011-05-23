@@ -78,12 +78,12 @@ Gilbert ?
 
 
 \section{Data Collection}
-We collecetd 
+We collected 
 
-social networking and blogging sites.
+social networking and bloging sites.
 
 We define the set of the user's friends, followers, and the users who they mention to be their contacts.
-Twitter does not provide a mechanism to deteremine who mentioned a given user, and as a result, we do not consider these users to be contacts.
+Twitter does not provide a mechanism to determine who mentioned a given user, and as a result, we do not consider these users to be contacts.
 In some blogging platforms, such as Tumblr, it is relatively easy to find the communication edges that point back toward a user.
 In those platforms, it would be fairly straightforward to use that information in location prediction.
 
@@ -120,7 +120,7 @@ We divided these geo-located users into groups based on the last digit of their 
 
 For all of the geo-located users who lived in the US, we used Twitter's API to download the users' friends, followers, and 100 most recent tweets.
 We also downloaded the profiles for up to 2000 friends, followers, and people they mention in their tweets. If they had over 2000, we chose a random sample of 2000 profiles that included at least 25 of each of the four categories listed below.
-From the profiles, we kept the users with a decodable location field and threw away the rest. From what was left, we randomly picked one Friend, one Follower, one Just Mentioned, and up to seven reciprical friends.
+From the profiles, we kept the users with a decodable location field and threw away the rest. From what was left, we randomly picked one Friend, one Follower, one Just Mentioned, and up to seven reciprocal friends.
 For each of these contacts, we stored their friends, followers, and 100 most recent tweets.
 
 \subsection{Geocoding}
@@ -228,7 +228,7 @@ global effects.
 
 In general, reciprocal friends are the closest, followed by followers, friends,
 and finally users who are just mentioned.
-34\% of reciprical friends live within 25 miles while only 18\% of users who are
+34\% of reciprocal friends live within 25 miles while only 18\% of users who are
 just mentioned live within that radius.
 While it may seem that since being followed by someone and following someone
 should be identical, they are not.
@@ -241,7 +241,7 @@ them, it is probably someone who knows them.
 
 There is a strange corner in the top right corner of all the graphs at
 approximately 2500-2750 miles. This is caused by the large population living on the
-coast, and the miniscule number of people posting tweets from the Atlantic and
+coast, and the minuscule number of people posting tweets from the Atlantic and
 pacific oceans.
 
 \subsection{What is the distribution of contacts?}
@@ -253,7 +253,7 @@ All four types of contacts follow roughly the same bimodal distribution:
 one peak around 10 miles from people who live nearby, and another peak around
 2750 miles.
 
-We shuffled the geo-located users and their reciprical friends so that they
+We shuffled the geo-located users and their reciprocal friends so that they
 would be paired with someone who was probably not their friend and then
 calculated the distance between the pair.
 The dotted black line
@@ -277,7 +277,7 @@ contacts to build our model.
 \centering
 \epsfig{file=com_types.pdf, width=\linewidth}
 \caption{
-CDF of the distance between a geo-located user and various types of contacts ploted on a logarithmic scale.
+CDF of the distance between a geo-located user and various types of contacts piloted on a logarithmic scale.
 In these graphs, "I" refers to the geo-located user. "You" refers to their contact. 
 }
 \label{fig:ComTypes}
@@ -289,18 +289,17 @@ Each of the four graphs visualize the same number of edges on the social graph w
 In almost every case, increased communication increases the probability that two users live near each other. There is one exception: when an average user mentions someone they follow who does not follow them back, it has no effect.
 In other words, if a random user mentions a celebrity who does not bother to reply, they probably do not live in the same area. This can be seen by the blue and green lines that are right on top of each other in the Just Friend graph.
 On the other hand, in the rare event that someone who is just a friend replies
-to their follower, then the probablity that they live near each other is much higiher.
+to their follower, then the probability that they live near each other is much higher.
 
 The weakest type of contact for users who are just mentioned, but never replied to, but if the person is mentioned, then 31\% of users with no friend/follow relationship who have a conversation live within 25 miles.
-31\% of reciprical friends who ignore each other live within 25 miles.
-Unsurprisingly, the strongest type of connection is reciprical friends who communicate.
+31\% of reciprocal friends who ignore each other live within 25 miles.
+Unsurprisingly, the strongest type of connection is reciprocal friends who communicate.
 
 \subsection{Are users closer to private accounts?}
 \begin{figure}
 \centering
 \epsfig{file=edge_types_prot.pdf, width=\linewidth}
-\caption{Solid lines represent protected accounts, and dashed lines represent
-public accounts. If a user follows a protected account, they tend to be closer.}
+\caption{Solid lines represent protected accounts, and dashed lines represent public accounts. If a user follows a protected account, they tend to be closer.}
 \label{fig:EdgeTypesProt}
 \end{figure}
 
@@ -327,20 +326,20 @@ Comparison between distance to a mutual friend, labeled "our", and someone who i
 \label{fig:NearTriads}
 \end{figure}
 In this section we turn our attention to triangles of users.
-In our first attempt at analyizing the relationship between the distances of the sides of a triangle, 
-Unfortuanately, it is fairly simple to show that if two users are 1000 miles apart, then the third member of the triangle has to be at least 500 miles from one of the other two.
+In our first attempt at analyzing the relationship between the distances of the sides of a triangle, 
+Unfortunately, it is fairly simple to show that if two users are 1000 miles apart, then the third member of the triangle has to be at least 500 miles from one of the other two.
 
 Since this isn't a useful result, we designed a more complex experiment to analyze the relationship between the sides of the triangle.
-We searched for a specific pattern in the social network of the reciprical friends.  We needed four users who fit the following criteria:
+We searched for a specific pattern in the social network of the reciprocal friends.  We needed four users who fit the following criteria:
 \begin{itemize}
 \item "me" is the geo-located user
-\item "you" is reciprical friends with "me"
-\item "my" has no relationship with "you" and is reciprical friends with "me"
-\item "our" is reciprical friends with both "me" and "you"
+\item "you" is reciprocal friends with "me"
+\item "my" has no relationship with "you" and is reciprocal friends with "me"
+\item "our" is reciprocal friends with both "me" and "you"
 \end{itemize}
 
 We found this pattern in 57152 of the users in the training set. If a user had multiple instances of this pattern, we picked one of them randomly so that particular users would not bias the results.
-Since we only had friend and folllower information for at most seven reciprical friends per user, it is likely that this pattern is much more common, but the sample that we have is more than enough data to draw reasonable conclusions.
+Since we only had friend and follower information for at most seven reciprocal friends per user, it is likely that this pattern is much more common, but the sample that we have is more than enough data to draw reasonable conclusions.
 
 In Figure \ref{fig:NearTriads}, we plot the results of these groups of users.
 For each of the "my" users and the "our" users, we put them into one of four logarithmically scaled bins based on their distance from the "you" user. Then we plot the CDF for the distance to "me" for each user in the set. This allows us to investigate the effect of mutual friendship on distance.
@@ -355,13 +354,13 @@ Comparison of various types of triangles.
 }
 \label{fig:TriadTypes}
 \end{figure*}
-In the previous section we looked at the relationships between groups of reciprical friends.
+In the previous section we looked at the relationships between groups of reciprocal friends.
 In this section, we will look at the various types of triangles where at least one of the six possible directed edges is missing.
 For the geo-located users and their contacts, we had the user ids for up to 5000of their friends and followers. As a result, we could detect these triangles by looking at user ids even if we knew nothing about the third user in the set.
 
-For the geolocated user and his contact, we look at four types of triangles:
+For the geo-located user and his contact, we look at four types of triangles:
 \begin{description}
-\item[star] Both users follow somone. (This person is probably a star.)
+\item[star] Both users follow someone. (This person is probably a star.)
 \item[fan] Someone follows both users. (This person is a fan of both users.)
 \item[path] The geo-located user follows someone who follows the contact.
 \item[loop] The contact follows someone who follows the geo-located user.
@@ -369,12 +368,12 @@ For the geolocated user and his contact, we look at four types of triangles:
 
 For each of the users and their four types of contacts, we examined their
 friends and followers to find these triangles.
-We ignore any triangles where both sides are reciprical friends, since these are relatively common, and were investigated in the previous section.
-Since the number of users who have the types of triangles is about the same magnitude as the number of users who do not have it, we investigate the presence or abscence of each of the four triangle types rather than the number of triagles or the ratio of one type of triangle to another.
+We ignore any triangles where both sides are reciprocal friends, since these are relatively common, and were investigated in the previous section.
+Since the number of users who have the types of triangles is about the same magnitude as the number of users who do not have it, we investigate the presence or absence of each of the four triangle types rather than the number of triangles or the ratio of one type of triangle to another.
 
-We find that these triangles are not useful for decscriminating between close and far users for the reciprical friend case, but they are more useful for other types of friendships.
+We find that these triangles are not useful for discriminating between close and far users for the reciprocal friend case, but they are more useful for other types of friendships.
 In general, the star case is the most common type of triangle, and it is also the least useful. This is particularly true in the just friends case where the with star and without star curves are close.
-The prescence or abscence of the triangles is the most significant for the just mentioned and just friend cases.
+The prescience or absence of the triangles is the most significant for the just mentioned and just friend cases.
 
 \subsection{Does the number of friends and followers a person have affect how close they are?}
 
@@ -382,14 +381,15 @@ The prescence or abscence of the triangles is the most significant for the just 
 \centering
 \epsfig{file=local_all.pdf, width=\linewidth}
 \caption{
-
-\textsc{Do we want to show friend count or just follower count?}
+Hi!
+%\textsc{Do we want to show friend count or just follower count?}
 }
 \label{fig:LocalAll}
 \end{figure*}
 
 
 \section{FriendlyLocation}
+HOWDY!
 \subsection{Model}
 \label{sec:model}
 
@@ -406,11 +406,11 @@ Power law
 
 \section{Evaluation}
 \subsection{Procedure}
-The geolocated users we used to do the evalutation are less concerned about the
+The geo-located users we used to do the evaluation are less concerned about the
 privacy of their location information than the average twitter user.
 As a result, they tended to give better information in the location field of
 their user profile than the average twitter user.
-For this evaluation we choose to ignore the contents of the geolocated user's
+For this evaluation we choose to ignore the contents of the geo-located user's
 location fields.
 
 We evaluated the FriendlyLocation system against 40831 of the 40861 users from the evaluation group.
@@ -419,7 +419,7 @@ followers had decodable locations.
 (When we initially created the evaluation
 set we removed users with both zero friends and zero followers.)
 
-We investigate several implementations of the FriendlyLocation sytem:
+We investigate several implementations of the FriendlyLocation system:
 \begin{description}
 \item[Simple] This system treats all contacts equally---we ignore their median location error and any information about what type of contact it is.
 \item[Location Error] This shows the value of calculating the median location error.
@@ -427,7 +427,7 @@ We investigate several implementations of the FriendlyLocation sytem:
 \item[Full] This is the system described in the previous section.
 \end{description}
 
-In adddition to using the FriendlyLocation system as described in the previous section, we created a few baseline location predictors:
+In addition to using the FriendlyLocation system as described in the previous section, we created a few baseline location predictors:
 \begin{description}
 \item[Median] Finds the median of the latitude and the median of the longitude of the user's contacts.
 \item[Mode] Finds the most common location of the user's contacts, and breaks ties by picking one randomly.
