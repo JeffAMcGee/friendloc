@@ -291,6 +291,8 @@ def compare_edge_types(cmd=""):
                 if not cuml and not mdist:
                     dist+=1
                 data[(label,color,'dashed' if prot else 'solid')].append(dist)
+    for k,v in data.iteritems():
+        print k,sum(1.0 for x in v if x<25)/len(v) 
     if not cuml and not mdist:
         rands = 1 + shuffled_dists(edges)
         scaled_rands = [r if random.random()<.459 else 40000 for r in rands]
@@ -598,6 +600,8 @@ def com_types():
         data = defaultdict(list)
         for d in simp:
             data[d['com_type']].append(d['dist'])
+        for k,v in data.iteritems():
+            print edge_type,k,sum(1.0 for x in v if x<25)/len(v) 
         graph_hist(data, "", ax=ax,
                 legend_loc=2,
                 bins=dist_bins(80),
