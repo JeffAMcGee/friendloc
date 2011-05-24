@@ -30,9 +30,9 @@ def eval_block(prefix, block):
     predictors = (
         ('Mode', 'samp', Mode()),
         ('Median', 'samp', Median()),
-        ('Omniscient *', 'rel', Omniscient()),
-        ('FriendlyLocation (Full) *', 'rel', FriendlyLocation(True,True)),
-        ('FriendlyLocation (Relationship Types) *', 'rel', FriendlyLocation(True,False)),
+        ('Omniscient *', 'pick', Omniscient()),
+        ('FriendlyLocation (Full) *', 'pick', FriendlyLocation(True,True)),
+        ('FriendlyLocation (Relationship Types) *', 'pick', FriendlyLocation(True,False)),
         ('FriendlyLocation (Location Error)', 'samp', FriendlyLocation(False,True)),
         ('FriendlyLocation (Simple)', 'samp', FriendlyLocation(False,False)),
     ) 
@@ -100,8 +100,8 @@ class FriendlyLocation():
                 rel['inner'] = .133
                 rel['a'] = -1.423
                 rel['e_b'] = math.e**-2.076
-                rel['rand'] = .568/2750/2750
-            rel['md_fixed'] = max(5,rel['mdist']) if self.use_mdist else 5
+                rel['rand'] = .568/2750
+            rel['md_fixed'] = max(10,rel['mdist']) if self.use_mdist else 10
 
         best, unused = max(zip(self.rels,user['dists']), key=self._user_prob)
         return best
@@ -113,4 +113,4 @@ class FriendlyLocation():
     def _edge_prob(self, edge, dist):
         mdist = edge['md_fixed']
         local = edge['inner'] if dist<mdist else edge['e_b'] * ((dist/mdist)**edge['a']) 
-        return math.log(local/mdist/mdist+edge['rand'])
+        return math.log(local/mdist+edge['rand'])
