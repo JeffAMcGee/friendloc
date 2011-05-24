@@ -5,7 +5,7 @@
 }
 \numberofauthors{1} 
 \author{
-    \alignauthor Jeffrey McGee, James Caverlee, Zhiyan Cheng\\
+    \alignauthor Jeffrey McGee, James Caverlee, Zhiyuan Cheng\\
     \affaddr{Department of Computer Science and Engineering, Texas A\&M
     University} \\
     \affaddr{ College Station, TX 77845 USA} \\
@@ -44,13 +44,20 @@ location-based services with more refined and accurate location estimates.
 \section{Introduction}
 
 put things in context
+growth of social networking sites
 
-Publicly available data
-@mention
+we download Publicly available data
+should we explain @mention, friend and follower?
+application to other social networking and bloging sites.
+
+Some types of relationships are more likely to live near each other than other relationships.
+In figure \ref{fig:EdgeTypes}, we show four different types of relationships in a histogram.
+
+Discuss bimodal distribution.
+
 efficient
 
 
-Discuss bimodal distribution.
 talk about sections in document
 
 \begin{figure}
@@ -69,7 +76,7 @@ The dotted black line was created by calculating the distance between random, un
 \cite{scellato2010distance}
 \cite{backstrom2010find}
 \cite{cheng2010you}
-\cite{backstrom2008spatial}
+\cite{backstrom2008spatial} spatial search engine queries
 \cite{gilbert2009predicting}
 \cite{cranshaw2010bridging}
 \cite{java2007we}
@@ -78,10 +85,8 @@ Gilbert ?
 
 
 \section{Data Collection}
-We collected 
-
-social networking and bloging sites.
-
+In order to investigate the relationship between distance and the various types of relationships on a social network we collected data from Twitter.
+Before we go into the details of the data collection, we will define a few terms to simplify the process of explaining how the data was collected.
 We define the set of the user's friends, followers, and the users who they mention to be their contacts.
 Twitter does not provide a mechanism to determine who mentioned a given user, and as a result, we do not consider these users to be contacts.
 In some blogging platforms, such as Tumblr, it is relatively easy to find the communication edges that point back toward a user.
@@ -398,7 +403,7 @@ Follower count is a good way to distinguish celebrity and news accounts which ar
 For example, if a just friend contact has fewer than or equal to 64 followers, there is almost a fifty percent chance that the users live within 25 miles. On the other hand, if the just friend contact has more than 4096 followers, then there is less than a ten percent chance that they live within 25 miles.
 
 \section{FriendlyLocation}
-Based on the questions we answerd in the previous section, we have enough
+Based on the questions we answered in the previous section, we have enough
 information to build a system for location prediction, which we call FriendlyLocation.
 Since the location predictions system will be run on a large number of of users, we need it to be fast and scalable.
 For the purposes of location prediction, we limit ourselves to just four factors per edge: the type of contact, if the target user mentioned the contact, the number of followers the contact has, and the location error of the contact.
@@ -422,10 +427,10 @@ In the previous sections we looked at the probability that a contact lived a cer
 While contacts with a small location error are likely to live quite near the target user, contacts with a larger location error could live farther away. 
 We divide the distance between the target user and their contact by the contact's location error to create Figure \ref{fig:EdgeTypesMdist}, which shows the probability that a contact lives at a spot.
 
-Based on this graph, we assume that any given edge will fit into one of three catagories: a local user that is closer than the predicted location error and is uniformly distributed, a nearby user whose relationship was formed by meeting in person and fits a power law with the distance, or a user whose connection is not related to geography, and is distributed based on the real-world population distrubution.
+Based on this graph, we assume that any given edge will fit into one of three categories: a local user that is closer than the predicted location error and is uniformly distributed, a nearby user whose relationship was formed by meeting in person and fits a power law with the distance, or a user whose connection is not related to geography, and is distributed based on the real-world population distribution.
 For each of the four types of contacts, we plot two gray lines on the graph that represent the first two categories.
 The horizontal lines are not best-fit lines; these lines represent the ratio of pairs of users with a distance less than the predicted error to the total number of pairs of that contact type. 
-For example, almost 20\% of reciprical friends live closer to each other than
+For example, almost 20\% of reciprocal friends live closer to each other than
 the predicted location error of the contact. This is the top gray line on
 \ref{fig:EdgeTypesMdist}.
 The diagonal line is a best fit line for the curve where
@@ -444,12 +449,12 @@ When this model is created, it assumes that none of the randomly located users a
 \subsection{System}
 We used this model to build a Maximum Likelihood Estimator.
 The system trained on 27,251,927 edges from users in the training set to their contacts.
-The edges were split into the 14 categories seen in Figure {fig:LocalAll}, and then further split based on the follower count. For each of these groups, we calcualted \(l\), did a least-squares fit to find \(a\) and \(b\), and used that to calcualate \(r\).
+The edges were split into the 14 categories seen in Figure {fig:LocalAll}, and then further split based on the follower count. For each of these groups, we calculated \(l\), did a least-squares fit to find \(a\) and \(b\), and used that to calculate \(r\).
 In other words, we calculated \(l\), \(a\), \(b\), and \(r\) for each of the red boxes seen in Figure \ref{fig:LocalAll}.
 
 We assume that the randomly located users are uniformly distributed with
 distances between 0 and \(c\). We choose \(c\) to be 2750 miles Which is
-approximatly the distance from one corner of the U.S. to the other. The value of this parameter has very litte affect on the results except in cases where the distance is large.
+approximately the distance from one corner of the U.S. to the other. The value of this parameter has very little affect on the results except in cases where the distance is large.
 Based on the model from the previous section, the probability that a user is at a specific distance, \(d\), is given by the following formula:
 \begin{displaymath}
     p(d) = 
@@ -462,7 +467,7 @@ The probability that a target user is at a given point can be found by calculati
 
 We use this to create a simple procedure for estimating the location for a user:
 \begin{enumerate}
-\item Pick up to 100 of the user's contacts. (They can either be selected randomly or the more siginificant edges can be choosen.)
+\item Pick up to 100 of the user's contacts. (They can either be selected randomly or the more significant edges can be chosen.)
 \item Geocode the location field and calculate the the predicted error for each of the contacts.
 \item Ignore any contacts who have no decodable location information.
 \item For each of the locations where a contact is calculate the probability that the target user lives there using the maximum likelihood estimator.
@@ -489,7 +494,7 @@ We investigate several implementations of the FriendlyLocation system:
 \begin{description}
 \item[Simple] This system treats all contacts equally---we ignore their median location error and any information about what type of contact it is. Users are selected randomly and we use the same parameters for all the users.
 \item[Location Error] This shows the value of calculating the median location error. Users are selected randomly.
-\item[Relationship Types] This shows the value of treating users differently. Users who are more likely to live near the target user (such as reciprical friends are choosen first).
+\item[Relationship Types] This shows the value of treating users differently. Users who are more likely to live near the target user (such as reciprocal friends are chosen first).
 \item[Full] This is the system described in the previous section. It selects users based on relationship type, uses the parameters from the training, and uses
 prediction location error to evaluate quality of the contact.
 \end{description}
@@ -506,7 +511,7 @@ In addition to using the FriendlyLocation system as described in the previous se
 \centering
 \epsfig{file=final_results.pdf, width=\linewidth}
 \caption{
-CDF of the error of various predictors. Predictors marked with an astrisk (*)
+CDF of the error of various predictors. Predictors marked with an asterisk (*)
 did not use randomly selected contacts.
 }
 \label{fig:FinalResults}
@@ -514,7 +519,7 @@ did not use randomly selected contacts.
 
 In Figure \ref{fig:FinalResults} we show a comparison to the results from the 
 different predictors.
-Our Full FriendlyLocation system predicts the loction within 25 miles 63\% of
+Our Full FriendlyLocation system predicts the location within 25 miles 63\% of
 the time.
 Unfortunately, when the predictor system is wrong, it can be very wrong.
 Often when it would pick not just the wrong city, but the wrong side of the
@@ -538,15 +543,16 @@ improving the results of the predictor, and using the predicted locations in
 other research projects.
 
 One way to improve this predictor is to combine tie strength and the social
-graph with other factors such as the words users choose to use as described by Cheng \ref{cheng2010you}.
-It could be useful for the predictor to return not just a loction, but an
+graph with other factors such as the words users choose to use as described by
+Cheng \cite{cheng2010you}.
+It could be useful for the predictor to return not just a location, but an
 estimate of the quality of the prediction.  In this work we only considered
 users who have a well-defined location. The system could identify users
 who do not have meaningful locations such as people who constantly travel.
 
 Finally, high-quality geographic information opens up new avenues for research.
 With geographic location of users, we can cluster users and find local conversations.
-It also allows businesses to provide hyperlocal content and services.
+It also allows businesses to provide hyper-local content and services.
 \bibliographystyle{abbrv}
 \bibliography{fl} 
 \end{document}
