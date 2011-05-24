@@ -412,15 +412,42 @@ We use the number of followers for a contact instead of the number of friends si
 \begin{figure}
 \centering
 \epsfig{file=edge_types_mdist.pdf, width=\linewidth}
-\caption{}
+\caption{Probability that a user lives at a distance. The distance is scaled by the predicted location error.}
 \label{fig:EdgeTypesMdist}
 \end{figure}
 
-Power law
+In this section we build a model for the probability that a user, who we refer to as the target user, lives at a specific location given the approximate location of his contacts.
+In the previous sections we looked at the probability that a contact lived a certain distance from a given user. Now we wish to look at the probability that the user lives at a specific location. Since the circumference of a circle grows linearly with the radius of a circle, the land area at a certain distance also grows. To compensate for this we can divide the number of users at a distance by the distance to determine the probability that a user lives at a point at a given distance.
+
+While contacts with a small location error are likely to live quite near the target user, contacts with a larger location error could live farther away. 
+We divide the distance between the target user and their contact by the contact's location error to create Figure \ref{fig:EdgeTypesMdist}, which shows the probability that a contact lives at a spot.
+
+Based on this graph, we assume that any given edge will fit into one of three catagories: a local user that is closer than the predicted location error and is uniformly distributed, a nearby user whose relationship was formed by meeting in person and fits a power law with the distance, or a user whose connection is not related to geography, and is distributed based on the real-world population distrubution.
+For each of the four types of contacts, we plot two gray lines on the graph that represent the first two categories.
+The horizontal lines are not best-fit lines; these lines represent the ratio of pairs of users with a distance less than the predicted error to the total number of pairs of that contact type. 
+For example, almost 20\% of reciprical friends live closer to each other than
+the predicted location error of the contact. This is the top gray line on
+\ref{fig:EdgeTypesMdist}.
+The diagonal line is a best fit line for the curve where
+\begin{math}1<={dist \over PLE}<10\end{math}.
+We choose 10 because this is approximately where the randomly distributed friends who are not caused by proximity start to affect the distribution.
+Assuming that every edge is in one and only one of these three categories, we can create a formula for the probability that a user is in a specific category:
+\begin{displaymath}1=l+\int_{1}^{\infty}e^{b}x^{a}\mathrm{d}x+r\end{displaymath}
+where \(l\) is the fraction of users with a distance less that the predicted
+location error, \(a\) and \(b\) are the parameters of the linear regression,
+and \(r\) is the fraction of users who are caused by random connections that
+have no relationship to distance. Since we know everything except \(r\) for any given curve, we can integrate and solve for \(r\):
+\begin{displaymath}r=1-l+{e^{b} \over a+1}\end{displaymath}
+
+When this model is created, it assumes that none of the users near 
+
+chance that user inside circle or overlapping with power law is actually a random user
+
 
 
 \subsection{System}
 
+We trained on 27,251,927 edges from users in the training set to their contacts.
 
 
 \section{Evaluation}
