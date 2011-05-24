@@ -31,10 +31,10 @@ def eval_block(prefix, block):
         ('Mode', 'samp', Mode()),
         ('Median', 'samp', Median()),
         ('Omniscient *', 'rel', Omniscient()),
-        ('FL (Full) *', 'rel', FriendlyLocation(True,True)),
-        ('FL (Relationship Types) *', 'rel', FriendlyLocation(True,False)),
-        ('FL (Median Dist)', 'samp', FriendlyLocation(False,True)),
-        ('FL (Simple)', 'samp', FriendlyLocation(False,False)),
+        ('FriendlyLocation (Full) *', 'rel', FriendlyLocation(True,True)),
+        ('FriendlyLocation (Relationship Types) *', 'rel', FriendlyLocation(True,False)),
+        ('FriendlyLocation (Location Error)', 'samp', FriendlyLocation(False,True)),
+        ('FriendlyLocation (Simple)', 'samp', FriendlyLocation(False,False)),
     ) 
     users = read_json("data/"+prefix+block)
     dists = defaultdict(list)
@@ -100,7 +100,7 @@ class FriendlyLocation():
                 rel['inner'] = .133
                 rel['a'] = -1.423
                 rel['e_b'] = math.e**-2.076
-                rel['rand'] = .568/2750
+                rel['rand'] = .568/2750/2750
             rel['md_fixed'] = max(5,rel['mdist']) if self.use_mdist else 5
 
         best, unused = max(zip(self.rels,user['dists']), key=self._user_prob)
@@ -112,5 +112,5 @@ class FriendlyLocation():
 
     def _edge_prob(self, edge, dist):
         mdist = edge['md_fixed']
-        local = edge['inner'] if dist<mdist else edge['e_b'] * (dist**edge['a']) 
-        return math.log(local/mdist+edge['rand'])
+        local = edge['inner'] if dist<mdist else edge['e_b'] * ((dist/mdist)**edge['a']) 
+        return math.log(local/mdist/mdist+edge['rand'])

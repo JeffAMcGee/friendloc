@@ -51,17 +51,15 @@ class Trainer():
             #return 7 for ated rfrd, 4 for ignored jfol
             return sum(2**i for i,s in enumerate(group_order) if uid in s)
 
-        #pick the 100 best users
         lookups = edges.lookups if edges.lookups else list(ats|frds|fols)
-        for group in grouper(100, lookups, dontfill=True):
-            #get the users - this will be SLOW
-            amigos = User.find(
-                User._id.is_in(lookups) & User.geonames_place.exists(),
-                fields =['gnp','folc','prot'],
-                )
-            for amigo in amigos:
-                kind = _group(amigo._id) + (8 if amigo.protected else 0)
-                self.add_edge(me.median_loc, amigo, kind)
+        #get the users - this will be SLOW
+        amigos = User.find(
+            User._id.is_in(lookups) & User.geonames_place.exists(),
+            fields =['gnp','folc','prot'],
+            )
+        for amigo in amigos:
+            kind = _group(amigo._id) + (8 if amigo.protected else 0)
+            self.add_edge(me.median_loc, amigo, kind)
 
     def add_edge(self, mloc, user, kind):
         gnp = user.geonames_place.to_d()
@@ -83,6 +81,7 @@ class Trainer():
         for d in read_json("model"):
             for k in input_keys:
                 getattr(self,k).__iadd__(d[k])
+        settings.pdb()
         #HACK: we set this one value because of one noisy outlier
         self.power[12,7,7]+=1
         #merge tiny bins into bigger bin

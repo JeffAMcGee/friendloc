@@ -35,7 +35,8 @@ def grouper(n, iterable, fillvalue=None, dontfill=False):
     args = [iter(iterable)] * n
     res = itertools.izip_longest(*args, fillvalue=fillvalue)
     if dontfill:
-        res = itertools.ifilter(lambda x: x is not sentinel,res)
+        f = functools.partial(itertools.ifilterfalse,lambda x: x is sentine)
+        res = itertools.imap(f,res)
     return res
 
 def couch(name):

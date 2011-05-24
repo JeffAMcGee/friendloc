@@ -123,8 +123,9 @@ def graph_results(path="results"):
     data = defaultdict(list)
     for block in read_json(path):
         for k,v in block.iteritems():
-            k = k.replace('FL','FriendlyLocation')
             data[(k,None,linestyle[k])].extend(v)
+    for k,v in data.iteritems():
+        print k[0], 1.0*sum(1 for d in v if d<25)/len(v)
     graph_hist(data,
             "results.png",
             bins=dist_bins(120),
