@@ -5,11 +5,11 @@
 }
 \numberofauthors{1} 
 \author{
-    \alignauthor Jeffrey McGee, James Caverlee\\
+    \alignauthor Jeffrey McGee, James Caverlee, Zhiyan Cheng\\
     \affaddr{Department of Computer Science and Engineering, Texas A\&M
     University} \\
     \affaddr{ College Station, TX 77845 USA} \\
-    \email{jeffamcgee@tamu.edu, caverlee@cse.tamu.edu}
+    \email{jeffamcgee@tamu.edu, caverlee@cse.tamu.edu, chengzy@cse.tamu.edu}
 } 
 \begin{document}
 
@@ -439,18 +439,38 @@ and \(r\) is the fraction of users who are caused by random connections that
 have no relationship to distance. Since we know everything except \(r\) for any given curve, we can integrate and solve for \(r\):
 \begin{displaymath}r=1-l+{e^{b} \over a+1}\end{displaymath}
 
-When this model is created, it assumes that none of the users near 
-
-chance that user inside circle or overlapping with power law is actually a random user
-
-
+When this model is created, it assumes that none of the randomly located users are located near the target user. This is reasonable when the predicted location error is small. When the predicted error is large, the location does very little to affect the final result since vague locations such as "Texas" mostly help to break ties.
 
 \subsection{System}
+We used this model to build a Maximum Likelihood Estimator.
+The system trained on 27,251,927 edges from users in the training set to their contacts.
+The edges were split into the 14 categories seen in Figure {fig:LocalAll}, and then further split based on the follower count. For each of these groups, we calcualted \(l\), did a least-squares fit to find \(a\) and \(b\), and used that to calcualate \(r\).
+In other words, we calculated \(l\), \(a\), \(b\), and \(r\) for each of the red boxes seen in Figure \ref{fig:LocalAll}.
 
-We trained on 27,251,927 edges from users in the training set to their contacts.
+We assume that the randomly located users are uniformly distributed with
+distances between 0 and \(c\). We choose \(c\) to be 2750 miles Which is
+approximatly the distance from one corner of the U.S. to the other. The value of this parameter has very litte affect on the results except in cases where the distance is large.
+Based on the model from the previous section, the probability that a user is at a specific distance, \(d\), is given by the following formula:
+\begin{displaymath}
+    p(d) = 
+    \begin{cases}
+        {l \over PLE} + {r \over c} & : d<PLE\\
+        {e^{b} ( {d \over PLE})^{a} \over PLE} + {r \over c} & : d>=PLE
+    \end{cases}
+\end{displaymath}
+The probability that a target user is at a given point can be found by calculating the distance between the point and the location of each of the contacts and then summing \(log(p(d))\) for each of the user's contacts.
 
+We use this to create a simple procedure for estimating the location for a user:
+\begin{enumerate}
+\item Pick up to 100 of the user's contacts. (They can either be selected randomly or the more siginificant edges can be choosen.)
+\item Geocode the location field and calculate the the predicted error for each of the contacts.
+\item Ignore any contacts who have no decodable location information.
+\item For each of the locations where a contact is calculate the probability that the target user lives there using the maximum likelihood estimator.
+\item Pick the location with the highest probability.
+\end{enumerate}
 
 \section{Evaluation}
+
 \subsection{Procedure}
 The geo-located users we used to do the evaluation are less concerned about the
 privacy of their location information than the average twitter user.
@@ -467,17 +487,18 @@ set we removed users with both zero friends and zero followers.)
 
 We investigate several implementations of the FriendlyLocation system:
 \begin{description}
-\item[Simple] This system treats all contacts equally---we ignore their median location error and any information about what type of contact it is.
-\item[Location Error] This shows the value of calculating the median location error.
-\item[Relationship Types] This 
-\item[Full] This is the system described in the previous section.
+\item[Simple] This system treats all contacts equally---we ignore their median location error and any information about what type of contact it is. Users are selected randomly and we use the same parameters for all the users.
+\item[Location Error] This shows the value of calculating the median location error. Users are selected randomly.
+\item[Relationship Types] This shows the value of treating users differently. Users who are more likely to live near the target user (such as reciprical friends are choosen first).
+\item[Full] This is the system described in the previous section. It selects users based on relationship type, uses the parameters from the training, and uses
+prediction location error to evaluate quality of the contact.
 \end{description}
 
 In addition to using the FriendlyLocation system as described in the previous section, we created a few baseline location predictors:
 \begin{description}
-\item[Median] Finds the median of the latitude and the median of the longitude of the user's contacts.
-\item[Mode] Finds the most common location of the user's contacts, and breaks ties by picking one randomly.
-\item[Omniscient] Finds the contact that is closest to the user.
+\item[Median] Finds the median of the latitude and the median of the longitude of 100 randomly selected contacts.
+\item[Mode] Finds the most common location of 100 randomly selected contacts, and breaks ties by picking one randomly.
+\item[Omniscient] Finds the contact that is closest to the user from 100 users selected by the same method used in the Full system.
 \end{description}
 
 \subsection{Results}
@@ -485,24 +506,47 @@ In addition to using the FriendlyLocation system as described in the previous se
 \centering
 \epsfig{file=final_results.pdf, width=\linewidth}
 \caption{
+CDF of the error of various predictors. Predictors marked with an astrisk (*)
+did not use randomly selected contacts.
 }
 \label{fig:FinalResults}
 \end{figure}
 
-It works! Kinda.
-
-Mode 0.452793220837
-FriendlyLocation (Full) * 0.607357155103
-FriendlyLocation (Relationship Types) * 0.566603805932
-FriendlyLocation (Median Dist) 0.547745585462
-Median 0.25539418579
-FriendlyLocation (Simple) 0.512502755259
-Omniscient * 0.88851607847
-
+In Figure \ref{fig:FinalResults} we show a comparison to the results from the 
+different predictors.
+Our Full FriendlyLocation system predicts the loction within 25 miles 63\% of
+the time.
+Unfortunately, when the predictor system is wrong, it can be very wrong.
+Often when it would pick not just the wrong city, but the wrong side of the
+country.
+Both using location error and relationship type improved the predictor.  The
+simplified version of FriendlyLocation located users within 25 miles 54\% of
+the time which is still better than the either of the baseline predictors.
+The omniscient predictor demonstrates that there is still room for improvement
+which we discuss in the next section.
+%Mode 0.452793220837
+%FriendlyLocation (Full) * 0.625137762974
+%FriendlyLocation (Relationship Types) * 0.59893218388
+%Median 0.25539418579
+%FriendlyLocation (Simple) 0.540104332492
+%FriendlyLocation (Location Error) 0.568881487105
+%Omniscient * 0.88851607847
 
 \section{Future Work}
-combine other factors
+There are two directions that the future work on this project could go:
+improving the results of the predictor, and using the predicted locations in
+other research projects.
 
+One way to improve this predictor is to combine tie strength and the social
+graph with other factors such as the words users choose to use as described by Cheng \ref{cheng2010you}.
+It could be useful for the predictor to return not just a loction, but an
+estimate of the quality of the prediction.  In this work we only considered
+users who have a well-defined location. The system could identify users
+who do not have meaningful locations such as people who constantly travel.
+
+Finally, high-quality geographic information opens up new avenues for research.
+With geographic location of users, we can cluster users and find local conversations.
+It also allows businesses to provide hyperlocal content and services.
 \bibliographystyle{abbrv}
 \bibliography{fl} 
 \end{document}
