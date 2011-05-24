@@ -24,7 +24,7 @@ settings = SettingsBunch(
     pdb = pdb.set_trace,
 
     #for predictor
-    local_max_dist = 100,
+    local_max_dist = 25,
     fol_count_buckets = 8,
     default_loc = dict(
         mdist=1159.8,
