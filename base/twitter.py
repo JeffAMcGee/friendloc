@@ -48,10 +48,7 @@ class TwitterResource(Resource):
                 logging.exception("RequestError")
             except RequestFailed as failure:
                 self._parse_ratelimit(failure.response)
-                if failure.response.status_int == 500:
-                    logging.exception("RequestFailed 500 Internal Server Error")
-                    raise
-                elif failure.response.status_int == 502:
+                if failure.response.status_int == 502:
                     logging.info("Fail whale says slow down!")
                 else:
                     logging.error("%s while retrieving %s",

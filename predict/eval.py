@@ -27,16 +27,38 @@ def _calc_dists(rels):
 
 
 def eval_block(prefix, block):
-    predictors = (
-        ('Mode', 'samp', Mode()),
-        ('Median', 'samp', Median()),
-        ('Omniscient *', 'pick', Omniscient()),
-        ('FriendlyLocation (Full) *', 'pick', FriendlyLocation(True,True)),
-        ('FriendlyLocation (Relationship Types) *', 'pick', FriendlyLocation(True,False)),
-        ('FriendlyLocation (Location Error)', 'samp', FriendlyLocation(False,True)),
-        ('FriendlyLocation (Simple)', 'samp', FriendlyLocation(False,False)),
+    predictors = dict(
+        diff= [
+            ('FriendlyLocation', FriendlyLocation(True,True)),
+            ('Mode', Mode()),
+        ],
+        samp= [
+            ('Mode', Mode()),
+            ('Median', Median()),
+            ('FriendlyLocation (Location Error)', FriendlyLocation(False,True)),
+            ('FriendlyLocation (Simple)', FriendlyLocation(False,False)),
+        ],
+        pick= [
+            ('Omniscient *', Omniscient()),
+            ('FriendlyLocation (Full) *', FriendlyLocation(True,True)),
+            ('FriendlyLocation (Relationship Types) *', FriendlyLocation(True,False)),
+        ],
+        lul= [
+            ('a 0<=lul<=49', FriendlyLocation(True,True,min_lul=0,max_lul=50)),
+            ('b 50<=lul<=99', FriendlyLocation(True,True,min_lul=50,max_lul=100)),
+            ('c 100<=lul<=199', FriendlyLocation(True,True,min_lul=100,max_lul=200)),
+            ('d 200<=lul<=399', FriendlyLocation(True,True,min_lul=200,max_lul=400)),
+            ('e 400<=lul', FriendlyLocation(True,True,min_lul=400)),
+        ],
+        top= [
+            ('a top 5', FriendlyLocation(True,True,min_lul=200,top=5)),
+            ('b top 10', FriendlyLocation(True,True,min_lul=200,top=10)),
+            ('c top 25', FriendlyLocation(True,True,min_lul=200,top=25)),
+            ('d top 100', FriendlyLocation(True,True,min_lul=200,top=100)),
+            ('e all', FriendlyLocation(True,True,min_lul=200,top=400)),
+        ],
     ) 
-    users = read_json("data/"+prefix+block)
+    users = read_json("data/pick"+block)
     dists = defaultdict(list)
     skipped=0
 
@@ -48,11 +70,10 @@ def eval_block(prefix, block):
         user['dists'] = _calc_dists(user['rels'])
         if 'gnp' not in user or user['gnp']['code']=="COORD":
             user['gnp'] = settings.default_loc
-        for label, myprefix, predictor in predictors:
-            if myprefix!=prefix:
-                continue
+        for label, predictor in predictors[prefix]:
             res = predictor.pred(user)
-            dists[label].append(coord_in_miles(mloc, res))
+            if res is not None:
+                dists[label].append(coord_in_miles(mloc, res))
     write_json([dists],"data/%s_res%s"%(prefix,block))
     print "saved %s"%block
 
@@ -77,16 +98,24 @@ class Omniscient():
 
 
 class FriendlyLocation():
-    def __init__(self, use_params, use_mdist, ):
+    def __init__(self, use_params, use_mdist, min_lul=None, max_lul=None, top=2000):
         self.use_mdist = use_mdist
         self.use_params = use_params
+        self.min_lul = min_lul
+        self.max_lul = max_lul
+        self.top = top
         if use_params:
             params = list(read_json("params"))[0]
             for k,v in params.iteritems():
                 setattr(self,k,v)
 
     def pred(self, user):
-        self.rels = user['rels']
+        if self.max_lul is not None and user['lu_len']>= self.max_lul:
+            return None
+        if self.min_lul is not None and user['lu_len']< self.min_lul:
+            return None
+
+        self.rels = user['rels'][:self.top]
         buckets = settings.fol_count_buckets
         for rel in self.rels:
             if self.use_params:
@@ -113,4 +142,5 @@ class FriendlyLocation():
     def _edge_prob(self, edge, dist):
         mdist = edge['md_fixed']
         local = edge['inner'] if dist<mdist else edge['e_b'] * ((dist/mdist)**edge['a']) 
-        return math.log(local/mdist+edge['rand'])
+        res =  math.log(local/mdist+edge['rand'])
+        return res

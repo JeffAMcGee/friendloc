@@ -30,7 +30,8 @@ from base.utils import *
 
 def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-', logline_fn=None,
-        label_len=False, auto_ls=False, dist_scale=False, **kwargs):
+        label_len=False, auto_ls=False, dist_scale=False, ordered_label=False,
+        **kwargs):
     fig = plt.figure(figsize=figsize)
     ax = fig.add_subplot(111)
     
@@ -72,6 +73,8 @@ def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
             for k,v in zip(['label','color','linestyle','linewidth'],key):
                 if v is not None:
                     hargs[k] = v
+        if ordered_label:
+            hargs['label'] = hargs['label'][2:]
 
         if auto_ls:
             hargs['linestyle'] = ('solid','dashed','dashdot','dotted')[index/7]
@@ -123,20 +126,46 @@ def graph_results(path="results"):
     data = defaultdict(list)
     for block in read_json(path):
         for k,v in block.iteritems():
+            k = k.replace('lul','contacts')
             data[(k,None,linestyle[k])].extend(v)
     for k,v in data.iteritems():
         print k[0], 1.0*sum(1 for d in v if d<25)/len(v)
     graph_hist(data,
-            "results.png",
+            "top_results.pdf",
             bins=dist_bins(120),
             xlim=(1,30000),
             kind="cumulog",
             normed=True,
+            ordered_label=True,
             xlabel = "error in prediction in miles",
             ylabel = "fraction of users",
             )
 
+def diff_mode_fl():
+    mode=[]
+    fl=[]
+    for block in read_json('results'):
+        mode.extend(block['Mode'])
+        fl.extend(block['FriendlyLocation'])
+    mode = numpy.array(mode)+1
+    fl = numpy.array(fl)+1
 
+    fig = plt.figure(figsize=(12,12))
+    ax = fig.add_subplot(111)
+    ax.loglog(mode, fl, '+',
+            color='k',
+            alpha='.05',
+            markersize=5,
+            )
+    ax.set_xlim(1,30000)
+    ax.set_ylim(1,30000)
+    ax.set_xlabel("mode")
+    ax.set_ylabel("fl")
+    fig.savefig('../www/mode_fl.png')
+    
+
+
+ 
 def filter_rtt(path=None):
     format = "%a %b %d %H:%M:%S +0000 %Y"
     for tweet in read_json(path):

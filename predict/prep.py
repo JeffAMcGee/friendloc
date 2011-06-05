@@ -19,7 +19,7 @@ def save_mod_group():
 def prep_eval_users(key='50'):
     use_mongo('usgeo')
     users = User.find(User.mod_group == int(key))
-    write_json(itertools.imap(_edges_d, users), "data/samp"+key)
+    write_json(itertools.imap(_edges_d, users), "data/pick"+key)
 
 
 def _edges_d(me):
@@ -38,8 +38,8 @@ def _edges_d(me):
     #pick the 100 best users
     lookups = edges.lookups if edges.lookups else list(ats|frds|fols)
     random.shuffle(lookups)
-    #lookups.sort(key=_group, reverse=True)
-    lookups = lookups[:100]
+    lookups.sort(key=_group, reverse=True)
+    lookups = lookups[:400]
 
     #get the users - this will be SLOW
     amigos = User.find(
@@ -47,13 +47,15 @@ def _edges_d(me):
             fields =['gnp','folc','prot'],
             )
 
+    rels = [
+        _rel_d(amigo, _group(amigo._id) + (8 if amigo.protected else 0))
+        for amigo in amigos]
+    rels.sort(key=lambda d: d['kind']%8, reverse=True)
     res = dict(
         _id = me._id,
         mloc = me.median_loc,
         lu_len = len(lookups),
-        rels = [
-            _rel_d(amigo, _group(amigo._id) + (8 if amigo.protected else 0))
-            for amigo in amigos],
+        rels = rels,
         )
     if me.geonames_place:
         res['gnp'] = me.geonames_place.to_d()
