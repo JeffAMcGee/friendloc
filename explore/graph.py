@@ -617,7 +617,7 @@ def com_types():
 
 
 def triad_types():
-    fig = plt.figure(figsize=(24,16))
+    fig = plt.figure(figsize=(24,12))
     titles = dict(fol="Just Follower", rfrd="Reciprical Friend", frd="Just Friend", jat="Just Mentiened")
     for col,edge_type in enumerate(['rfrd','frd','fol','jat']):
         ax = fig.add_subplot(2,2,1+col)
