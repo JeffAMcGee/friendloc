@@ -244,7 +244,7 @@ def save_user_json(func,debug=False):
 
 def rfr_triads(me):
     #./do.py save_user_json rfr_triads
-    me_rfr = set(me.rfriends).intersection(me.neighbors)
+    me_rfr = set(me.rfriends or []).intersection(me.neighbors or [])
     if len(me_rfr)<3:
         return None
     for you_id in me_rfr:
