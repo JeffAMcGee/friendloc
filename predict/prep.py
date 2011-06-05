@@ -23,7 +23,6 @@ def prep_eval_users(key='50'):
 
 
 def _edges_d(me):
-    #./do.py save_user_json edges_json 
     tweets = Tweets.get_id(me._id,fields=['ats'])
     edges = Edges.get_id(me._id)
     ats = set(tweets.ats or [])
