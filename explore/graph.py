@@ -213,19 +213,6 @@ def graph_rtt(path=None):
         )
 
 
-def fake_dist():
-    data = numpy.append(numpy.random.rand(10**5),1/numpy.random.rand(10**5))
-    graph_hist(data,
-            "fake_dist.png",
-            #bins=numpy.arange(0,10,.1),
-            bins = numpy.insert(3**numpy.linspace(-5,5,101),0,0),
-            dist_scale = True,
-            normed=True,
-            #kind="linear",
-            kind="logline",
-            )
-
-
 def _plot_dist_model(ax, row, *ignored):
     inner = 1.0*sum(1 for r in row if r<1)/len(row)
     ax.plot([.001,1000],[inner,inner],'-',color='k',alpha=.2)
@@ -341,13 +328,15 @@ def gen_rand_dists():
                 print coord_in_miles(other.median_loc,dests[amigo_id])
 
 def find_urls():
-    #for Krishna
+    #for New Zealand project and Krishna
     start = dt(2011,2,22,0)
     tweets = Tweet.find(Tweet.created_at.range(start,start+timedelta(hours=2)))
     for t in tweets:
         print t.to_d(long_names=True,dateformat="%a %b %d %H:%M:%S +0000 %Y")
 
+
 def tweets_over_time():
+    #for the New Zealand project
     tweets = Tweet.find(
             (Tweet.text//r'twitpic\.com/\w+')&
             Tweet.created_at.range(dt(2011,2,19),dt(2011,3,1)),
@@ -613,83 +602,6 @@ def graph_from_net(net):
         (r['_id'], dict(lat=r['lat'],lng=r['lng']))
         for r in net['rfrs'])
     return g
-
-
-def rel_prox():
-    data = defaultdict(list)
-    colors = dict(zip((4**x for x in xrange(0,7)),'rgbcmyk'))
-    for net in read_json('rfr_net_10k'):
-        g = graph_from_net(net)
-        for fn,tn in itertools.product(g,g):
-            if fn>=tn: continue
-            edist = coord_in_miles(g.node[fn], g.node[tn])
-            bin = 4**int(math.log(1+edist,4))
-            dists = sorted(
-                coord_in_miles(net['mloc'],g.node[n])
-                for n in (tn,fn))
-            data["%d_min"%bin,colors[bin],'solid'].append(1+dists[0])
-            data["%d_max"%bin,colors[bin],'dashed'].append(1+dists[1])
-            data["rfr",'k','dotted',3].append(1+edist)
-    graph_hist(data,
-            "rel_prox",
-            bins=dist_bins(80),
-            xlim=(1,30000),
-            #kind="logline",
-            kind="cumulog",
-            label_len=True,
-            normed=True,
-            xlabel = "distance between edges in miles",
-            ylabel = "number of users",
-            )
- 
-def near_triads():
-    labels = ["",'0-10','10-100','100-1000','1000+']
-
-    data = defaultdict(list)
- 
-    for quad in read_json('rfr_triads'):
-        for key,color in (('my','r'),('our','b')):
-            edist = coord_in_miles(quad[key]['loc'],quad['you']['loc'])
-            bin = min(4,len(str(int(edist))))
-            label = '%s %s'%(key,labels[bin])
-            dist = coord_in_miles(quad[key]['loc'],quad['me']['loc'])
-            data[label,color,'solid',1.6**(bin-1)].append(dist)
-    graph_hist(data,
-            "near_triads.pdf",
-            bins=dist_bins(120),
-            xlim=(1,30000),
-            label_len=True,
-            kind="cumulog",
-            normed=True,
-            xlabel = "distance between edges in miles",
-            ylabel = "number of users",
-            )
-
- 
-def near_edges_nearby():
-    labels = ["",'0-10','10-100','100-1000','1000+']
-
-    data = defaultdict(list)
-    for net in read_json('rfr_net'):
-        g = graph_from_net(net)
-        for fn,tn in itertools.product(g,g):
-            if fn==tn or g.has_edge(tn,fn)!=g.has_edge(fn,tn): continue
-            edist = coord_in_miles(g.node[fn], g.node[tn])
-            real = g.has_edge(fn,tn)
-            color = 'r' if real else 'b'
-            bin = min(4,len(str(int(edist))))
-            label = '%s %s'%('rfriends' if real else 'none',labels[bin])
-            dist = coord_in_miles(net['mloc'],g.node[fn])
-            data[label,color,'solid',1.6**(bin-1)].append(1+dist)
-    graph_hist(data,
-            "near_near",
-            bins=dist_bins(120),
-            xlim=(1,30000),
-            kind="cumulog",
-            normed=True,
-            xlabel = "distance between edges in miles",
-            ylabel = "number of users",
-            )
 
 
 def draw_net_map():

@@ -39,9 +39,6 @@ def grouper(n, iterable, fillvalue=None, dontfill=False):
         res = itertools.imap(f,res)
     return res
 
-def couch(name):
-    return CouchDB(settings.couchdb_root+name,True)
-
 
 def use_mongo(name):
     Model.database = mongo(name)

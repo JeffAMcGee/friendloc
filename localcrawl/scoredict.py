@@ -5,7 +5,7 @@ from settings import settings
 
 
 # This module exists because my machine can handle a dict of 100Mil ints,
-# but not tuples.  Sticking this in couchdb will make things orders of
+# but not tuples.  Sticking this in the db will make things orders of
 # magnitude slower.
 #
 # The scores dict contains int bitfields:
