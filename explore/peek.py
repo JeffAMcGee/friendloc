@@ -6,6 +6,7 @@ import random
 import logging
 from collections import defaultdict
 from datetime import datetime as dt
+from datetime import timedelta
 from operator import itemgetter
 from multiprocessing import Pool
 
@@ -123,34 +124,23 @@ def count_sn(path):
     print "lost:%d found:%d"%(lost,found)
 
 
-def _tweets_correct_date(start,end):
-    tweets = Tweet.find(
-            Tweet._id.range(start and int(start), end and int(end)),
-            sort='_id',
-            descending = True,
-            timeout=False)
-    oldest = dt.utcnow()
-    for tweet in tweets:
-        if (tweet.created_at-oldest).days>0:
-            print "tweet out of order - %r"%tweet.to_d()
-        oldest = tweet.created_at = min(oldest,tweet.created_at)
-        yield tweet
- 
-def krishna_export(start=settings.min_tweet_id,end=None):
-    "export the tweets for Krishna's crawler"
-    tweets = _tweets_correct_date(start,end)
-    for day,group in itertools.groupby(tweets,lambda t: t.created_at.date()):
-        path = os.path.join(*(str(x) for x in day.timetuple()[0:3]))
+def crowdy_export(year, month, day):
+    "export the tweets for crowd detection"
+    for hour in xrange(24):
+        start = dt(int(year), int(month), int(day), hour)
+        end = start + timedelta(hours=1)
+        tweets = Tweet.find(
+            Tweet.created_at.range(start,end),
+            sort='ca',
+            fields=['ca','ats','uid'],
+            )
+        path = os.path.join(year,month,day,str(hour))
         mkdir_p(os.path.dirname(path))
-        print path
         with open(path,'w') as f:
-            for t in group:
+            for t in tweets:
                 ts = int(time.mktime(t.created_at.timetuple()))
-                if t.mentions:
-                    for at in t.mentions:
-                        print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
-                #else:
-                #    print>>f,"%d %d %d"%(ts,t._id,t.user_id)
+                for at in t.mentions:
+                    print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
 
 
 def find_ats(users_path="hou_tri_users"):

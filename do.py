@@ -24,7 +24,6 @@ import base.twitter as twitter
 from base.gisgraphy import GisgraphyResource
 from maroon import *
 from base.models import *
-from localcrawl.peek import *
 from localcrawl.admin import *
 from explore.graph import *
 from explore.peek import *
