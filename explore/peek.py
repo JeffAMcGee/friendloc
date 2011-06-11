@@ -44,7 +44,7 @@ def crowdy_export(year, month, day):
         mkdir_p(os.path.dirname(path))
         with open(path,'w') as f:
             for t in tweets:
-                ts = int(time.mktime(t.created_at.timetuple()))
+                ts = int(time.gmtime(t.created_at.timetuple()))
                 for at in t.mentions:
                     print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
 
