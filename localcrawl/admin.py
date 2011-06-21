@@ -94,13 +94,17 @@ def import_mongo(cls_name,path=None):
         Cls.bulk_save(Cls(from_dict=d) for d in g if d)
 
 
-def fix_crowd_uids():
+def fix_crowd():
     #FIXME: this is for crowdy
     for crowd in Model.database.Crowd.find():
         for k in ['start','end']:
-            crowd[k] = dt.fromtimestamp(crowd[k])# if crowd[k] else dt(2010,12,28)
+            crowd[k] = dt.utcfromtimestamp(crowd[k]) if crowd[k] else dt(2011,6,1)
+        end = crowd['end']
         for user in crowd['users']:
             user['id'] = int(user['id'])
+            for h in user['history']:
+                for x in xrange(2):
+                    h[x] = dt.utcfromtimestamp(h[x]) if h[x] else end
         Model.database.Crowd.save(crowd)
 
 
