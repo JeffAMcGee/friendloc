@@ -1,5 +1,6 @@
 import itertools
 import time
+import calendar
 import os
 import sys
 import random
@@ -32,6 +33,7 @@ def find_geo_ats():
 
 def crowdy_export(year, month, day):
     "export the tweets for crowd detection"
+    uids = set(u['_id'] for u in User.coll().find({'ncd':{'$ne':None}}, fields=[]))
     for hour in xrange(24):
         start = dt(int(year), int(month), int(day), hour)
         end = start + timedelta(hours=1)
@@ -44,9 +46,10 @@ def crowdy_export(year, month, day):
         mkdir_p(os.path.dirname(path))
         with open(path,'w') as f:
             for t in tweets:
-                ts = int(time.gmtime(t.created_at.timetuple()))
+                ts = int(calendar.timegm(t.created_at.timetuple()))
                 for at in t.mentions:
-                    print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
+                    if at in uids:
+                        print>>f,"%d %d %d %d"%(ts,t._id,t.user_id,at)
 
 
 def find_ats(users_path="hou_tri_users"):
