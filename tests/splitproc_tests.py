@@ -4,7 +4,6 @@ import sys
 sys.path.append("..")
 
 import unittest
-import logging
 import time
 from base.splitproc import SplitProcess
 

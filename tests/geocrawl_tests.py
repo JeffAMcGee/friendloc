@@ -3,13 +3,10 @@
 import sys
 sys.path.append("..")
 
-import logging
 import unittest
 
 from explore.geocrawl import GeoLookup
 from base.models import Edges, User, Tweets
-from maroon import MongoDB, Model
-from settings import settings
 
 class TestSplitProc(unittest.TestCase):
 

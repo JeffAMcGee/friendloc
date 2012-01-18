@@ -1,5 +1,4 @@
-from restkit import OAuthFilter, request, Resource, Manager
-import restkit
+from restkit import OAuthFilter, Resource, Manager
 import restkit.oauth2 as oauth
 import json
 import time

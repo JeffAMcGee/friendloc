@@ -4,21 +4,14 @@ try:
     import beanstalkc
 except:
     pass
-import json
-import pdb
-import signal
 from datetime import datetime
-import time
-from itertools import groupby
 import logging
 import sys
 
-import maroon
-from maroon import *
 from restkit import ResourceNotFound
 
 from settings import settings
-from base.models import Edges, User, Tweet, LookupJobBody
+from base.models import User, LookupJobBody
 from base.twitter import TwitterResource
 from base.gisgraphy import GisgraphyResource, in_local_box
 from procs import LocalProc, create_slaves

@@ -1,12 +1,11 @@
 #!/usr/bin/env python
-import pdb
 from datetime import datetime, timedelta
 import logging
 
-from maroon import *
+from maroon import Model, MongoDB
 
 from base.splitproc import SplitProcess
-from base.models import User, Tweet
+from base.models import User
 from base.twitter import TwitterResource
 from settings import settings
 
@@ -33,7 +32,7 @@ class CrawlProcess(SplitProcess):
             try:
                 self.crawl(user)
                 self.twitter.sleep_if_needed()
-            except Exception as ex:
+            except Exception:
                 logging.exception("exception for user %s"%user.to_d())
             yield None
 

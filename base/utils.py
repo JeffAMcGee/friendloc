@@ -1,14 +1,9 @@
 import itertools
-import time
 import os
 import errno
 import sys
-import random
 import math
-import logging
 from collections import defaultdict
-from datetime import datetime as dt
-from operator import itemgetter
 
 import numpy
 
@@ -18,9 +13,8 @@ except:
     import json
 
 from settings import settings
-import twitter as twitter
 from models import *
-from maroon import ModelCache, MongoDB, Model
+from maroon import MongoDB, Model
 
 
 def all_users():

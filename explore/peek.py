@@ -1,22 +1,16 @@
 import itertools
-import time
 import calendar
 import os
 import sys
 import random
-import logging
 from collections import defaultdict
 from datetime import datetime as dt
 from datetime import timedelta
 from operator import itemgetter
 from multiprocessing import Pool
 
-from maroon import ModelCache
-
 from settings import settings
-import base.twitter as twitter
 from base.gisgraphy import GisgraphyResource
-from base.splitproc import SplitProcess
 from base.models import *
 from base.utils import *
 

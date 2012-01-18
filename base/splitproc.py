@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import pdb
 import logging
-import sys, os
+import os
 import multiprocessing
 import Queue
 

@@ -1,19 +1,13 @@
 #!/usr/bin/env python
 import numpy
-import random
 import logging
 import itertools
-import json
 from multiprocessing import Pool 
-from operator import itemgetter
 from collections import defaultdict
-
-import maroon
 
 from base.gisgraphy import GisgraphyResource
 import base.utils as utils
 from base.models import User
-from settings import settings
 
 gis = GisgraphyResource()
 

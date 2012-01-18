@@ -1,12 +1,6 @@
 import itertools
-import sys
 import random
-import logging
-from collections import defaultdict
 
-import numpy
-
-from settings import settings
 from base.models import *
 from base.utils import *
 

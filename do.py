@@ -4,7 +4,7 @@ if __name__ != '__main__':
     print """
 This is a tool for testing and administrative tasks.  It is designed to
 be %run in ipython or from the command line.  If you import it from another
-module, you're doing something wrong.  
+module, you're doing something wrong.
 """
 
 import logging
@@ -17,7 +17,6 @@ try:
     import beanstalkc
 except:
     beanstalkc = None
-import maroon
 
 from settings import settings
 import base.twitter as twitter
@@ -29,7 +28,7 @@ from explore.graph import *
 from explore.peek import *
 from explore.fixgis import *
 from predict.prep import *
-from predict.learn import * 
+from predict.learn import *
 from predict.eval import *
 from base.utils import *
 

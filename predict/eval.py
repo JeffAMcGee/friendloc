@@ -1,9 +1,4 @@
-import itertools
-import sys
-import random
-import logging
 from collections import defaultdict
-from multiprocessing import Pool
 from operator import itemgetter
 
 from settings import settings

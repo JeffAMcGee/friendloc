@@ -1,9 +1,7 @@
 import json
-from operator import attrgetter
 import re
 
-from restkit import OAuthFilter, request, Resource, Manager
-from restkit.errors import RequestFailed
+from restkit import Resource, Manager
 
 from settings import settings
 from models import GeonamesPlace

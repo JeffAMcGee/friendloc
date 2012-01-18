@@ -10,7 +10,6 @@ from base.models import Edges, User, Tweets
 from base.twitter import TwitterResource
 from base.gisgraphy import GisgraphyResource
 import base.utils as utils
-from settings import settings
 from base.splitproc import SplitProcess
 
 

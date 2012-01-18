@@ -1,8 +1,4 @@
-import itertools
-import sys
-import random
 import logging
-from collections import defaultdict
 from bisect import bisect
 
 import numpy
@@ -109,7 +105,6 @@ class Trainer():
                 a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
                 self.a[i,j] = a
                 self.b[i,j] = b
-        
 
         self.rand = numpy.maximum(0,1-self.inner+(math.e**self.b)/(self.a+1))
         result = self.to_d('a', 'b', 'inner', 'rand')
@@ -118,4 +113,3 @@ class Trainer():
     def to_d(self, *keys):
         return dict((k,getattr(self,k).tolist()) for k in keys)
 
-    

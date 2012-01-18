@@ -1,30 +1,21 @@
-import itertools
 import random
 import logging
 import math
-import simplejson
-import re
 import bisect
 from collections import defaultdict, namedtuple
 from datetime import datetime as dt
 from datetime import timedelta
-from operator import itemgetter
 
 import networkx as nx
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-from matplotlib.transforms import Bbox
 from matplotlib.patches import Patch
 import numpy
 
 from settings import settings
-import base.twitter as twitter
 import base.gisgraphy as gisgraphy
 from base.models import *
-from maroon import ModelCache
-from explore.fixgis import gisgraphy_mdist
 from base.utils import *
 
 
@@ -180,7 +171,7 @@ def filter_rtt(path=None):
     format = "%a %b %d %H:%M:%S +0000 %Y"
     for tweet in read_json(path):
         if tweet.get('in_reply_to_status_id'):
-            ca = time.mktime(dt.strptime(t[2],format).timetuple())
+            #ca = time.mktime(dt.strptime(t[2],format).timetuple())
             print "%d\t%d\t%s"%(
                 tweet['id'],
                 tweet['uid'],
@@ -204,7 +195,6 @@ def graph_rtt(path=None):
         t.ca - cas[bisect.bisect_left(ids,t.rtt)]
         for t in tweets[len(tweets)/2:]
         if t.rtt>ids[0]]
-    seen = set()
     graph_hist(deltas,
             "reply_time_sum",
             bins=xrange(0,3600*12,60),
@@ -229,8 +219,6 @@ def _plot_dist_model(ax, row, *ignored):
     X = 10**numpy.linspace(0,2,21)
     Y = (math.e**b) * (X**a)
     ax.plot(X, Y, '-', color='k',alpha=.2)
-    
-    rand = 1-inner+(math.e**b)/(a+1)
 
 
 def compare_edge_types(cmd=""):
@@ -366,7 +354,6 @@ def simplify_tris():
     for edge_type in ['rfrd','fol','frd','jat']:
         path = 'geo_tri_%s'%edge_type
         out = open('geo_%s_simp'%edge_type,'w')
-        counts = []
         for edge in read_json(path):
             if edge['mdist']>1000:
                 continue
@@ -391,7 +378,7 @@ def simplify_tris():
                 fan=len(fan - star),
                 path=len(path - loop),
                 loop=len(loop - path),
-                com_type = com_types[(iat,youat)], 
+                com_type = com_types[(iat,youat)],
                 ))
         logging.info("wrote %s",edge_type)
 

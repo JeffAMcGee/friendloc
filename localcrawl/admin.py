@@ -1,17 +1,10 @@
 import json
-import itertools
 import time
 import logging
 import sys
-import heapq
-import getopt
-import sys
-import cjson
 from datetime import datetime as dt
-import pdb
 
 import pymongo
-import restkit.errors
 try:
     import beanstalkc
 except:
