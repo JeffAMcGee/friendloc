@@ -1,0 +1,10 @@
+Fabric
+pymongo
+restkit
+beanstalkc
+numpy
+matplotlib
+nose
+pyflakes
+networkx
+ipdb
