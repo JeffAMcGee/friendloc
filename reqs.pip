@@ -8,3 +8,5 @@ nose
 pyflakes
 networkx
 ipdb
+-e git+git://github.com/JeffAMcGee/maroon.git#egg=maroon
+scikit-learn
