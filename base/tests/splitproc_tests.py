@@ -1,8 +1,3 @@
-#!/usr/bin/env python
-
-import sys
-sys.path.append("..")
-
 import unittest
 import time
 from base.splitproc import SplitProcess
@@ -43,7 +38,3 @@ class TestSplitProc(unittest.TestCase):
         asp = AdderSplitProc(**kwargs)
         result = asp.run()
         self.assertEqual(55, result)
-
-
-if __name__ == '__main__':
-    unittest.main()
