@@ -1,40 +1,43 @@
 import unittest
-from base.job import Gob
+import functools
+from base import gob
+from base.gob import Gob, Job
+from base.gob import THE_FS
 
-from maroon import *
 
-
+@gob.func(gives_keys=True)
 def counter():
-    for x in xrange(1000):
+    for x in xrange(100):
         yield x%10,x
 
-def primes():
-    return (2,3,5,7,11,13,17,19,23,29,31)
-
+@gob.func()
 def expand(value):
     yield dict(
         num=value,
         digits=[int(x) for x in str(value)])
 
-def take(value):
-    if 3 in value['digits']:
-        yield value['num']%3, value['num']
-
-
-class Recipient(object):
+class SecondHalf(object):
     results = {}
+    def __init__(self,gob):
+        pass
 
-    def run(cls, items):
+    @gob.func(gives_keys=True)
+    def take(self, value):
+        if 3 in value['digits']:
+            yield value['num']%3, value['num']
+
+    @gob.func(all_items=True)
+    def results(self, items):
         # items should be an iterator of (k,v) pairs - just store the data on
         # the class so we can run tests on it
-        cls.results = dict(items)
+        self.__class__.results = dict(items)
 
 
 def load_jobs(gob):
-    prod = gob.producer(counter)
-    #exp = gob.maper(expand,prod)
-    #taken = gob.list_reducer(take,exp)
-    #gob.consumer(Recipient,taken)
+    gob.add_job(counter,saver=Job.split)
+    gob.add_job(expand,'counter')
+    gob.add_job(SecondHalf.take,'expand',saver=Job.list_reduce)
+    gob.add_job(SecondHalf.results,'take')
 
 
 class TestGob(unittest.TestCase):
@@ -42,8 +45,14 @@ class TestGob(unittest.TestCase):
     def test_counter(self):
         gob = Gob()
         load_jobs(gob)
-        data = list(gob.run_job('counter'))
-        self.assertEqual(data[0], (0,0))
-        self.assertEqual(data[1], (1,1))
-        self.assertEqual(data[72], (2,72))
+        #THE_FS['expand'] = [
+        #    dict(num=2,digits=(1,)),
+        #    dict(num=12,digits=(1,2)),
+        #    ]
+
+        gob.run_job('counter')
+        gob.run_job('expand')
+        gob.run_job('take')
+        gob.run_job('results')
+        print SecondHalf.results
 
