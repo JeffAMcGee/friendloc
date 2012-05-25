@@ -1,8 +1,7 @@
 import unittest
 import functools
 from base import gob
-from base.gob import Gob, Job
-from base.gob import THE_FS
+from base.gob import Gob, Job, Storage
 
 
 @gob.func(gives_keys=True)
@@ -18,18 +17,19 @@ def expand(value):
 
 class SecondHalf(object):
     results = {}
-    def __init__(self,gob):
+    def __init__(self,job,storage):
         pass
 
     @gob.func(gives_keys=True)
     def take(self, value):
-        if 3 in value['digits']:
-            yield value['num']%3, value['num']
+        if value['digits'][0]==4:
+            yield value['num']%5, value['num']
 
-    @gob.func(all_items=True)
+    @gob.func(all_items=True,must_output=False)
     def results(self, items):
         # items should be an iterator of (k,v) pairs - just store the data on
         # the class so we can run tests on it
+        print items
         self.__class__.results = dict(items)
 
 
@@ -42,17 +42,20 @@ def load_jobs(gob):
 
 class TestGob(unittest.TestCase):
 
-    def test_counter(self):
+    def test_whole_gob(self):
         gob = Gob()
         load_jobs(gob)
-        #THE_FS['expand'] = [
-        #    dict(num=2,digits=(1,)),
-        #    dict(num=12,digits=(1,2)),
+        #Storage.THE_FS['expand'] = [
+        #    dict(num=42,digits=(4,2)),
+        #    dict(num=43,digits=(4,3)),
         #    ]
 
         gob.run_job('counter')
         gob.run_job('expand')
         gob.run_job('take')
         gob.run_job('results')
-        print SecondHalf.results
+
+        # This job finds numbers less than 100 that begin with a four and end
+        # with a 2 or 7.
+        self.assertEqual(set(SecondHalf.results[2]), {42,47})
 
