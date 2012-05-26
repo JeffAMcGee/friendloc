@@ -1,6 +1,6 @@
 import unittest
 from base import gob
-from base.gob import Gob, Job, Storage
+from base.gob import Gob, Job, DictStorage
 
 
 @gob.func(gives_keys=True)
@@ -8,11 +8,13 @@ def counter():
     for x in xrange(100):
         yield x%10,x
 
+
 @gob.func()
 def expand(value):
     yield dict(
         num=value,
         digits=[int(x) for x in str(value)])
+
 
 class SecondHalf(object):
     results = {}
@@ -41,10 +43,23 @@ def load_jobs(gob):
 
 class TestGob(unittest.TestCase):
 
+    def test_split_saver(self):
+        gob = Gob()
+        load_jobs(gob)
+        gob.run_job('counter')
+        self.assertEqual(DictStorage.THE_FS['counter.2'],range(2,100,10))
+
+    @unittest.skip
+    def test_split_load(self):
+        DictStorage.THE_FS['counter.2'] = range(2,100,10)
+        DictStorage.THE_FS['counter.3'] = range(3,100,10)
+        gob.run_job('expand')
+
+    @unittest.skip
     def test_whole_gob(self):
         gob = Gob()
         load_jobs(gob)
-        #Storage.THE_FS['expand'] = [
+        #DictStorage.THE_FS['expand'] = [
         #    dict(num=42,digits=(4,2)),
         #    dict(num=43,digits=(4,3)),
         #    ]
@@ -57,4 +72,3 @@ class TestGob(unittest.TestCase):
         # This job finds numbers less than 100 that begin with a four and end
         # with a 2 or 7.
         self.assertEqual(set(SecondHalf.results[2]), {42,47})
-

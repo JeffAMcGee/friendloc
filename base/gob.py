@@ -1,5 +1,7 @@
+import contextlib
 import inspect
 import itertools
+import re
 from collections import defaultdict
 
 
@@ -10,6 +12,10 @@ def func(gives_keys=False, all_items=False, must_output=True):
         f.must_output = must_output
         return f
     return wrapper
+
+
+def _path(name,key):
+    return '.'.join((name,str(key)))
 
 
 class Job(object):
@@ -51,11 +57,12 @@ class Job(object):
         storage.save(name,results.iteritems())
 
     def split(self, storage, name, items):
-        storage.save(name, [item[1] for item in items])
+        with storage.bulk_saver(name) as saver:
+            for key,value in items:
+                saver.add(key,value)
 
 
-class Storage():
-    #XXX: Storage will become an interface, this implementation is a mock
+class DictStorage(object):
     THE_FS = {}
 
     def save(self, name, items):
@@ -64,12 +71,42 @@ class Storage():
     def load(self, name):
         return self.THE_FS[name]
 
+    class BulkSaver(object):
+        def __init__(self):
+            self.data = defaultdict(list)
+
+        def add(self, key, item):
+            self.data[key].append(item)
+
+    @contextlib.contextmanager
+    def bulk_saver(self, name):
+        bs = DictStorage.BulkSaver()
+        yield bs
+        for key,items in bs.data.iteritems():
+            DictStorage.THE_FS[_path(name,key)] = items
+
+    def bulk_loader(self, name):
+        """ concatenate several files together """
+        # do we even need this?
+        for path in self.glob(name):
+            for item in self.load(path):
+                yield item
+
+    def glob(self, pattern):
+        # FIXME: this isn't perfectly compatible with shell globs...
+        if pattern.endswith('*'):
+            pattern = pattern.rstrip('*')
+        else:
+            pattern = pattern + '$'
+        regex = re.compile(pattern.replace('?','.').replace('*','.*'))
+        return [k for k in self.THE_FS if regex.match(k)]
+
 
 class Gob(object):
     def __init__(self):
         # Do we want this to be some kind of singleton?
         self.jobs = {}
-        self.storage = Storage()
+        self.storage = DictStorage()
 
     def run_job(self,name):
         return self.jobs[name].run(self.storage)
@@ -87,7 +124,15 @@ class Gob(object):
                 raise LookupError('sources must be defined first')
 
         job = Job(func,sources,*args,**kwargs)
-        # XXX
+        # XXX: I don't like mucking with job here
         job.name = name
+        if job.saver == Job.split:
+            job.split_data = True
+        elif job.saver == Job.list_reduce:
+            job.split_data = False
+        elif sources:
+            job.split_data = self.jobs[sources[0]].split_data
+        else:
+            job.split_data = False
 
         self.jobs[name] = job
