@@ -1,5 +1,4 @@
 import unittest
-import functools
 from base import gob
 from base.gob import Gob, Job, Storage
 

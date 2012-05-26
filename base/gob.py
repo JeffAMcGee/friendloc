@@ -1,16 +1,16 @@
 import inspect
 import itertools
-import functools
 from collections import defaultdict
 
 
-def func(gives_keys=False,all_items=False,must_output=True):
+def func(gives_keys=False, all_items=False, must_output=True):
     def wrapper(f):
         f.gives_keys = gives_keys
         f.all_items = all_items
         f.must_output = must_output
         return f
     return wrapper
+
 
 class Job(object):
     def __init__(self, func, sources, saver=None):
@@ -51,12 +51,13 @@ class Job(object):
         storage.save(name,results.iteritems())
 
     def split(self, storage, name, items):
-        storage.save(name, [item[1] for item in items] )
+        storage.save(name, [item[1] for item in items])
 
 
 class Storage():
     #XXX: Storage will become an interface, this implementation is a mock
     THE_FS = {}
+
     def save(self, name, items):
         self.THE_FS[name] = list(items)
 
