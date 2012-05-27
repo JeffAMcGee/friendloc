@@ -19,30 +19,63 @@ def _path(name,key):
 
 
 class Job(object):
-    def __init__(self, func, sources, saver=None):
+    def __init__(self, func, sources=(), saver=None):
         self.func = func
         self.saver = saver or Job.simple_save
         self.sources = sources
 
-    def run(self, storage):
+    def _runnable_func(self, storage):
         if inspect.ismethod(self.func):
             cls = self.func.im_class
             obj = cls(self, storage)
             # magic: bind the unbound method
-            func = self.func.__get__(obj,cls)
+            return self.func.__get__(obj,cls)
         else:
-            func = self.func
+            return self.func
 
-        if self.sources:
-            items = storage.load(self.sources[0])
-            if func.all_items:
-                results = func(items)
-            else:
-                calls = (func(item) for item in items)
-                non_empty = itertools.ifilter(None, calls)
-                results = itertools.chain.from_iterable(non_empty)
+    def _run_single(self, func, *iters):
+        """
+
+        If the func has all_items set to false, iters should contain things you
+        can re-iterate over like tuples.
+        """
+        if func.all_items or not iters:
+            return func(*iters)
         else:
-            results = func()
+            items,iters = iters[0],iters[1:]
+            calls = (func(item,*iters) for item in items)
+            non_empty = itertools.ifilter(None, calls)
+            return itertools.chain.from_iterable(non_empty)
+
+    def output_files(self, storage):
+        if self.split_data:
+            return storage.glob(self.name+'.*')
+        return [self.name,]
+
+    def run(self, storage, source_jobs):
+        func = self._runnable_func(storage)
+
+        inputs = [job.output_files(storage) for job in source_jobs]
+        if not all(inputs):
+            raise ValueError("missing depnedencies for job")
+
+        file_cache = {}
+        for input in inputs:
+            if len(input)==1:
+                file_cache[input] = tuple(storage.load(input))
+
+        source_sets = itertools.product(*inputs)
+        if any(len(inp)>1 for inp in inputs):
+            for source_set in source_sets:
+                # multiprocess here!
+                iters = [
+                    file_cache.get(path) or storage.load(path)
+                    for path in source_set
+                ]
+                results = self._run_single(func, *iters)
+        else:
+            iters = [file_cache[input[0]] for input in inputs]
+            results = self._run_single(func, *iters)
 
         if func.must_output or results:
             self.saver(self,storage,self.name,results)
@@ -98,7 +131,8 @@ class DictStorage(object):
             pattern = pattern.rstrip('*')
         else:
             pattern = pattern + '$'
-        regex = re.compile(pattern.replace('?','.').replace('*','.*'))
+        cleaned = pattern.replace('.','\\.').replace('?','.').replace('*','.*')
+        regex = re.compile(cleaned)
         return [k for k in self.THE_FS if regex.match(k)]
 
 
@@ -109,7 +143,9 @@ class Gob(object):
         self.storage = DictStorage()
 
     def run_job(self,name):
-        return self.jobs[name].run(self.storage)
+        job = self.jobs[name]
+        source_jobs = [self.jobs[s] for s in job.sources]
+        return job.run(self.storage, source_jobs=source_jobs)
 
     def add_job(self, func, sources=(), *args, **kwargs):
         if isinstance(sources,basestring):
@@ -131,7 +167,7 @@ class Gob(object):
         elif job.saver == Job.list_reduce:
             job.split_data = False
         elif sources:
-            job.split_data = self.jobs[sources[0]].split_data
+            job.split_data = any(self.jobs[s].split_data for s in sources)
         else:
             job.split_data = False
 

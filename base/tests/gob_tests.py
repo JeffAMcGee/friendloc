@@ -49,8 +49,9 @@ class TestGob(unittest.TestCase):
         gob.run_job('counter')
         self.assertEqual(DictStorage.THE_FS['counter.2'],range(2,100,10))
 
-    @unittest.skip
     def test_split_load(self):
+        gob = Gob()
+        load_jobs(gob)
         DictStorage.THE_FS['counter.2'] = range(2,100,10)
         DictStorage.THE_FS['counter.3'] = range(3,100,10)
         gob.run_job('expand')
