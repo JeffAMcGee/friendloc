@@ -70,7 +70,7 @@ class Job(object):
         file_cache = {}
         for input in inputs:
             if len(input)==1:
-                file_cache[input] = tuple(storage.load(input))
+                file_cache[input[0]] = tuple(storage.load(input[0]))
 
         source_sets = itertools.product(*inputs)
         if self.split_data:
