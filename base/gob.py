@@ -18,6 +18,11 @@ def _path(name,key):
     return '.'.join((name,str(key)))
 
 
+def _chunck(path):
+    pos = path.find('.')
+    return path[pos:] if pos!=-1 else None
+
+
 class Job(object):
     def __init__(self, func, sources=(), saver=None):
         self.func = func
@@ -33,19 +38,22 @@ class Job(object):
         else:
             return self.func
 
-    def _run_single(self, func, *iters):
+    def _run_single(self, storage, out_path, func, *iters):
         """
 
         If the func has all_items set to false, iters should contain things you
         can re-iterate over like tuples.
         """
         if func.all_items or not iters:
-            return func(*iters)
+            results = func(*iters)
         else:
             items,iters = iters[0],iters[1:]
             calls = (func(item,*iters) for item in items)
             non_empty = itertools.ifilter(None, calls)
-            return itertools.chain.from_iterable(non_empty)
+            results = itertools.chain.from_iterable(non_empty)
+
+        if func.must_output or results:
+            self.saver(self,storage,out_path,results)
 
     def output_files(self, storage):
         if self.split_data:
@@ -65,20 +73,18 @@ class Job(object):
                 file_cache[input] = tuple(storage.load(input))
 
         source_sets = itertools.product(*inputs)
-        if any(len(inp)>1 for inp in inputs):
+        if self.split_data:
             for source_set in source_sets:
                 # multiprocess here!
                 iters = [
                     file_cache.get(path) or storage.load(path)
                     for path in source_set
                 ]
-                results = self._run_single(func, *iters)
+                suffix = ''.join(_chunck(sp) or '' for sp in source_set)
+                self._run_single(storage, self.name+suffix, func, *iters)
         else:
             iters = [file_cache[input[0]] for input in inputs]
-            results = self._run_single(func, *iters)
-
-        if func.must_output or results:
-            self.saver(self,storage,self.name,results)
+            self._run_single(storage, self.name, func, *iters)
 
     def simple_save(self, storage, name, items):
         storage.save(name,items)

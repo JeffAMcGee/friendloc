@@ -18,6 +18,7 @@ def expand(value):
 
 class SecondHalf(object):
     results = {}
+
     def __init__(self,job,storage):
         pass
 
@@ -55,6 +56,12 @@ class TestGob(unittest.TestCase):
         DictStorage.THE_FS['counter.2'] = range(2,100,10)
         DictStorage.THE_FS['counter.3'] = range(3,100,10)
         gob.run_job('expand')
+
+        exp2 = DictStorage.THE_FS['expand.2']
+        self.assertEqual( exp2[0], {'digits':[2],'num':2} )
+        self.assertEqual( len(exp2), 10 )
+        exp3 = DictStorage.THE_FS['expand.3']
+        self.assertEqual( exp3[9], {'digits':[9,3],'num':93} )
 
     @unittest.skip
     def test_whole_gob(self):
