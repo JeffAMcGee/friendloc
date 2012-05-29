@@ -88,10 +88,14 @@ class Job(object):
             storage.save(name,items)
 
     def list_reduce(self, storage, results):
-        results = defaultdict(list)
-        for k,v in items:
-            results[k].append(v)
-        storage.save(name,results.iteritems())
+        buckets = defaultdict(list)
+        # For now, just merge all the results together
+        for path,d in results.iteritems():
+            for k,v in d:
+                buckets[k].append(v)
+        # FIXME: What is the best way to pick the name of the merged
+        # results?
+        storage.save(self.name,buckets.iteritems())
 
     def split(self, storage, results):
         with storage.bulk_saver(self.name) as saver:

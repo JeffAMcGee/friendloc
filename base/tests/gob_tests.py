@@ -59,17 +59,19 @@ class TestGob(unittest.TestCase):
         exp3 = DictStorage.THE_FS['expand.3']
         self.assertEqual( exp3[9], {'digits':[9,3],'num':93} )
 
-    @unittest.skip
     def test_list_reduce(self):
         DictStorage.THE_FS['expand.2'] = [
             dict(num=32,digits=(3,2)),
             dict(num=42,digits=(4,2)),
+            dict(num=47,digits=(4,7)),
             ]
         DictStorage.THE_FS['expand.3'] = [
             dict(num=43,digits=(4,3)),
             dict(num=53,digits=(5,3)),
             ]
         self.gob.run_job('take')
+        taken = DictStorage.THE_FS['take']
+        self.assertEqual( taken, [(2, [42, 47]), (3, [43])] )
 
     @unittest.skip
     def test_whole_gob(self):
