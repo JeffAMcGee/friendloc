@@ -17,7 +17,7 @@ def expand(value):
 
 
 class SecondHalf(object):
-    results = {}
+    result_data = {}
 
     def __init__(self,job,storage):
         pass
@@ -27,12 +27,11 @@ class SecondHalf(object):
         if value['digits'][0]==4:
             yield value['num']%5, value['num']
 
-    @gob.func(all_items=True,must_output=False)
+    @gob.func(all_items=True)
     def results(self, items):
         # items should be an iterator of (k,v) pairs - just store the data on
         # the class so we can run tests on it
-        print items
-        self.__class__.results = dict(items)
+        self.__class__.result_data = dict(items)
 
 
 class TestGob(unittest.TestCase):
@@ -41,7 +40,7 @@ class TestGob(unittest.TestCase):
         self.gob.add_job(counter,saver=Job.split)
         self.gob.add_job(expand,'counter')
         self.gob.add_job(SecondHalf.take,'expand',saver=Job.list_reduce)
-        self.gob.add_job(SecondHalf.results,'take')
+        self.gob.add_job(SecondHalf.results,'take',saver=None)
         DictStorage.THE_FS = {}
 
     def test_split_saver(self):
@@ -73,7 +72,11 @@ class TestGob(unittest.TestCase):
         taken = DictStorage.THE_FS['take']
         self.assertEqual( taken, [(2, [42, 47]), (3, [43])] )
 
-    @unittest.skip
+    def test_no_output(self):
+        DictStorage.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
+        self.gob.run_job('results')
+        self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
+
     def test_whole_gob(self):
         self.gob.run_job('counter')
         self.gob.run_job('expand')
@@ -82,4 +85,4 @@ class TestGob(unittest.TestCase):
 
         # These jobs find numbers less than 100 that begin with a four and end
         # with a 2 or 7.
-        self.assertEqual(set(SecondHalf.results[2]), {42,47})
+        self.assertEqual(set(SecondHalf.result_data[2]), {42,47})

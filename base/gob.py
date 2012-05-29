@@ -5,11 +5,10 @@ import re
 from collections import defaultdict
 
 
-def func(gives_keys=False, all_items=False, must_output=True):
+def func(gives_keys=False, all_items=False):
     def wrapper(f):
         f.gives_keys = gives_keys
         f.all_items = all_items
-        f.must_output = must_output
         return f
     return wrapper
 
@@ -29,9 +28,9 @@ def chain_truthy(iters):
 
 
 class Job(object):
-    def __init__(self, func, sources=(), saver=None):
+    def __init__(self, func, sources=(), **kwargs):
         self.func = func
-        self.saver = saver or Job.simple_save
+        self.saver = kwargs.get('saver',Job.simple_save)
         self.sources = sources
 
     def _runnable_func(self, storage):
@@ -79,9 +78,8 @@ class Job(object):
             assert out_path not in results
             results[out_path] = self._run_single( storage, func, source_set )
 
-        if func.must_output:
-            assert any(results.itervalues())
-        self.saver(self,storage,results)
+        if self.saver:
+            self.saver(self,storage,results)
 
     def simple_save(self, storage, results):
         for name, items in results.iteritems():
