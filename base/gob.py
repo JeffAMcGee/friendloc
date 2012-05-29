@@ -23,6 +23,11 @@ def _chunck(path):
     return path[pos:] if pos!=-1 else None
 
 
+def chain_truthy(iters):
+    non_empty = itertools.ifilter(None, iters)
+    return itertools.chain.from_iterable(non_empty)
+
+
 class Job(object):
     def __init__(self, func, sources=(), saver=None):
         self.func = func
@@ -38,22 +43,19 @@ class Job(object):
         else:
             return self.func
 
-    def _run_single(self, storage, out_path, func, *iters):
+    def _run_single(self, storage, func, in_paths):
         """
 
         If the func has all_items set to false, iters should contain things you
         can re-iterate over like tuples.
         """
+        iters = [ storage.load(path) for path in in_paths ]
         if func.all_items or not iters:
-            results = func(*iters)
+            return func(*iters)
         else:
-            items,iters = iters[0],iters[1:]
-            calls = (func(item,*iters) for item in items)
-            non_empty = itertools.ifilter(None, calls)
-            results = itertools.chain.from_iterable(non_empty)
-
-        if func.must_output or results:
-            self.saver(self,storage,out_path,results)
+            item_iters = itertools.izip_longest(*iters)
+            calls = (func(*args) for args in item_iters)
+            return chain_truthy(calls)
 
     def output_files(self, storage):
         if self.split_data:
@@ -65,39 +67,35 @@ class Job(object):
 
         inputs = [job.output_files(storage) for job in source_jobs]
         if not all(inputs):
-            raise ValueError("missing depnedencies for job")
-
-        file_cache = {}
-        for input in inputs:
-            if len(input)==1:
-                file_cache[input[0]] = tuple(storage.load(input[0]))
+            raise ValueError("missing dependencies for job")
 
         source_sets = itertools.product(*inputs)
-        if self.split_data:
-            for source_set in source_sets:
-                # multiprocess here!
-                iters = [
-                    file_cache.get(path) or storage.load(path)
-                    for path in source_set
-                ]
-                suffix = ''.join(_chunck(sp) or '' for sp in source_set)
-                self._run_single(storage, self.name+suffix, func, *iters)
-        else:
-            iters = [file_cache[input[0]] for input in inputs]
-            self._run_single(storage, self.name, func, *iters)
+        results = {}
 
-    def simple_save(self, storage, name, items):
-        storage.save(name,items)
+        for source_set in source_sets:
+            # multiprocess here!
+            suffix = ''.join(_chunck(sp) or '' for sp in source_set)
+            out_path = self.name+suffix
+            assert out_path not in results
+            results[out_path] = self._run_single( storage, func, source_set )
 
-    def list_reduce(self, storage, name, items):
+        if func.must_output:
+            assert any(results.itervalues())
+        self.saver(self,storage,results)
+
+    def simple_save(self, storage, results):
+        for name, items in results.iteritems():
+            storage.save(name,items)
+
+    def list_reduce(self, storage, results):
         results = defaultdict(list)
         for k,v in items:
             results[k].append(v)
         storage.save(name,results.iteritems())
 
-    def split(self, storage, name, items):
-        with storage.bulk_saver(name) as saver:
-            for key,value in items:
+    def split(self, storage, results):
+        with storage.bulk_saver(self.name) as saver:
+            for key,value in results[self.name]:
                 saver.add(key,value)
 
 
