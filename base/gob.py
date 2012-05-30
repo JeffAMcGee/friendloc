@@ -28,27 +28,76 @@ def chain_truthy(iters):
 
 
 class Job(object):
-    def __init__(self, func, sources=(), **kwargs):
+    """
+    everything you need to know about a job when you are not running it
+    I may merge this into the function objects @func decorates.
+    """
+    def __init__(self, func, sources=(), saver='simple_save'):
         self.func = func
-        self.saver = kwargs.get('saver',Job.simple_save)
+        self.saver = saver
         self.sources = sources
 
-    def _runnable_func(self, storage):
-        if inspect.ismethod(self.func):
-            cls = self.func.im_class
-            obj = cls(self, storage)
+    def output_files(self, executor):
+        if self.split_data:
+            return executor.glob(self.name+'.*')
+        return [self.name,]
+
+
+class Executor(object):
+    def __init__(self, path):
+        self.path = path
+
+    def save(self, name, items):
+        "store items in the file 'name'. items is an iterator."
+        raise NotImplementedError
+
+    def load(self, name):
+        "return an iterator over the items stored in the file 'name'"
+        raise NotImplementedError
+
+    def bulk_saver(self, name):
+        """
+        context manager that returns a BulkSaver object, which can save to
+        multiple open files at the same time. The object will have this method:
+            def add(self, name, item)
+        When that method is called, it will append item to the file with the
+        name 'name'.
+        """
+        raise NotImplementedError
+
+    def glob(self, pattern):
+        "return a list of the files that match a shell-style pattern"
+        raise NotImplementedError
+
+    def run(self, job, input_paths):
+        """
+        run the job. save the results. block until it is done.
+        """
+        raise NotImplementedError
+
+    def input_paths(self, source_jobs):
+        inputs = [job.output_files(self) for job in source_jobs]
+        if not all(inputs):
+            raise ValueError("missing dependencies for job")
+        return itertools.product(*inputs)
+
+    # simple_save, list_reduce, and split?
+
+
+class DictExecutor(Executor):
+
+    # Execution stuff
+    def _runnable_func(self, job):
+        if inspect.ismethod(job.func):
+            cls = job.func.im_class
+            obj = cls(self, self)
             # magic: bind the unbound method
-            return self.func.__get__(obj,cls)
+            return job.func.__get__(obj,cls)
         else:
-            return self.func
+            return job.func
 
-    def _run_single(self, storage, func, in_paths):
-        """
-
-        If the func has all_items set to false, iters should contain things you
-        can re-iterate over like tuples.
-        """
-        iters = [ storage.load(path) for path in in_paths ]
+    def _run_single(self, func, in_paths):
+        iters = [ self.load(path) for path in in_paths ]
         if func.all_items or not iters:
             return func(*iters)
         else:
@@ -56,36 +105,25 @@ class Job(object):
             calls = (func(*args) for args in item_iters)
             return chain_truthy(calls)
 
-    def output_files(self, storage):
-        if self.split_data:
-            return storage.glob(self.name+'.*')
-        return [self.name,]
+    def run(self, job, input_paths):
+        func = self._runnable_func(job)
 
-    def run(self, storage, source_jobs):
-        func = self._runnable_func(storage)
-
-        inputs = [job.output_files(storage) for job in source_jobs]
-        if not all(inputs):
-            raise ValueError("missing dependencies for job")
-
-        source_sets = itertools.product(*inputs)
         results = {}
-
-        for source_set in source_sets:
+        for source_set in input_paths:
             # multiprocess here!
             suffix = ''.join(_chunck(sp) or '' for sp in source_set)
-            out_path = self.name+suffix
+            out_path = job.name+suffix
             assert out_path not in results
-            results[out_path] = self._run_single( storage, func, source_set )
+            results[out_path] = self._run_single( func, source_set )
 
-        if self.saver:
-            self.saver(self,storage,results)
+        if job.saver:
+            getattr(self,job.saver)(job.name,results)
 
-    def simple_save(self, storage, results):
+    def simple_save(self, name, results):
         for name, items in results.iteritems():
-            storage.save(name,items)
+            self.save(name,items)
 
-    def list_reduce(self, storage, results):
+    def list_reduce(self, name, results):
         buckets = defaultdict(list)
         # For now, just merge all the results together
         for path,d in results.iteritems():
@@ -93,15 +131,14 @@ class Job(object):
                 buckets[k].append(v)
         # FIXME: What is the best way to pick the name of the merged
         # results?
-        storage.save(self.name,buckets.iteritems())
+        self.save(name,buckets.iteritems())
 
-    def split(self, storage, results):
-        with storage.bulk_saver(self.name) as saver:
-            for key,value in results[self.name]:
+    def split(self, name, results):
+        with self.bulk_saver(name) as saver:
+            for key,value in results[name]:
                 saver.add(key,value)
 
-
-class DictStorage(object):
+    # File system stuff
     THE_FS = {}
 
     def save(self, name, items):
@@ -119,10 +156,10 @@ class DictStorage(object):
 
     @contextlib.contextmanager
     def bulk_saver(self, name):
-        bs = DictStorage.BulkSaver()
+        bs = DictExecutor.BulkSaver()
         yield bs
         for key,items in bs.data.iteritems():
-            DictStorage.THE_FS[_path(name,key)] = items
+            self.THE_FS[_path(name,key)] = items
 
     def bulk_loader(self, name):
         """ concatenate several files together """
@@ -143,15 +180,16 @@ class DictStorage(object):
 
 
 class Gob(object):
-    def __init__(self):
+    def __init__(self, executor):
         # Do we want this to be some kind of singleton?
         self.jobs = {}
-        self.storage = DictStorage()
+        self.executor = executor
 
     def run_job(self,name):
         job = self.jobs[name]
         source_jobs = [self.jobs[s] for s in job.sources]
-        return job.run(self.storage, source_jobs=source_jobs)
+        input_paths = self.executor.input_paths(source_jobs)
+        return self.executor.run(job,input_paths=input_paths)
 
     def add_job(self, func, sources=(), *args, **kwargs):
         if isinstance(sources,basestring):
@@ -168,9 +206,9 @@ class Gob(object):
         job = Job(func,sources,*args,**kwargs)
         # XXX: I don't like mucking with job here
         job.name = name
-        if job.saver == Job.split:
+        if job.saver == 'split':
             job.split_data = True
-        elif job.saver == Job.list_reduce:
+        elif job.saver == 'list_reduce':
             job.split_data = False
         elif sources:
             job.split_data = any(self.jobs[s].split_data for s in sources)

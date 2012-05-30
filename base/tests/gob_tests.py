@@ -1,6 +1,6 @@
 import unittest
 from base import gob
-from base.gob import Gob, Job, DictStorage
+from base.gob import Gob, Job, DictExecutor
 
 
 @gob.func(gives_keys=True)
@@ -36,44 +36,44 @@ class SecondHalf(object):
 
 class TestGob(unittest.TestCase):
     def setUp(self):
-        self.gob = Gob()
-        self.gob.add_job(counter,saver=Job.split)
+        self.gob = Gob(DictExecutor('testing'))
+        self.gob.add_job(counter,saver='split')
         self.gob.add_job(expand,'counter')
-        self.gob.add_job(SecondHalf.take,'expand',saver=Job.list_reduce)
+        self.gob.add_job(SecondHalf.take,'expand',saver='list_reduce')
         self.gob.add_job(SecondHalf.results,'take',saver=None)
-        DictStorage.THE_FS = {}
+        DictExecutor.THE_FS = {}
 
     def test_split_saver(self):
         self.gob.run_job('counter')
-        self.assertEqual(DictStorage.THE_FS['counter.2'],range(2,100,10))
+        self.assertEqual(DictExecutor.THE_FS['counter.2'],range(2,100,10))
 
     def test_split_load(self):
-        DictStorage.THE_FS['counter.2'] = range(2,100,10)
-        DictStorage.THE_FS['counter.3'] = range(3,100,10)
+        DictExecutor.THE_FS['counter.2'] = range(2,100,10)
+        DictExecutor.THE_FS['counter.3'] = range(3,100,10)
         self.gob.run_job('expand')
 
-        exp2 = DictStorage.THE_FS['expand.2']
+        exp2 = DictExecutor.THE_FS['expand.2']
         self.assertEqual( exp2[0], {'digits':[2],'num':2} )
         self.assertEqual( len(exp2), 10 )
-        exp3 = DictStorage.THE_FS['expand.3']
+        exp3 = DictExecutor.THE_FS['expand.3']
         self.assertEqual( exp3[9], {'digits':[9,3],'num':93} )
 
     def test_list_reduce(self):
-        DictStorage.THE_FS['expand.2'] = [
+        DictExecutor.THE_FS['expand.2'] = [
             dict(num=32,digits=(3,2)),
             dict(num=42,digits=(4,2)),
             dict(num=47,digits=(4,7)),
             ]
-        DictStorage.THE_FS['expand.3'] = [
+        DictExecutor.THE_FS['expand.3'] = [
             dict(num=43,digits=(4,3)),
             dict(num=53,digits=(5,3)),
             ]
         self.gob.run_job('take')
-        taken = DictStorage.THE_FS['take']
+        taken = DictExecutor.THE_FS['take']
         self.assertEqual( taken, [(2, [42, 47]), (3, [43])] )
 
     def test_no_output(self):
-        DictStorage.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
+        DictExecutor.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
         self.gob.run_job('results')
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
 
