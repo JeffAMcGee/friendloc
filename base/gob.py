@@ -37,13 +37,21 @@ class Job(object):
         self.saver = saver
         self.sources = sources
 
-    def output_files(self, executor):
+    def output_files(self, env):
         if self.split_data:
-            return executor.glob(self.name+'.*')
+            return env.glob(self.name+'.*')
         return [self.name,]
 
 
 class Executor(object):
+    def run(self, job, input_paths):
+        """
+        run the job. save the results. block until it is done.
+        """
+        raise NotImplementedError
+
+
+class Storage(object):
     def __init__(self, path):
         self.path = path
 
@@ -69,12 +77,6 @@ class Executor(object):
         "return a list of the files that match a shell-style pattern"
         raise NotImplementedError
 
-    def run(self, job, input_paths):
-        """
-        run the job. save the results. block until it is done.
-        """
-        raise NotImplementedError
-
     def input_paths(self, source_jobs):
         inputs = [job.output_files(self) for job in source_jobs]
         if not all(inputs):
@@ -84,9 +86,8 @@ class Executor(object):
     # simple_save, list_reduce, and split?
 
 
-class DictExecutor(Executor):
-
-    # Execution stuff
+class SingleThreadExecutor(Executor):
+    "Execute in a single process"
     def _runnable_func(self, job):
         if inspect.ismethod(job.func):
             cls = job.func.im_class
@@ -138,7 +139,9 @@ class DictExecutor(Executor):
             for key,value in results[name]:
                 saver.add(key,value)
 
-    # File system stuff
+
+class DictStorage(Storage):
+    "Store data in a dict in this class for testing and debugging."
     THE_FS = {}
 
     def save(self, name, items):
@@ -156,7 +159,7 @@ class DictExecutor(Executor):
 
     @contextlib.contextmanager
     def bulk_saver(self, name):
-        bs = DictExecutor.BulkSaver()
+        bs = DictStorage.BulkSaver()
         yield bs
         for key,items in bs.data.iteritems():
             self.THE_FS[_path(name,key)] = items
@@ -179,17 +182,21 @@ class DictExecutor(Executor):
         return [k for k in self.THE_FS if regex.match(k)]
 
 
+class SimpleEnv(DictStorage,SingleThreadExecutor):
+    pass
+
+
 class Gob(object):
-    def __init__(self, executor):
+    def __init__(self, env):
         # Do we want this to be some kind of singleton?
         self.jobs = {}
-        self.executor = executor
+        self.env = env
 
     def run_job(self,name):
         job = self.jobs[name]
         source_jobs = [self.jobs[s] for s in job.sources]
-        input_paths = self.executor.input_paths(source_jobs)
-        return self.executor.run(job,input_paths=input_paths)
+        input_paths = self.env.input_paths(source_jobs)
+        return self.env.run(job,input_paths=input_paths)
 
     def add_job(self, func, sources=(), *args, **kwargs):
         if isinstance(sources,basestring):

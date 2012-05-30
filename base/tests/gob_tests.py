@@ -1,6 +1,6 @@
 import unittest
 from base import gob
-from base.gob import Gob, Job, DictExecutor
+from base.gob import Gob, SimpleEnv
 
 
 @gob.func(gives_keys=True)
@@ -36,44 +36,44 @@ class SecondHalf(object):
 
 class TestGob(unittest.TestCase):
     def setUp(self):
-        self.gob = Gob(DictExecutor('testing'))
+        self.gob = Gob(SimpleEnv('testing'))
         self.gob.add_job(counter,saver='split')
         self.gob.add_job(expand,'counter')
         self.gob.add_job(SecondHalf.take,'expand',saver='list_reduce')
         self.gob.add_job(SecondHalf.results,'take',saver=None)
-        DictExecutor.THE_FS = {}
+        SimpleEnv.THE_FS = {}
 
     def test_split_saver(self):
         self.gob.run_job('counter')
-        self.assertEqual(DictExecutor.THE_FS['counter.2'],range(2,100,10))
+        self.assertEqual(SimpleEnv.THE_FS['counter.2'],range(2,100,10))
 
     def test_split_load(self):
-        DictExecutor.THE_FS['counter.2'] = range(2,100,10)
-        DictExecutor.THE_FS['counter.3'] = range(3,100,10)
+        SimpleEnv.THE_FS['counter.2'] = range(2,100,10)
+        SimpleEnv.THE_FS['counter.3'] = range(3,100,10)
         self.gob.run_job('expand')
 
-        exp2 = DictExecutor.THE_FS['expand.2']
+        exp2 = SimpleEnv.THE_FS['expand.2']
         self.assertEqual( exp2[0], {'digits':[2],'num':2} )
         self.assertEqual( len(exp2), 10 )
-        exp3 = DictExecutor.THE_FS['expand.3']
+        exp3 = SimpleEnv.THE_FS['expand.3']
         self.assertEqual( exp3[9], {'digits':[9,3],'num':93} )
 
     def test_list_reduce(self):
-        DictExecutor.THE_FS['expand.2'] = [
+        SimpleEnv.THE_FS['expand.2'] = [
             dict(num=32,digits=(3,2)),
             dict(num=42,digits=(4,2)),
             dict(num=47,digits=(4,7)),
             ]
-        DictExecutor.THE_FS['expand.3'] = [
+        SimpleEnv.THE_FS['expand.3'] = [
             dict(num=43,digits=(4,3)),
             dict(num=53,digits=(5,3)),
             ]
         self.gob.run_job('take')
-        taken = DictExecutor.THE_FS['take']
+        taken = SimpleEnv.THE_FS['take']
         self.assertEqual( taken, [(2, [42, 47]), (3, [43])] )
 
     def test_no_output(self):
-        DictExecutor.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
+        SimpleEnv.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
         self.gob.run_job('results')
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
 
