@@ -164,13 +164,6 @@ class DictStorage(Storage):
         for key,items in bs.data.iteritems():
             self.THE_FS[_path(name,key)] = items
 
-    def bulk_loader(self, name):
-        """ concatenate several files together """
-        # do we even need this?
-        for path in self.glob(name):
-            for item in self.load(path):
-                yield item
-
     def glob(self, pattern):
         # FIXME: this isn't perfectly compatible with shell globs...
         if pattern.endswith('*'):
