@@ -1,8 +1,12 @@
 import contextlib
+import fnmatch
+import glob
 import inspect
 import itertools
 import re
 from collections import defaultdict
+
+import msgpack
 
 
 def func(gives_keys=False, all_items=False):
@@ -137,7 +141,7 @@ class SingleThreadExecutor(Executor):
     def split(self, name, results):
         with self.bulk_saver(name) as saver:
             for key,value in results[name]:
-                saver.add(key,value)
+                saver.add(_path(name,key),value)
 
 
 class DictStorage(Storage):
@@ -154,29 +158,65 @@ class DictStorage(Storage):
         def __init__(self):
             self.data = defaultdict(list)
 
-        def add(self, key, item):
-            self.data[key].append(item)
+        def add(self, name, item):
+            self.data[name].append(item)
 
     @contextlib.contextmanager
     def bulk_saver(self, name):
         bs = DictStorage.BulkSaver()
         yield bs
         for key,items in bs.data.iteritems():
-            self.THE_FS[_path(name,key)] = items
+            self.THE_FS[key] = items
 
     def glob(self, pattern):
-        # FIXME: this isn't perfectly compatible with shell globs...
-        if pattern.endswith('*'):
-            pattern = pattern.rstrip('*')
-        else:
-            pattern = pattern + '$'
-        cleaned = pattern.replace('.','\\.').replace('?','.').replace('*','.*')
-        regex = re.compile(cleaned)
-        return [k for k in self.THE_FS if regex.match(k)]
+        return fnmatch.filter(self.THE_FS,pattern)
+
+
+class FileStorage(Storage):
+    "Store data in a directory"
+
+    def save(self, name, items):
+        with open(name,'w') as f:
+            packer = msgpack.Packer()
+            for item in items:
+                f.write(packer.pack(item))
+
+    def load(self, name):
+        # Can we just return the iterator or is close a problem?
+        with open(name) as f:
+            for item in msgpack.Unpacker(f):
+                yield item
+
+    class BulkSaver(object):
+        def __init__(self):
+            self.files = {}
+            self.packer = msgpack.Packer()
+
+        def add(self, name, item):
+            if name not in self.files:
+                self.files[name] = open(name,'w')
+            self.files[name].write(self.packer.pack(item))
+
+        def close(self):
+            for file in self.files.itervalues():
+                file.close()
+
+    @contextlib.contextmanager
+    def bulk_saver(self, name):
+        bs = self.BulkSaver()
+        yield bs
+        bs.close()
+
+    def glob(self, pattern):
+        return glob.glob(pattern)
 
 
 class SimpleEnv(DictStorage,SingleThreadExecutor):
-    pass
+    "Run in a single thread, store results in ram"
+
+
+class SimpleFileEnv(FileStorage,SingleThreadExecutor):
+    "Run in a single thread, store results to disk"
 
 
 class Gob(object):

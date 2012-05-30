@@ -1,6 +1,6 @@
 import unittest
 from base import gob
-from base.gob import Gob, SimpleEnv
+from base.gob import Gob, SimpleEnv, SimpleFileEnv
 
 
 @gob.func(gives_keys=True)
@@ -34,13 +34,17 @@ class SecondHalf(object):
         self.__class__.result_data = dict(items)
 
 
-class TestGob(unittest.TestCase):
+def create_jobs(gob):
+    gob.add_job(counter,saver='split')
+    gob.add_job(expand,'counter')
+    gob.add_job(SecondHalf.take,'expand',saver='list_reduce')
+    gob.add_job(SecondHalf.results,'take',saver=None)
+
+
+class TestSimpleEnv(unittest.TestCase):
     def setUp(self):
         self.gob = Gob(SimpleEnv('testing'))
-        self.gob.add_job(counter,saver='split')
-        self.gob.add_job(expand,'counter')
-        self.gob.add_job(SecondHalf.take,'expand',saver='list_reduce')
-        self.gob.add_job(SecondHalf.results,'take',saver=None)
+        create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
 
     def test_split_saver(self):
@@ -86,3 +90,15 @@ class TestGob(unittest.TestCase):
         # These jobs find numbers less than 100 that begin with a four and end
         # with a 2 or 7.
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
+
+
+class TestSimpleFileEnv(unittest.TestCase):
+    def setUp(self):
+        self.gob = Gob(SimpleFileEnv('testing'))
+        create_jobs(self.gob)
+
+    def test_whole_gob(self):
+        self.gob.run_job('counter')
+        self.gob.run_job('expand')
+        self.gob.run_job('take')
+        self.gob.run_job('results')
