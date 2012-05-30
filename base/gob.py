@@ -3,7 +3,7 @@ import fnmatch
 import glob
 import inspect
 import itertools
-import re
+import os.path
 from collections import defaultdict
 
 import msgpack
@@ -56,8 +56,6 @@ class Executor(object):
 
 
 class Storage(object):
-    def __init__(self, path):
-        self.path = path
 
     def save(self, name, items):
         "store items in the file 'name'. items is an iterator."
@@ -174,27 +172,34 @@ class DictStorage(Storage):
 
 class FileStorage(Storage):
     "Store data in a directory"
+    def __init__(self, path):
+        # path should be an absolute path to a directory to store files
+        self.path = path
+
+    def _open(self, name, *args):
+        return open(os.path.join(self.path,name), *args)
 
     def save(self, name, items):
-        with open(name,'w') as f:
+        with self._open(name,'w') as f:
             packer = msgpack.Packer()
             for item in items:
                 f.write(packer.pack(item))
 
     def load(self, name):
         # Can we just return the iterator or is close a problem?
-        with open(name) as f:
+        with self._open(name) as f:
             for item in msgpack.Unpacker(f):
                 yield item
 
     class BulkSaver(object):
-        def __init__(self):
+        def __init__(self,storage):
             self.files = {}
             self.packer = msgpack.Packer()
+            self.storage = storage
 
         def add(self, name, item):
             if name not in self.files:
-                self.files[name] = open(name,'w')
+                self.files[name] = self.storage._open(name,'w')
             self.files[name].write(self.packer.pack(item))
 
         def close(self):
@@ -203,12 +208,12 @@ class FileStorage(Storage):
 
     @contextlib.contextmanager
     def bulk_saver(self, name):
-        bs = self.BulkSaver()
+        bs = self.BulkSaver(self)
         yield bs
         bs.close()
 
     def glob(self, pattern):
-        return glob.glob(pattern)
+        return glob.glob(os.path.join(self.path,pattern))
 
 
 class SimpleEnv(DictStorage,SingleThreadExecutor):

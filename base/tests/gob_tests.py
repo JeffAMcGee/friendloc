@@ -1,4 +1,6 @@
+import os.path
 import unittest
+
 from base import gob
 from base.gob import Gob, SimpleEnv, SimpleFileEnv
 
@@ -43,7 +45,7 @@ def create_jobs(gob):
 
 class TestSimpleEnv(unittest.TestCase):
     def setUp(self):
-        self.gob = Gob(SimpleEnv('testing'))
+        self.gob = Gob(SimpleEnv())
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
 
@@ -82,6 +84,7 @@ class TestSimpleEnv(unittest.TestCase):
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
 
     def test_whole_gob(self):
+        # integration test
         self.gob.run_job('counter')
         self.gob.run_job('expand')
         self.gob.run_job('take')
@@ -94,11 +97,18 @@ class TestSimpleEnv(unittest.TestCase):
 
 class TestSimpleFileEnv(unittest.TestCase):
     def setUp(self):
-        self.gob = Gob(SimpleFileEnv('testing'))
+        path = os.path.join(os.path.dirname(__file__),'data')
+        self.env = SimpleFileEnv(path)
+        self.gob = Gob(self.env)
         create_jobs(self.gob)
 
     def test_whole_gob(self):
+        # integration test
         self.gob.run_job('counter')
         self.gob.run_job('expand')
         self.gob.run_job('take')
         self.gob.run_job('results')
+
+        # These jobs find numbers less than 100 that begin with a four and end
+        # with a 2 or 7.
+        self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
