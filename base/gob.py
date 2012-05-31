@@ -5,6 +5,7 @@ import inspect
 import itertools
 import os.path
 from collections import defaultdict
+from multiprocessing import Pool
 
 import msgpack
 
@@ -51,8 +52,31 @@ class Executor(object):
     def run(self, job, input_paths):
         """
         run the job. save the results. block until it is done.
+
+        Subclasses of this should behave like a drop-in replacement for the
+        SingleThreadExecutor.
         """
         raise NotImplementedError
+
+    def runnable_func(self, job):
+        "take the func from a job and turn it into a bound method or function"
+        if inspect.ismethod(job.func):
+            cls = job.func.im_class
+            obj = cls(self)
+            # magic: bind the unbound method job.func to obj
+            return job.func.__get__(obj,cls)
+        else:
+            return job.func
+
+    def run_single(self, func, in_paths):
+        "run func for one set of inputs and return an iterator of results"
+        iters = [ self.load(path) for path in in_paths ]
+        if func.all_items or not iters:
+            return func(*iters)
+        else:
+            item_iters = itertools.izip_longest(*iters)
+            calls = (func(*args) for args in item_iters)
+            return chain_truthy(calls)
 
 
 class Storage(object):
@@ -90,26 +114,8 @@ class Storage(object):
 
 class SingleThreadExecutor(Executor):
     "Execute in a single process"
-    def _runnable_func(self, job):
-        if inspect.ismethod(job.func):
-            cls = job.func.im_class
-            obj = cls(self, self)
-            # magic: bind the unbound method
-            return job.func.__get__(obj,cls)
-        else:
-            return job.func
-
-    def _run_single(self, func, in_paths):
-        iters = [ self.load(path) for path in in_paths ]
-        if func.all_items or not iters:
-            return func(*iters)
-        else:
-            item_iters = itertools.izip_longest(*iters)
-            calls = (func(*args) for args in item_iters)
-            return chain_truthy(calls)
-
     def run(self, job, input_paths):
-        func = self._runnable_func(job)
+        func = self.runnable_func(job)
 
         results = {}
         for source_set in input_paths:
@@ -117,7 +123,7 @@ class SingleThreadExecutor(Executor):
             suffix = ''.join(_chunck(sp) or '' for sp in source_set)
             out_path = job.name+suffix
             assert out_path not in results
-            results[out_path] = self._run_single( func, source_set )
+            results[out_path] = self.run_single( func, source_set )
 
         if job.saver:
             getattr(self,job.saver)(job.name,results)
@@ -214,6 +220,42 @@ class FileStorage(Storage):
 
     def glob(self, pattern):
         return glob.glob(os.path.join(self.path,pattern))
+
+
+# Ick. Multiproccessing needs things that are pickleable. Methods are
+# not pickleable. These values will get set once per child proccess.
+_mp_worker_func = None
+_mp_worker_env = None
+_mp_worker_job = None
+
+
+def _mp_worker_init(env, job):
+    global _mp_worker_func, _mp_worker_job, _mp_worker_env
+    _mp_worker_env = env
+    _mp_worker_job = job
+    _mp_worker_func = env.runnable_func(job)
+
+
+def _mp_worker_run(source_set):
+    suffix = ''.join(_chunck(sp) or '' for sp in source_set)
+    out_path = _mp_worker_job.name+suffix
+
+    results = _mp_worker_env.run_single(_mp_worker_func,source_set)
+    if _mp_worker_job.saver:
+        saver = getattr(_mp_worker_env,_mp_worker_job.saver)
+        saver(out_path,results)
+
+
+class MultiProcEnv(FileStorage, Executor):
+    "Execute in a single process"
+
+    def run(self, job, input_paths):
+        pool = Pool(4,_mp_worker_init,[self, job])
+        pool.map(_mp_worker_run, input_paths)
+
+    def simple_save(self, name, results):
+        for name, items in results.iteritems():
+            self.save(name,items)
 
 
 class SimpleEnv(DictStorage,SingleThreadExecutor):

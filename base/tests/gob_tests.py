@@ -24,7 +24,7 @@ def expand(value):
 class SecondHalf(object):
     result_data = {}
 
-    def __init__(self,job,storage):
+    def __init__(self,env):
         pass
 
     @gob.func(gives_keys=True)
