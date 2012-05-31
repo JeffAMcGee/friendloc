@@ -1,5 +1,8 @@
+import os
 import os.path
+import shutil
 import unittest
+import msgpack
 
 from base import gob
 from base.gob import Gob, SimpleEnv, SimpleFileEnv
@@ -98,9 +101,27 @@ class TestSimpleEnv(unittest.TestCase):
 class TestSimpleFileEnv(unittest.TestCase):
     def setUp(self):
         path = os.path.join(os.path.dirname(__file__),'data')
+        # clean up
+        shutil.rmtree(path,ignore_errors=True)
+        os.mkdir(path)
+        self.packed = msgpack.packb((1,2,"gigem"))
+
         self.env = SimpleFileEnv(path)
         self.gob = Gob(self.env)
         create_jobs(self.gob)
+
+    def test_load(self):
+        with open(os.path.join(self.env.path,"stuff"),'w') as f:
+            f.write(self.packed)
+
+        data = list(self.env.load("stuff"))
+        self.assertEqual(data,[(1,2,"gigem")])
+
+    def test_save(self):
+        self.env.save("more_stuff.2",[[1,2,"gigem"]])
+        with open(os.path.join(self.env.path,"more_stuff.2")) as f:
+            data = f.read()
+        self.assertEqual(data,self.packed)
 
     def test_whole_gob(self):
         # integration test
