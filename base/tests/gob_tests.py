@@ -5,7 +5,7 @@ import unittest
 import msgpack
 
 from base import gob
-from base.gob import Gob, SimpleEnv, SimpleFileEnv
+from base.gob import Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv
 
 
 @gob.func(gives_keys=True)
@@ -98,12 +98,16 @@ class TestSimpleEnv(unittest.TestCase):
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
 
 
+def clean_data_dir():
+    path = os.path.join(os.path.dirname(__file__),'data')
+    shutil.rmtree(path,ignore_errors=True)
+    os.mkdir(path)
+    return path
+
+
 class TestSimpleFileEnv(unittest.TestCase):
     def setUp(self):
-        path = os.path.join(os.path.dirname(__file__),'data')
-        # clean up
-        shutil.rmtree(path,ignore_errors=True)
-        os.mkdir(path)
+        path = clean_data_dir()
         self.packed = msgpack.packb((1,2,"gigem"))
 
         self.env = SimpleFileEnv(path)
@@ -133,3 +137,21 @@ class TestSimpleFileEnv(unittest.TestCase):
         # These jobs find numbers less than 100 that begin with a four and end
         # with a 2 or 7.
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
+
+
+class TestSimpleFileEnv(unittest.TestCase):
+    def setUp(self):
+        path = clean_data_dir()
+
+        self.env = MultiProcEnv(path)
+        self.gob = Gob(self.env)
+        create_jobs(self.gob)
+
+    @unittest.skip
+    def test_map(self):
+        self.env.save('counter.2',xrange(2,100,10))
+        self.env.save('counter.3',xrange(3,100,10))
+        self.gob.run_job('expand')
+        self.env.load('counter.2',xrange(2,100,10))
+        first = self.env.load('expand.2').next()
+        self.assertEqual( first, {'digits':[2],'num':2} )
