@@ -5,16 +5,16 @@ import unittest
 import msgpack
 
 from base import gob
-from base.gob import Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv
+from base.gob import Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv, join_reduce
 
 
-@gob.func(gives_keys=True)
+@gob.mapper(gives_keys=True)
 def counter():
     for x in xrange(100):
         yield x%10,x
 
 
-@gob.func()
+@gob.mapper()
 def expand(value):
     yield dict(
         num=value,
@@ -27,12 +27,12 @@ class SecondHalf(object):
     def __init__(self,env):
         pass
 
-    @gob.func(gives_keys=True)
+    @gob.mapper(gives_keys=True)
     def take(self, value):
         if value['digits'][0]==4:
             yield value['num']%5, value['num']
 
-    @gob.func(all_items=True)
+    @gob.mapper(all_items=True)
     def results(self, items):
         # items should be an iterator of (k,v) pairs - just store the data on
         # the class so we can run tests on it
@@ -40,9 +40,9 @@ class SecondHalf(object):
 
 
 def create_jobs(gob):
-    gob.add_job(counter,saver='split')
+    gob.add_job(counter,saver='split_save')
     gob.add_job(expand,'counter')
-    gob.add_job(SecondHalf.take,'expand',saver='list_reduce')
+    gob.add_job(SecondHalf.take,'expand',reducer=join_reduce)
     gob.add_job(SecondHalf.results,'take',saver=None)
 
 
@@ -79,7 +79,7 @@ class TestSimpleEnv(unittest.TestCase):
             ]
         self.gob.run_job('take')
         taken = SimpleEnv.THE_FS['take']
-        self.assertEqual( taken, [(2, [42, 47]), (3, [43])] )
+        self.assertEqual( taken, [(2, (42, 47)), (3, (43,))] )
 
     def test_no_output(self):
         SimpleEnv.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
@@ -139,7 +139,7 @@ class TestSimpleFileEnv(unittest.TestCase):
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
 
 
-class TestSimpleFileEnv(unittest.TestCase):
+class TestMultiProcEnv(unittest.TestCase):
     def setUp(self):
         path = clean_data_dir()
 

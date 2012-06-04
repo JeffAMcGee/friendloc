@@ -10,12 +10,32 @@ from multiprocessing import Pool
 import msgpack
 
 
-def func(gives_keys=False, all_items=False):
+def mapper(gives_keys=False, all_items=False):
     def wrapper(f):
         f.gives_keys = gives_keys
         f.all_items = all_items
         return f
     return wrapper
+
+
+def reducer():
+    # purely decorative decorator
+    def wrapper(f):
+        return f
+    return wrapper
+
+
+@reducer()
+def join_reduce(key, items, rereduce):
+    if rereduce:
+        return tuple(itertools.chain.from_iterable(items))
+    else:
+        return tuple(items)
+
+
+@reducer()
+def sum_reduce(key, items):
+    return sum(items)
 
 
 def _path(name,key):
@@ -27,7 +47,17 @@ def _chunck(path):
     return path[pos:] if pos!=-1 else None
 
 
+def _call_opt_kwargs(func,*args,**kwargs):
+    "Call func with args and kwargs. Omit kwargs func does not understand."
+    spec = inspect.getargspec(func)
+    if spec.keywords:
+        return func(*args,**kwargs)
+    safe_kws = {k:v for k,v in kwargs.iteritems() if k in spec.args}
+    return func(*args,**safe_kws)
+
+
 def chain_truthy(iters):
+    "takes an iterable of iterators or None values and chains them together"
     non_empty = itertools.ifilter(None, iters)
     return itertools.chain.from_iterable(non_empty)
 
@@ -35,17 +65,44 @@ def chain_truthy(iters):
 class Job(object):
     """
     everything you need to know about a job when you are not running it
-    I may merge this into the function objects @func decorates.
     """
-    def __init__(self, func, sources=(), saver='simple_save'):
-        self.func = func
+    def __init__(self, mapper, sources=(), saver='save', reducer=None):
+        self.mapper = mapper
         self.saver = saver
         self.sources = sources
+        self.reducer = reducer
 
     def output_files(self, env):
         if self.split_data:
             return env.glob(self.name+'.*')
         return [self.name,]
+
+    def runnable_funcs(self, env):
+        """
+        if the jobs mapper and reducer are unbound methods, make an object for
+        them to bind to, and bind them. If the mapper and reducer are in the
+        same class, only make one instance and have them share it.
+        """
+        res = {}
+        if inspect.ismethod(self.mapper):
+            cls = self.mapper.im_class
+            obj = cls(env)
+            # magic: bind the unbound method job.mapper to obj
+            res['map'] = self.mapper.__get__(obj,cls)
+        else:
+            res['map'] = self.mapper
+
+        if inspect.ismethod(self.reducer):
+            cls = self.reducer.im_class
+            if self.reducer.im_class != self.mapper.im_class:
+                # if the classes are the same, we want to re-use the same
+                # object, otherwise we make a new one:
+                obj = cls(env)
+            # magic: bind the unbound method self.mapper to obj
+            res['reduce'] = self.reducer.__get__(obj,cls)
+        else:
+            res['reduce'] = self.reducer
+        return res
 
 
 class Executor(object):
@@ -53,30 +110,59 @@ class Executor(object):
         """
         run the job. save the results. block until it is done.
 
-        Subclasses of this should behave like a drop-in replacement for the
-        SingleThreadExecutor.
+        Subclasses of this should behave like a drop-in replacement for
+        SingleThreadExecutor.run(...) .
         """
         raise NotImplementedError
 
-    def runnable_func(self, job):
-        "take the func from a job and turn it into a bound method or function"
-        if inspect.ismethod(job.func):
-            cls = job.func.im_class
-            obj = cls(self)
-            # magic: bind the unbound method job.func to obj
-            return job.func.__get__(obj,cls)
-        else:
-            return job.func
+    def map_reduce_save(self, job, in_paths, funcs):
+        "completely process one file -> map, reduce, and save"
+        results = self.map_single(funcs['map'],in_paths)
+        if funcs['reduce']:
+            results = self.reduce_single(funcs['reduce'],results)
 
-    def run_single(self, func, in_paths):
-        "run func for one set of inputs and return an iterator of results"
+        self.save_single(job, in_paths, results)
+
+    def map_single(self, mapper, in_paths):
+        "run mapper for one set of inputs and return an iterator of results"
         iters = [ self.load(path) for path in in_paths ]
-        if func.all_items or not iters:
-            return func(*iters)
+        if mapper.all_items or not iters:
+            return mapper(*iters)
         else:
             item_iters = itertools.izip_longest(*iters)
-            calls = (func(*args) for args in item_iters)
+            calls = (mapper(*args) for args in item_iters)
             return chain_truthy(calls)
+
+    def reduce_single(self, reducer, map_output):
+        grouped = defaultdict(list)
+        for k,v in map_output:
+            grouped[k].append(v)
+        return [
+            ( key, _call_opt_kwargs(reducer,key,items,rereduce=False) )
+            for key,items in grouped.iteritems()
+            ]
+
+    def save_single(self, job, in_paths, results):
+        if job.saver:
+            saver = getattr(self,job.saver)
+            suffix = ''.join(_chunck(sp) or '' for sp in in_paths)
+            saver(job.name+suffix,results)
+
+    def split_save(self, name, key_item_pairs):
+        with self.bulk_saver(name) as saver:
+            for key,value in key_item_pairs:
+                saver.add(_path(name,key),value)
+
+    def reduce_all(self, job, reducer):
+        grouped = defaultdict(list)
+        for path in self.glob(job.name+'.*'):
+            for k,v in self.load(path):
+                grouped[k].append(v)
+        results = [
+            ( key, _call_opt_kwargs(reducer,key,items,rereduce=True) )
+            for key,items in grouped.iteritems()
+            ]
+        self.save(job.name,results)
 
 
 class Storage(object):
@@ -115,37 +201,23 @@ class Storage(object):
 class SingleThreadExecutor(Executor):
     "Execute in a single process"
     def run(self, job, input_paths):
-        func = self.runnable_func(job)
+        """
+        This is the cannonical implementation of run for an Executor.
+        Subclasses of executor should be roughly equivalent to this method, but
+        they can run map_reduce_save in different processes or on different
+        machines.
 
-        results = {}
+        runnable_funcs should be called once per proccess so that the instances
+        of the method that contains the mapper and reducer can be used to cache
+        data.
+        """
+        funcs = job.runnable_funcs(self)
+
         for source_set in input_paths:
-            # multiprocess here!
-            suffix = ''.join(_chunck(sp) or '' for sp in source_set)
-            out_path = job.name+suffix
-            assert out_path not in results
-            results[out_path] = self.run_single( func, source_set )
+            self.map_reduce_save(job, source_set, funcs)
 
-        if job.saver:
-            getattr(self,job.saver)(job.name,results)
-
-    def simple_save(self, name, results):
-        for name, items in results.iteritems():
-            self.save(name,items)
-
-    def list_reduce(self, name, results):
-        buckets = defaultdict(list)
-        # For now, just merge all the results together
-        for path,d in results.iteritems():
-            for k,v in d:
-                buckets[k].append(v)
-        # FIXME: What is the best way to pick the name of the merged
-        # results?
-        self.save(name,buckets.iteritems())
-
-    def split(self, name, results):
-        with self.bulk_saver(name) as saver:
-            for key,value in results[name]:
-                saver.add(_path(name,key),value)
+        if funcs['reduce']:
+            self.reduce_all(job, funcs['reduce'])
 
 
 class DictStorage(Storage):
@@ -233,14 +305,14 @@ def _mp_worker_init(env, job):
     global _mp_worker_func, _mp_worker_job, _mp_worker_env
     _mp_worker_env = env
     _mp_worker_job = job
-    _mp_worker_func = env.runnable_func(job)
+    _mp_worker_func = env.runnable_mapper(job)
 
 
 def _mp_worker_run(source_set):
     suffix = ''.join(_chunck(sp) or '' for sp in source_set)
     out_path = _mp_worker_job.name+suffix
 
-    results = _mp_worker_env.run_single(_mp_worker_func,source_set)
+    results = _mp_worker_env.map_single(_mp_worker_func,source_set)
     if _mp_worker_job.saver:
         saver = getattr(_mp_worker_env,_mp_worker_job.saver)
         saver(out_path,results)
@@ -278,11 +350,11 @@ class Gob(object):
         input_paths = self.env.input_paths(source_jobs)
         return self.env.run(job,input_paths=input_paths)
 
-    def add_job(self, func, sources=(), *args, **kwargs):
+    def add_job(self, mapper, sources=(), *args, **kwargs):
         if isinstance(sources,basestring):
             sources = (sources,)
 
-        name = kwargs.get('name',func.__name__.lower())
+        name = kwargs.get('name',mapper.__name__.lower())
         if name in self.jobs:
             raise ValueError('attempt to insert second job with same name')
 
@@ -290,12 +362,12 @@ class Gob(object):
             if source not in self.jobs:
                 raise LookupError('sources must be defined first')
 
-        job = Job(func,sources,*args,**kwargs)
+        job = Job(mapper,sources,*args,**kwargs)
         # XXX: I don't like mucking with job here
         job.name = name
-        if job.saver == 'split':
+        if job.saver == 'split_save':
             job.split_data = True
-        elif job.saver == 'list_reduce':
+        elif job.reducer:
             job.split_data = False
         elif sources:
             job.split_data = any(self.jobs[s].split_data for s in sources)
