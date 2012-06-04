@@ -8,7 +8,7 @@ from base import gob
 from base.gob import Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv, join_reduce
 
 
-@gob.mapper(gives_keys=True)
+@gob.mapper()
 def counter():
     for x in xrange(100):
         yield x%10,x
@@ -27,7 +27,7 @@ class SecondHalf(object):
     def __init__(self,env):
         pass
 
-    @gob.mapper(gives_keys=True)
+    @gob.mapper()
     def take(self, value):
         if value['digits'][0]==4:
             yield value['num']%5, value['num']
@@ -147,11 +147,17 @@ class TestMultiProcEnv(unittest.TestCase):
         self.gob = Gob(self.env)
         create_jobs(self.gob)
 
-    @unittest.skip
     def test_map(self):
         self.env.save('counter.2',xrange(2,100,10))
         self.env.save('counter.3',xrange(3,100,10))
         self.gob.run_job('expand')
-        self.env.load('counter.2',xrange(2,100,10))
         first = self.env.load('expand.2').next()
-        self.assertEqual( first, {'digits':[2],'num':2} )
+        self.assertEqual( first, {'digits':(2,),'num':2} )
+
+    def test_whole_gob(self):
+        # integration test
+        self.gob.run_job('counter')
+        self.gob.run_job('expand')
+        self.gob.run_job('take')
+        results = dict(self.env.load('take'))
+        self.assertEqual(set(results[2]), {42,47})

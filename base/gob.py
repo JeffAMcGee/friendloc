@@ -10,9 +10,8 @@ from multiprocessing import Pool
 import msgpack
 
 
-def mapper(gives_keys=False, all_items=False):
+def mapper(all_items=False):
     def wrapper(f):
-        f.gives_keys = gives_keys
         f.all_items = all_items
         return f
     return wrapper
@@ -294,40 +293,38 @@ class FileStorage(Storage):
         return glob.glob(os.path.join(self.path,pattern))
 
 
-# Ick. Multiproccessing needs things that are pickleable. Methods are
-# not pickleable. These values will get set once per child proccess.
-_mp_worker_func = None
-_mp_worker_env = None
-_mp_worker_job = None
-
-
 def _mp_worker_init(env, job):
-    global _mp_worker_func, _mp_worker_job, _mp_worker_env
-    _mp_worker_env = env
-    _mp_worker_job = job
-    _mp_worker_func = env.runnable_mapper(job)
+    MultiProcEnv._worker_data['env'] = env
+    MultiProcEnv._worker_data['job'] = job
 
 
 def _mp_worker_run(source_set):
-    suffix = ''.join(_chunck(sp) or '' for sp in source_set)
-    out_path = _mp_worker_job.name+suffix
-
-    results = _mp_worker_env.map_single(_mp_worker_func,source_set)
-    if _mp_worker_job.saver:
-        saver = getattr(_mp_worker_env,_mp_worker_job.saver)
-        saver(out_path,results)
+    # The map method must be a top-level method, not a class method because
+    # pickle is broken.
+    env = MultiProcEnv._worker_data['env']
+    job = MultiProcEnv._worker_data['job']
+    funcs = MultiProcEnv._worker_data['funcs']
+    env.map_reduce_save(job, source_set, funcs)
 
 
 class MultiProcEnv(FileStorage, Executor):
-    "Execute in a single process"
+    "Use python's multiprocessing to split up a job"
+
+    _worker_data = {}
 
     def run(self, job, input_paths):
+        MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
+
         pool = Pool(4,_mp_worker_init,[self, job])
         pool.map(_mp_worker_run, input_paths)
+        pool.close()
+        pool.join()
 
-    def simple_save(self, name, results):
-        for name, items in results.iteritems():
-            self.save(name,items)
+        reducer = MultiProcEnv._worker_data['funcs']['reduce']
+        if reducer:
+            self.reduce_all(job, reducer)
+
+        MultiProcEnv._worker_data = {}
 
 
 class SimpleEnv(DictStorage,SingleThreadExecutor):
