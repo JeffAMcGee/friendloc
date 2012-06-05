@@ -1,4 +1,3 @@
-import pdb
 class SettingsBunch(dict):
     def __getattr__(self, name):
         return self[name]
@@ -21,7 +20,6 @@ settings = SettingsBunch(
     mention_weight = .5,
     crawl_ratio = .1,
     log_dir = 'logs',
-    pdb = pdb.set_trace,
 
     #for predictor
     local_max_dist = 25,
@@ -33,16 +31,16 @@ settings = SettingsBunch(
         lng=-98.5,
         lat=39.76,
         ),
-    
+
     #just for localcrawl
     utc_offset = -21600,
     non_local_cutoff = 13,
     min_cutoff = 2,
     lookup_in = 'lookup.in',
     lookup_out = 'lookup.out',
-    tweets_per_hour = .04, # 1 tweet/day is median
+    tweets_per_hour = .04,  # 1 tweet/day is median
     tweets_per_crawl = 200,
-    max_hours = 360, # 15 days
+    max_hours = 360,  # 15 days
     min_tweet_id = 25000000000000000,
 
 )

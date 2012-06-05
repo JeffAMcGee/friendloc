@@ -19,6 +19,7 @@ from base import gob
 
 path = os.path.join(os.path.dirname(__file__),'data')
 my_gob = gob.Gob(gob.MultiProcEnv(path))
+#my_gob = gob.Gob(gob.SimpleFileEnv(path))
 gob_tests.create_jobs(my_gob)
 
 

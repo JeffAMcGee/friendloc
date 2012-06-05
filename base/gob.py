@@ -41,11 +41,6 @@ def _path(name,key):
     return '.'.join((name,str(key)))
 
 
-def _chunck(path):
-    pos = path.find('.')
-    return path[pos:] if pos!=-1 else None
-
-
 def _call_opt_kwargs(func,*args,**kwargs):
     "Call func with args and kwargs. Omit kwargs func does not understand."
     spec = inspect.getargspec(func)
@@ -141,11 +136,18 @@ class Executor(object):
             for key,items in grouped.iteritems()
             ]
 
+    def _suffix(self, in_paths):
+        def suffix(path):
+            name = os.path.basename(path)
+            pos = name.find('.')
+            return name[pos:] if pos!=-1 else ''
+
+        return ''.join(suffix(sp) for sp in in_paths)
+
     def save_single(self, job, in_paths, results):
         if job.saver:
             saver = getattr(self,job.saver)
-            suffix = ''.join(_chunck(sp) or '' for sp in in_paths)
-            saver(job.name+suffix,results)
+            saver(job.name+self._suffix(in_paths),results)
 
     def split_save(self, name, key_item_pairs):
         with self.bulk_saver(name) as saver:
@@ -251,7 +253,7 @@ class FileStorage(Storage):
     "Store data in a directory"
     def __init__(self, path):
         # path should be an absolute path to a directory to store files
-        self.path = path
+        self.path = os.path.abspath(path)
 
     def _open(self, name, *args):
         return open(os.path.join(self.path,name), *args)
