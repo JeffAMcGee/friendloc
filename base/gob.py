@@ -196,8 +196,6 @@ class Storage(object):
             raise ValueError("missing dependencies for job")
         return itertools.product(*inputs)
 
-    # simple_save, list_reduce, and split?
-
 
 class SingleThreadExecutor(Executor):
     "Execute in a single process"

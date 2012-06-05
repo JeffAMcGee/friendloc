@@ -1,15 +1,7 @@
 #!/usr/bin/env python
 
-if __name__ != '__main__':
-    print """
-This is a tool for testing and administrative tasks.  It is designed to
-be %run in ipython or from the command line.  If you import it from another
-module, you're doing something wrong.
-"""
-
 import logging
 import argparse
-import pdb
 import os.path
 import numpy
 
@@ -17,22 +9,36 @@ from base.tests import gob_tests
 from base import gob
 
 
-path = os.path.join(os.path.dirname(__file__),'data')
-my_gob = gob.Gob(gob.MultiProcEnv(path))
-#my_gob = gob.Gob(gob.SimpleFileEnv(path))
-gob_tests.create_jobs(my_gob)
+def parse_args():
+    parser = argparse.ArgumentParser(description='Run gob jobs.')
+    parser.add_argument('job',nargs='+')
+    parser.add_argument('-s','--single',action="store_true",
+                        help='run in a single process')
+    return parser.parse_args()
 
 
-logging.basicConfig(level=logging.INFO)
-numpy.set_printoptions(precision=3, linewidth=160)
+def make_gob(args):
+    path = os.path.join(os.path.dirname(__file__),'data')
+    if args.single:
+        env = gob.SimpleFileEnv(path)
+    else:
+        env = gob.MultiProcEnv(path)
+    my_gob = gob.Gob(env)
+    gob_tests.create_jobs(my_gob)
+    return my_gob
 
-parser = argparse.ArgumentParser(description='Run gob job.')
-parser.add_argument('job',nargs='+')
-args = parser.parse_args()
 
-for cmd in args.job:
-    try:
+def setup(args):
+    logging.basicConfig(level=logging.INFO)
+    numpy.set_printoptions(precision=3, linewidth=160)
+
+
+def main():
+    args = parse_args()
+    my_gob = make_gob(args)
+    setup(args)
+    for cmd in args.job:
         my_gob.run_job(cmd)
-    except:
-        logging.exception("command failed")
-        pdb.post_mortem()
+
+if __name__ == '__main__':
+    main()
