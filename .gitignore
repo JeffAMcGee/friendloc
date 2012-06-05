@@ -16,6 +16,9 @@ data
 
 *.in
 *.out
+.coverage
+.ropeproject
 
 settings_dev.py
 settings_prod.py
+settings_local.py

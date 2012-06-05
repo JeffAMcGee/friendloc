@@ -13,9 +13,17 @@ from settings import settings
 from base.gisgraphy import GisgraphyResource
 from base.models import *
 from base.utils import *
+from base import gob
 
 
 gis = GisgraphyResource()
+
+
+@gob.mapper()
+def geo_ats():
+    for tweets in Tweets.find({},fields=['ats']):
+        if tweets.ats:
+            yield dict(uid=tweets._id,ats=tweets.ats)
 
 
 def find_geo_ats():

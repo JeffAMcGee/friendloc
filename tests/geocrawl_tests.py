@@ -17,6 +17,7 @@ class TestSplitProc(unittest.TestCase):
         self.assertEqual(results[0]['id'], 51839)
         self.assertEqual(results[0]['mloc'], [-95.3,29.2])
 
+    @unittest.skip
     def test_map(self):
         test_db = "geocrawl_test"
         info_d = {
