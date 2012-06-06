@@ -32,6 +32,9 @@ from predict.learn import *
 from predict.eval import *
 from base.utils import *
 
+from base.tests.models_tests import save_fixtures
+
+
 logging.basicConfig(level=logging.INFO)
 numpy.set_printoptions(precision=3, linewidth=160)
 
