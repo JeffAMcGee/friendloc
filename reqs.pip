@@ -4,6 +4,7 @@ restkit
 beanstalkc
 numpy
 matplotlib
+msgpack-python
 nose
 pyflakes
 networkx
