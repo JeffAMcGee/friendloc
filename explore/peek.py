@@ -10,13 +10,13 @@ from operator import itemgetter
 from multiprocessing import Pool
 
 from settings import settings
-from base.gisgraphy import GisgraphyResource
+#from base.gisgraphy import GisgraphyResource
 from base.models import *
 from base.utils import *
 from base import gob
 
 
-gis = GisgraphyResource()
+#gis = GisgraphyResource()
 
 
 @gob.mapper()

@@ -1,7 +1,7 @@
 import json
 import re
 
-from restkit import Resource, Manager
+from restkit import Resource
 
 from settings import settings
 from models import GeonamesPlace
@@ -13,7 +13,6 @@ class GisgraphyResource(Resource):
     def __init__(self):
         Resource.__init__(self,
                 settings.gisgraphy_url,
-                manager = Manager(),
                 client_opts={'timeout':30},
         )
         try:
