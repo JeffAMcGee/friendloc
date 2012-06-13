@@ -4,6 +4,7 @@ restkit
 beanstalkc
 numpy
 matplotlib
+mock
 msgpack-python
 nose
 pyflakes

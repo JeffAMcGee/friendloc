@@ -27,9 +27,6 @@ from localcrawl.admin import *
 from explore.graph import *
 from explore.peek import *
 from explore.fixgis import *
-from predict.prep import *
-from predict.learn import *
-from predict.eval import *
 from base.utils import *
 
 from base.tests.models_tests import save_fixtures

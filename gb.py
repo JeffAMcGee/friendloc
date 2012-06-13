@@ -9,6 +9,7 @@ from maroon import Model
 
 from settings import settings
 from explore import peek
+from predict import prep
 from base import gob
 from base import utils
 
@@ -24,6 +25,8 @@ def parse_args():
 
 def create_jobs(my_gob):
     my_gob.add_job(peek.geo_ats)
+    my_gob.add_job(prep.mloc_users,saver='split_save')
+    my_gob.add_job(prep.edges_d,'mloc_users')
 
 
 def make_gob(args):
@@ -38,6 +41,7 @@ def make_gob(args):
 
 
 def setup(args):
+    # FIXME: set database for MultiProc?
     Model.database = utils.mongo(args.mongo or settings.region)
     logging.basicConfig(level=logging.INFO)
     numpy.set_printoptions(precision=3, linewidth=160)

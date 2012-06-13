@@ -45,7 +45,7 @@ def save_users():
             for count, name in enumerate(names)
             ]
     users[3].median_loc = [-96,30]
-    users[3].rfriends = [0]
+    users[3].rfriends = [1]
     users[3].just_friends = [6,9]
     users[3].just_followers = []
     users[3].just_mentioned = [2]
@@ -72,6 +72,9 @@ def save_edges():
             friends = [1] + range(index*2,index*6,index),
             followers = [1] + [x for x in xrange(2,index) if not index%x],
             )
+        if index==6:
+            edges.friends.append(0)
+            edges.followers.append(0)
         edges.save()
 
 
