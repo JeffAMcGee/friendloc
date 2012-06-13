@@ -19,10 +19,10 @@ class TestPrep(unittest.TestCase):
         self.assertEqual(users03[0]['name'], 'Chris')
         self.assertEqual(users03[0]['folc'], 9)
 
-    def test_edges_d(self):
+    def test_edge_d(self):
         self.gob.run_job('mloc_users')
-        self.gob.run_job('edges_d')
-        edges03 = SimpleEnv.THE_FS['edges_d.03']
-        self.assertEqual(len(edges03),1)
-        rels = edges03[0]['rels']
+        self.gob.run_job('edge_d')
+        edge03 = SimpleEnv.THE_FS['edge_d.03']
+        self.assertEqual(len(edge03),1)
+        rels = edge03[0]['rels']
         self.assertEqual( [d['_id'] for d in rels], [1,6,9,2] )

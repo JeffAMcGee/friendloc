@@ -20,19 +20,20 @@ def parse_args():
     parser.add_argument('-s','--single',action="store_true",
                         help='run in a single process')
     parser.add_argument('-m','--mongo')
+    parser.add_argument('-i','--input')
     return parser.parse_args()
 
 
 def create_jobs(my_gob):
     my_gob.add_job(peek.geo_ats)
     my_gob.add_job(prep.mloc_users,saver='split_save')
-    my_gob.add_job(prep.edges_d,'mloc_users')
-    my_gob.add_job(fl.edge_vect,'edges_d')
+    my_gob.add_job(prep.edge_d,'mloc_users')
+    my_gob.add_job(fl.edge_vect,'edge_d')
 
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
-    if args.single:
+    if args.single or args.input:
         env = gob.SimpleFileEnv(path)
     else:
         env = gob.MultiProcEnv(path)
@@ -52,8 +53,15 @@ def main():
     args = parse_args()
     my_gob = make_gob(args)
     setup(args)
-    for cmd in args.job:
-        my_gob.run_job(cmd)
+    if args.input:
+        # just run the function for one input
+        job = my_gob.jobs[args.job[0]]
+        input_paths = args.input.split(',')
+        return my_gob.env.run(job,input_paths=input_paths)
+    else:
+        for cmd in args.job:
+            my_gob.run_job(cmd)
+
 
 if __name__ == '__main__':
     main()

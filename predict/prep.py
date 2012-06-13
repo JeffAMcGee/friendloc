@@ -11,7 +11,7 @@ def mloc_users():
 
 
 @gob.mapper()
-def edges_d(user):
+def edge_d(user):
     tweets = Tweets.get_id(user['_id'],fields=['ats'])
     edges = Edges.get_id(user['_id'])
     ats = set(tweets.ats or [])
