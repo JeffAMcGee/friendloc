@@ -9,7 +9,7 @@ from maroon import Model
 
 from settings import settings
 from explore import peek
-from predict import prep
+from predict import prep, fl
 from base import gob
 from base import utils
 
@@ -27,6 +27,7 @@ def create_jobs(my_gob):
     my_gob.add_job(peek.geo_ats)
     my_gob.add_job(prep.mloc_users,saver='split_save')
     my_gob.add_job(prep.edges_d,'mloc_users')
+    my_gob.add_job(fl.edge_vect,'edges_d')
 
 
 def make_gob(args):

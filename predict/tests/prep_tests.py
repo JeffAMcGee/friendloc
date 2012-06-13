@@ -5,7 +5,7 @@ from base.gob import SimpleEnv, Gob
 from gb import create_jobs
 
 
-class TestSimpleEnv(unittest.TestCase):
+class TestPrep(unittest.TestCase):
     def setUp(self):
         self.gob = Gob(SimpleEnv())
         use_mongo('fl_fixture')
@@ -24,6 +24,5 @@ class TestSimpleEnv(unittest.TestCase):
         self.gob.run_job('edges_d')
         edges03 = SimpleEnv.THE_FS['edges_d.03']
         self.assertEqual(len(edges03),1)
-        edges03 = SimpleEnv.THE_FS['edges_d.03']
         rels = edges03[0]['rels']
         self.assertEqual( [d['_id'] for d in rels], [1,6,9,2] )
