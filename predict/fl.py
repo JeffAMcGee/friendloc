@@ -12,4 +12,4 @@ def edge_vect(user):
         flags = [rel['kind'] >>i & 1 for i in range(4)]
         vals = [logify(rel[k]) for k in ('mdist','folc')]
         dist = logify(coord_in_miles(user['mloc'],rel))
-        yield (dist,flags+vals)
+        yield flags+vals+[dist]
