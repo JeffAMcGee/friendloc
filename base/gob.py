@@ -116,6 +116,7 @@ class Executor(object):
             results = self.reduce_single(funcs['reduce'],results)
 
         self.save_single(job, in_paths, results)
+        return results
 
     def map_single(self, mapper, in_paths):
         "run mapper for one set of inputs and return an iterator of results"
