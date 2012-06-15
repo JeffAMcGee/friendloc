@@ -3,6 +3,7 @@ pymongo
 restkit
 beanstalkc
 numpy
+scipy
 matplotlib
 mock
 msgpack-python
