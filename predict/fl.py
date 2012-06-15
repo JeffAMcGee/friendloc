@@ -14,13 +14,13 @@ def logify(x):
 def edge_vect(user):
 
     dists = [ logify(coord_in_miles(user['mloc'],rel)) for rel in user['rels'] ]
-    # including the dist in the median is broken.
-    fol_dist = int(np.median(dists))
 
-    for dist,rel in zip(dists,user['rels']):
+    for index,rel in enumerate(user['rels']):
+        oth_dists = dists[:index] + dists[index+1:]
+        fol_dist = int(np.median(dists)) if oth_dists else 8
         flags = [rel['kind'] >>i & 1 for i in range(4)]
         vals = [logify(rel[k]) for k in ('mdist','folc')]
-        yield flags+vals+[fol_dist, dist]
+        yield flags+vals+[fol_dist, dists[index]]
 
 
 def _transformed(vects):
