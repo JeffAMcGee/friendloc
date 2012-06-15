@@ -12,17 +12,21 @@ def logify(x):
 
 @gob.mapper()
 def edge_vect(user):
-    for rel in user['rels']:
+
+    dists = [ logify(coord_in_miles(user['mloc'],rel)) for rel in user['rels'] ]
+    # including the dist in the median is broken.
+    fol_dist = int(np.median(dists))
+
+    for dist,rel in zip(dists,user['rels']):
         flags = [rel['kind'] >>i & 1 for i in range(4)]
         vals = [logify(rel[k]) for k in ('mdist','folc')]
-        dist = logify(coord_in_miles(user['mloc'],rel))
-        yield flags+vals+[dist]
+        yield flags+vals+[fol_dist, dist]
 
 
 def _transformed(vects):
     # convert vects to a scaled numpy array
     vects_ = np.fromiter( chain.from_iterable(vects), int )
-    vects_.shape = (len(vects_)//7),7
+    vects_.shape = (len(vects_)//8),8
     X = np.array(vects_[:,:-1],float)
     y = np.array(vects_[:,-1],int)
     scaler = preprocessing.Scaler().fit(X)

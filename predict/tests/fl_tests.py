@@ -31,6 +31,6 @@ class TestFriendLoc(unittest.TestCase):
                 )
         vect = fl.edge_vect(user)
         # (priv, ated, is_frd, is_fol, mdist, folc, dist)
-        self.assertEqual(next(vect), [0, 1, 1, 0, 2, 3, 7])
+        self.assertEqual(next(vect), [0, 1, 1, 0, 2, 3, 7, 7])
 
 
