@@ -5,7 +5,7 @@ from base.models import User, Tweets, Edges
 
 
 @gob.mapper()
-def mloc_users():
+def mloc_uids():
     for u in User.find(User.median_loc.exists()):
         yield "%02d"%(u._id%100), u.to_d()
 

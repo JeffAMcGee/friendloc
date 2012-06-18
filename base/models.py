@@ -104,6 +104,16 @@ class User(TwitterModel):
         return User.database.User.find({'mloc':{'$exists':1}})
 
     @classmethod
+    def group(cls, user_or_id):
+        if isinstance(User, user_or_id):
+            id = user._id
+        elif isinstnace(dict, user_or_id):
+            id = user['id']
+        else:
+            id = user_or_id
+        return "%02d"%(id%100)
+
+    @classmethod
     def find_connected(cls,**kwargs):
         return User.find(
             User.just_friends.exists() & User.just_followers.exists() & User.rfriends.exists(),

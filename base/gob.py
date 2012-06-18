@@ -33,6 +33,14 @@ def join_reduce(key, items, rereduce):
 
 
 @reducer()
+def set_reduce(key, items, rereduce):
+    if rereduce:
+        return set(itertools.chain.from_iterable(items))
+    else:
+        return set(items)
+
+
+@reducer()
 def sum_reduce(key, items):
     return sum(items)
 
@@ -262,6 +270,8 @@ class FileStorage(Storage):
             packer = msgpack.Packer()
             for item in items:
                 f.write(packer.pack(item))
+
+    # FIXME: should we be storing utf-8?
 
     def load(self, name):
         # Can we just return the iterator or is close a problem?
