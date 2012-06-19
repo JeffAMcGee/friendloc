@@ -29,6 +29,7 @@ class TestSplitProc(unittest.TestCase):
         result = asp.run_single()
         self.assertEqual(55, result)
 
+    @unittest.skip
     def test_multi(self):
         self._run_test(delay=0,slaves=2)
         self._run_test(delay=0,slaves=15)

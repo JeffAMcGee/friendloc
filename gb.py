@@ -34,7 +34,7 @@ def create_jobs(g):
 
     g.add_job(peek.geo_ats)
     g.add_job(prep.mloc_uids,saver='split_save')
-    g.add_job(prep.edge_d,'mloc_users')
+    g.add_job(prep.edge_d,'mloc_uids')
     g.add_job(fl.edge_vect,'edge_d')
     g.add_job(fl.fl_learn,'edge_vect')
 

@@ -13,14 +13,14 @@ class TestPrep(unittest.TestCase):
         SimpleEnv.THE_FS = {}
 
     def test_mloc_users(self):
-        self.gob.run_job('mloc_users')
-        users03 = SimpleEnv.THE_FS['mloc_users.03']
-        self.assertEqual(len(users03),1)
-        self.assertEqual(users03[0]['name'], 'Chris')
-        self.assertEqual(users03[0]['folc'], 9)
+        self.gob.run_job('mloc_uids')
+        uids = SimpleEnv.THE_FS['mloc_uids.03']
+        self.assertEqual(len(uids),1)
+        self.assertEqual(uids[0]['name'], 'Chris')
+        self.assertEqual(uids[0]['folc'], 9)
 
     def test_edge_d(self):
-        self.gob.run_job('mloc_users')
+        self.gob.run_job('mloc_uids')
         self.gob.run_job('edge_d')
         edge03 = SimpleEnv.THE_FS['edge_d.03']
         self.assertEqual(len(edge03),1)
