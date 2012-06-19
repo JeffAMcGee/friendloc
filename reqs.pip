@@ -1,15 +1,15 @@
-Fabric
-pymongo
-restkit
 beanstalkc
-numpy
-scipy
+Fabric
+ipdb
+-e git+git://github.com/JeffAMcGee/maroon.git#egg=maroon
 matplotlib
 mock
 msgpack-python
+networkx
+numpy
 nose
 pyflakes
-networkx
-ipdb
--e git+git://github.com/JeffAMcGee/maroon.git#egg=maroon
+pymongo
+restkit
 scikit-learn
+scipy

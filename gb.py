@@ -27,13 +27,13 @@ def parse_args(argv):
 
 def create_jobs(g):
     g.add_source('geotweets')
-    g.add_job(sprawl.mloc_users,'geotweets')
-    g.add_job(sprawl.EdgeFinder.find_edges,'mloc_users',gob.set_reduce)
+    g.add_job(sprawl.mloc_users,'geotweets',saver='split_save')
+    g.add_job(sprawl.EdgeFinder.find_edges,'mloc_users',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_edges')
     g.add_job(sprawl.lookup_contacts,'contact_split')
 
     g.add_job(peek.geo_ats)
-    g.add_job(prep.mloc_users,saver='split_save')
+    g.add_job(prep.mloc_uids,saver='split_save')
     g.add_job(prep.edge_d,'mloc_users')
     g.add_job(fl.edge_vect,'edge_d')
     g.add_job(fl.fl_learn,'edge_vect')

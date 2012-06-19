@@ -104,11 +104,11 @@ class User(TwitterModel):
         return User.database.User.find({'mloc':{'$exists':1}})
 
     @classmethod
-    def group(cls, user_or_id):
-        if isinstance(User, user_or_id):
+    def mod_group(cls, user_or_id):
+        if isinstance(user_or_id, User):
             id = user._id
-        elif isinstnace(dict, user_or_id):
-            id = user['id']
+        elif isinstance(user_or_id, dict):
+            id = user_or_id['id']
         else:
             id = user_or_id
         return "%02d"%(id%100)

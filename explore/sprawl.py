@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import numpy
 import random
-import itertools
 import logging
 from itertools import chain
 
@@ -46,7 +45,7 @@ def mloc_users(tweets):
             continue #user moves too much
         del user['locs']
         user['mloc'] = median
-        yield User.group(user),user
+        yield User.mod_group(user),user
 
 
 def _save_user_contacts(twitter,user):

@@ -68,11 +68,14 @@ class Job(object):
     """
     everything you need to know about a job when you are not running it
     """
-    def __init__(self, mapper, sources=(), saver='save', reducer=None):
+    def __init__(self, mapper=None, sources=(), saver='save', reducer=None,
+                 name=None, split_data=False):
         self.mapper = mapper
         self.saver = saver
         self.sources = sources
         self.reducer = reducer
+        self.name = name
+        self.split_data = split_data
 
     def output_files(self, env):
         if self.split_data:
@@ -363,12 +366,9 @@ class Gob(object):
         Adds a source that the you, the library user, create. This can be used
         to provide starting data.
         """
-        if name in self.jobs:
-            raise ValueError('attempt to insert second job with same name')
-        self.jobs[name] = None
+        self.add_job(None,name=name)
 
-    def add_job(self, mapper, sources=(), requires=(), name=None,
-                *args, **kwargs):
+    def add_job(self, mapper, sources=(), requires=(), name=None, **kwargs):
         """
         add a job to the gob
         sources are files that will be passed as input to the mapper.
@@ -386,16 +386,15 @@ class Gob(object):
             if source not in self.jobs:
                 raise LookupError('dependencies must be added first')
 
-        job = Job(mapper,sources,*args,**kwargs)
-        # XXX: I don't like mucking with job here
-        job.name = name
-        if job.saver == 'split_save':
-            job.split_data = True
-        elif job.reducer:
-            job.split_data = False
+        if kwargs.get('saver') == 'split_save':
+            split = True
+        elif kwargs.get('reducer'):
+            split = False
         elif sources:
-            job.split_data = any(self.jobs[s].split_data for s in sources)
+            split = any(self.jobs[s].split_data for s in sources)
         else:
-            job.split_data = False
+            split = False
+
+        job = Job(mapper,sources,name=name,split_data=split,**kwargs)
 
         self.jobs[name] = job
