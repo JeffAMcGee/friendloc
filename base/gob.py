@@ -358,17 +358,33 @@ class Gob(object):
         input_paths = self.env.input_paths(source_jobs)
         return self.env.run(job,input_paths=input_paths)
 
-    def add_job(self, mapper, sources=(), *args, **kwargs):
+    def add_source(self, name):
+        """
+        Adds a source that the you, the library user, create. This can be used
+        to provide starting data.
+        """
+        if name in self.jobs:
+            raise ValueError('attempt to insert second job with same name')
+        self.jobs[name] = None
+
+    def add_job(self, mapper, sources=(), requires=(), name=None,
+                *args, **kwargs):
+        """
+        add a job to the gob
+        sources are files that will be passed as input to the mapper.
+        requires must run before the mapper.
+        """
         if isinstance(sources,basestring):
             sources = (sources,)
+        if not name:
+            name = mapper.__name__.lower()
 
-        name = kwargs.get('name',mapper.__name__.lower())
         if name in self.jobs:
             raise ValueError('attempt to insert second job with same name')
 
-        for source in sources:
+        for source in itertools.chain(sources,requires):
             if source not in self.jobs:
-                raise LookupError('sources must be defined first')
+                raise LookupError('dependencies must be added first')
 
         job = Job(mapper,sources,*args,**kwargs)
         # XXX: I don't like mucking with job here

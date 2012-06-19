@@ -14,7 +14,9 @@ from base.gisgraphy import GisgraphyResource
 import base.utils as utils
 from settings import settings
 
+
 NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
+
 
 @gob.mapper(all_items=True)
 def mloc_users(tweets):
@@ -108,7 +110,6 @@ class EdgeFinder():
         return chain.from_iterable(getattr(user,key) for key in NEBR_KEYS)
 
 
-# set_reduce edges and split by contact_uid
 @gob.mapper(all_items=True)
 def contact_split(ids):
     visited = set(u['_id'] for u in User.find(fields=[]))
