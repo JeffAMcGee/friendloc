@@ -4,15 +4,58 @@ from datetime import datetime
 from base import models
 
 
+
+class MockTwitterResource(object):
+    def sleep_if_needed():
+        #Calling sleep() in my unittests may be hazardous to your health!
+        pass
+
+    def get_edges(self, user_id):
+        if user_id == 0:
+            friends = followers = [1,3]
+        elif user_id == 1:
+            friends = followers = [x for x in xrange(10) if x!=1]
+        else:
+            friends = [1] + range(user_id*2,user_id*6,user_id)
+            followers = [1] + [x for x in xrange(2,user_id) if not user_id%x]
+
+        edges = models.Edges(_id=user_id,friends=friends,followers=followers)
+        if user_id == 6:
+            edges.friends.append(0)
+            edges.followers.append(0)
+        return edges
+
+    def user_timeline(self, user_id):
+        tweet = models.Tweet(
+            _id = user_id,
+            mentions = [],
+            text = "howdy",
+            created_at = datetime.utcnow(),
+            user_id = user_id
+        )
+
+        tweets = models.Tweets(
+            _id = user_id,
+            tweets = [tweet]*10,
+            ats = [],
+            )
+        if user_id==3:
+            tweets.ats = [2]
+        if user_id==6:
+            tweets.ats = [7]
+        return tweets
+
+
 # FIXME: right now there is just a method that adds some immutable data to the
 # database to run tests against. This needs some cleaning up.
 
-
 def save_fixtures():
     save_users()
-    save_edges()
-    save_tweets()
 
+    twit = MockTwitterResource()
+    for uid in xrange(10):
+        twit.get_edges(uid).save()
+        twit.user_timeline(uid).save()
 
 def save_users():
     names = [
@@ -59,51 +102,4 @@ def save_users():
     users[7].protected = True
     for user in users:
         user.save()
-
-
-def save_edges():
-    models.Edges( _id=0, friends=[1,3], followers=[1,3] ).save()
-    not_one = [x for x in xrange(10) if x!=1]
-    models.Edges( _id=1, friends=not_one, followers=not_one ).save()
-    for index in xrange(2,10):
-        # users are followed by their factors
-        edges = models.Edges(
-            _id = index,
-            friends = [1] + range(index*2,index*6,index),
-            followers = [1] + [x for x in xrange(2,index) if not index%x],
-            )
-        if index==6:
-            edges.friends.append(0)
-            edges.followers.append(0)
-        edges.save()
-
-
-def save_tweets():
-    def tweet(index):
-        return models.Tweet(
-            _id = index,
-            mentions = [],
-            text = "howdy",
-            created_at = datetime.utcnow(),
-            user_id = index
-        )
-    for index in xrange(10):
-        tweets = models.Tweets(
-            _id = index,
-            tweets = [tweet(index)]*10,
-            ats = [],
-            )
-        if index==3:
-            tweets.ats = [2]
-        if index==6:
-            tweets.ats = [7]
-        tweets.save()
-
-
-class TestSimpleEnv(unittest.TestCase):
-    def setUp(self):
-        pass
-
-    def test_split_saver(self):
-        self.assertEqual(1,1)
 
