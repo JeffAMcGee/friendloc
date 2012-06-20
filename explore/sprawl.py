@@ -134,8 +134,9 @@ def lookup_contacts(contact_uids):
 
 
 def _has_place(user):
-    # FIXME: look at mdist here!
-    return (user.place and user.place.population<10**7)
+    gnp = user.geonames_place
+    return gnp and gnp.mdist<1000 and gnp.population<10**7
+
 
 def _pick_neighbors(user):
     nebrs = {}
@@ -143,11 +144,11 @@ def _pick_neighbors(user):
         cids = getattr(user,key)
         # this is slowish
         contacts = User.find(User._id.is_in(cids), fields=['gnp'])
-        nebrs[key] = set(u['_id'] for u in contacts)
+        nebrs[key] = set(u['_id'] for u in contacts if _has_place(u))
     return nebrs
 
 
-# run predict.prep.mloc_uids, require lookup_contacts, but don't read it.
+# read predict.prep.mloc_uids, require lookup_contacts, but don't read it.
 def pick_nebrs(mloc_uid):
     user = User.get_id(mloc_uid)
     if not user.neighbors:

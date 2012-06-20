@@ -44,7 +44,10 @@ class TestSprawlToContacts(SimpleGobTest):
         self._find_edges_6()
         results = self.FS['find_edges.06']
         s_res = sorted(list(r[1])[0] for r in results)
-        self.assertEqual(s_res, [0,1,2,3,12,18,24,30])
+        self.assertEqual(s_res, [0,1,2,3,7,12,18,24,30])
+        flor = User.get_id(6)
+        self.assertEqual(flor.just_mentioned,[7])
+        self.assertEqual(sorted(flor.just_friends),[12,18,24,30])
 
     def test_contact_split(self):
         User(_id=24).save()
@@ -53,14 +56,28 @@ class TestSprawlToContacts(SimpleGobTest):
         self.assertEqual(self.FS['contact_split.18'],[18])
         self.assertNotIn('contact_split.24', self.FS)
 
-    def test_lookup_contacts(self):
-        self.FS['find_edges'] = [('02',[2]), ('03',[3])]
-        self.gob.run_job('contact_split')
+    def _fake_find_edges(self, *ids):
+        self.FS['find_edges'] = [
+                (User.mod_id(uid),[uid])
+                for uid in ids
+                ]
+
+    def _lookup_contacts(self):
         with _patch_twitter():
             with _patch_gisgraphy():
+                self.gob.run_job('contact_split')
                 self.gob.run_job('lookup_contacts')
+
+    def test_lookup_contacts(self):
+        self._fake_find_edges(2,3)
+        self._lookup_contacts()
         beryl = User.get_id(2)
         self.assertEqual(beryl.screen_name,'user_2')
         self.assertEqual(beryl.geonames_place.feature_code,'PPLA2')
         self.assertEqual(beryl.geonames_place.mdist,3)
 
+    def test_pick_nebrs(self):
+        self._fake_find_edges(2,3,7)
+        self._lookup_contacts()
+        flor = User(_id=6, just_mentioned=[7], just_friends=[1,2,3])
+        flor.save()

@@ -11,7 +11,7 @@ class MockGisgraphyResource(object):
         elif 'college station' in q:
             return models.GeonamesPlace(lat=30,lng=-96,code="PPLA2",mdist=3)
         elif 'texas' in q:
-            return models.GeonamesPlace(lat=31,lng=-99,code="ADM1",mdist=500)
+            return models.GeonamesPlace(lat=31,lng=-99,code="ADM1",mdist=2000)
         else:
             return None
 
@@ -45,9 +45,9 @@ class MockTwitterResource(object):
         )
 
         if user_id==3:
-            tweet.ats = [2]
+            tweet.mentions = [2]
         if user_id==6:
-            tweet.ats = [7]
+            tweet.mentions = [7]
         return [tweet]*10
 
     def user_lookup(self, user_ids=[]):
