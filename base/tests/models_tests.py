@@ -1,12 +1,10 @@
-import unittest
 from datetime import datetime
 
 from base import models
 
 
-
 class MockTwitterResource(object):
-    def sleep_if_needed():
+    def sleep_if_needed(self):
         #Calling sleep() in my unittests may be hazardous to your health!
         pass
 
@@ -34,28 +32,23 @@ class MockTwitterResource(object):
             user_id = user_id
         )
 
-        tweets = models.Tweets(
-            _id = user_id,
-            tweets = [tweet]*10,
-            ats = [],
-            )
         if user_id==3:
-            tweets.ats = [2]
+            tweet.ats = [2]
         if user_id==6:
-            tweets.ats = [7]
-        return tweets
+            tweet.ats = [7]
+        return [tweet]*10
 
 
 # FIXME: right now there is just a method that adds some immutable data to the
 # database to run tests against. This needs some cleaning up.
-
 def save_fixtures():
     save_users()
 
     twit = MockTwitterResource()
     for uid in xrange(10):
         twit.get_edges(uid).save()
-        twit.user_timeline(uid).save()
+        tweets = models.Tweets( _id=uid, tweets=twit.user_timeline(uid) )
+        tweets.save()
 
 def save_users():
     names = [

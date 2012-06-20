@@ -19,6 +19,7 @@ __all__ = [
 
 
 class TwitterModel(Model):
+
     def __init__(self, from_dict=None, **kwargs):
         Model.__init__(self, from_dict, **kwargs)
         if self._id is None and from_dict and 'id' in from_dict:

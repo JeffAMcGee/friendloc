@@ -29,7 +29,7 @@ def create_jobs(g):
     g.add_source('geotweets')
     g.add_job(sprawl.mloc_users,'geotweets',saver='split_save')
     g.add_job(sprawl.EdgeFinder.find_edges,'mloc_users',reducer=gob.set_reduce)
-    g.add_job(sprawl.contact_split,'find_edges')
+    g.add_job(sprawl.contact_split,'find_edges',saver='split_save')
     g.add_job(sprawl.lookup_contacts,'contact_split')
 
     g.add_job(peek.geo_ats)

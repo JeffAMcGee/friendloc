@@ -8,10 +8,9 @@ from restkit.errors import Unauthorized, ResourceNotFound
 
 from base import gob
 from base.models import Edges, User, Tweets
-from base.twitter import TwitterResource
+from base import twitter
 from base.gisgraphy import GisgraphyResource
 import base.utils as utils
-from settings import settings
 
 
 NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
@@ -78,8 +77,8 @@ def _save_user_contacts(twitter,user):
 
 
 class EdgeFinder():
-    def __init__(self):
-        self.twitter = TwitterResource()
+    def __init__(self,env):
+        self.twitter = twitter.TwitterResource()
         self.gis = GisgraphyResource()
 
     @gob.mapper()
@@ -93,11 +92,11 @@ class EdgeFinder():
                 return ()
             user.update(user_d)
         else:
-            user.geonames_place = self.gis.twitter_loc(user.location)
             user = User(user_d)
+            user.geonames_place = self.gis.twitter_loc(user.location)
         logging.info("visit %s - %d",user.screen_name,user._id)
         try:
-            _save_user_contacts(self.twitter,user._id)
+            _save_user_contacts(self.twitter,user)
             user.merge()
         except ResourceNotFound:
             logging.warn("ResourceNotFound for %d",user._id)
@@ -106,26 +105,28 @@ class EdgeFinder():
             logging.warn("Unauthorized for %d",user._id)
             return ()
 
-        return chain.from_iterable(getattr(user,key) for key in NEBR_KEYS)
+        nebrs = chain.from_iterable(getattr(user,key) for key in NEBR_KEYS)
+        return ((User.mod_group(nebr),nebr) for nebr in nebrs)
 
 
 @gob.mapper(all_items=True)
-def contact_split(ids):
-    visited = set(u['_id'] for u in User.find(fields=[]))
-    for id in ids:
-        if id not in visited:
-            yield User.group(id),id
+def contact_split(groups):
+    visited = set(u._id for u in User.find(fields=[]))
+    for group,ids in groups:
+        for id in ids:
+            if id not in visited:
+                yield group,id
 
 
 @gob.mapper(all_items=True)
 def lookup_contacts(contact_uids):
-    twitter = TwitterResource()
+    twtr = twitter.TwitterResource()
     gis = GisgraphyResource()
     chunks = utils.grouper(100, contact_uids)
 
     for chunk in chunks:
-        twitter.sleep_if_needed()
-        users = filter(None,twitter.user_lookup(user_ids=list(chunk)))
+        twtr.sleep_if_needed()
+        users = filter(None,twtr.user_lookup(user_ids=list(chunk)))
         for amigo in users:
             amigo.geonames_place = gis.twitter_loc(amigo.location)
             amigo.merge()

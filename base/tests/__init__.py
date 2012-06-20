@@ -1,7 +1,8 @@
 import unittest
 
 from mock import patch
-from maroon import Model, MockDB
+from base.models import TwitterModel
+from maroon import MockDB
 
 from gb import create_jobs
 from base.gob import Gob, SimpleEnv
@@ -10,12 +11,12 @@ from base.gob import Gob, SimpleEnv
 class MockedMongoTest(unittest.TestCase):
     def setUp(self):
         super(MockedMongoTest, self).setUp()
-        dbpatch = patch.object(Model,'database',MockDB())
+        dbpatch = patch.object(TwitterModel,'database',MockDB())
         dbpatch.start()
         self.addCleanup(dbpatch.stop)
 
 
-class SimpleGobTest(unittest.TestCase):
+class SimpleGobTest(MockedMongoTest):
     def setUp(self):
         super(SimpleGobTest, self).setUp()
         self.env = SimpleEnv()
