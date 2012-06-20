@@ -44,7 +44,7 @@ def mloc_users(tweets):
             continue #user moves too much
         del user['locs']
         user['mloc'] = median
-        yield User.mod_group(user),user
+        yield User.mod_id(user),user
 
 
 def _save_user_contacts(twitter,user):
@@ -106,7 +106,7 @@ class EdgeFinder():
             return ()
 
         nebrs = chain.from_iterable(getattr(user,key) for key in NEBR_KEYS)
-        return ((User.mod_group(nebr),nebr) for nebr in nebrs)
+        return ((User.mod_id(nebr),nebr) for nebr in nebrs)
 
 
 @gob.mapper(all_items=True)

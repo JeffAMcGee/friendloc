@@ -6,7 +6,14 @@ import mock
 
 from base.models import User
 from base.tests import SimpleGobTest
-from base.tests.models_tests import MockTwitterResource
+from base.tests.models_tests import MockTwitterResource, MockGisgraphyResource
+
+
+def _patch_twitter():
+    return mock.patch("base.twitter.TwitterResource",MockTwitterResource)
+
+def _patch_gisgraphy():
+    return mock.patch("explore.sprawl.GisgraphyResource",MockGisgraphyResource)
 
 
 class TestSprawlToContacts(SimpleGobTest):
@@ -30,8 +37,7 @@ class TestSprawlToContacts(SimpleGobTest):
 
     def _find_edges_6(self):
         self.FS['mloc_users.06'] = [dict(id=6)]
-        with mock.patch("base.twitter.TwitterResource",MockTwitterResource):
-            # FIXME: mock gisgraphy?
+        with _patch_twitter():
             self.gob.run_job('find_edges')
 
     def test_find_edges(self):
@@ -47,7 +53,14 @@ class TestSprawlToContacts(SimpleGobTest):
         self.assertEqual(self.FS['contact_split.18'],[18])
         self.assertNotIn('contact_split.24', self.FS)
 
-    #def test_lookup_contacts(self):
-    #    self.FS['find_edges'] = [('02',[2]), ('03',[3])]
-    #    self.gob.run_job('contact_split')
-    #    self.gob.run_job('lookup_contacts')
+    def test_lookup_contacts(self):
+        self.FS['find_edges'] = [('02',[2]), ('03',[3])]
+        self.gob.run_job('contact_split')
+        with _patch_twitter():
+            with _patch_gisgraphy():
+                self.gob.run_job('lookup_contacts')
+        beryl = User.get_id(2)
+        self.assertEqual(beryl.screen_name,'user_2')
+        self.assertEqual(beryl.geonames_place.feature_code,'PPLA2')
+        self.assertEqual(beryl.geonames_place.mdist,3)
+

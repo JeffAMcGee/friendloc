@@ -100,12 +100,17 @@ class User(TwitterModel):
     url = TextProperty('url')
     utc_offset = IntProperty('utco')
 
+    def __init__(self, from_dict=None, **kwargs):
+        TwitterModel.__init__(self, from_dict, **kwargs)
+        if self.median_loc and self._id is not None:
+            self.mod_group = self._id%100
+
     @classmethod
     def with_location(cls):
         return User.database.User.find({'mloc':{'$exists':1}})
 
     @classmethod
-    def mod_group(cls, user_or_id):
+    def mod_id(cls, user_or_id):
         if isinstance(user_or_id, User):
             id = user._id
         elif isinstance(user_or_id, dict):
