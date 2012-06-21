@@ -82,6 +82,10 @@ class Job(object):
             return env.glob(self.name+'.*')
         return [self.name,]
 
+    def load_output(self, path, env):
+        "load the results of a previous run of this job"
+        return env.load(path)
+
     def runnable_funcs(self, env):
         """
         if the jobs mapper and reducer are unbound methods, make an object for
@@ -110,6 +114,15 @@ class Job(object):
         return res
 
 
+class Source(Job):
+    def __init__(self, source_func=None, **kwargs):
+        super(Source,self).__init__(**kwargs)
+        self.source_func = source_func
+
+    def load_output(self,path,env):
+        return self.source_func()
+
+
 class Executor(object):
     def run(self, job, input_paths):
         """
@@ -122,20 +135,24 @@ class Executor(object):
 
     def map_reduce_save(self, job, in_paths, funcs):
         "completely process one file -> map, reduce, and save"
-        results = self.map_single(funcs['map'],in_paths)
+        assert len(job.sources) == len(in_paths)
+        inputs = [
+                src.load_output(path, self)
+                for src, path in zip(job.sources,in_paths)
+                ]
+        results = self.map_single(funcs['map'],inputs)
         if funcs['reduce']:
             results = self.reduce_single(funcs['reduce'],results)
 
         self.save_single(job, in_paths, results)
         return results
 
-    def map_single(self, mapper, in_paths):
+    def map_single(self, mapper, inputs):
         "run mapper for one set of inputs and return an iterator of results"
-        iters = [ self.load(path) for path in in_paths ]
-        if mapper.all_items or not iters:
-            return mapper(*iters)
+        if mapper.all_items or not inputs:
+            return mapper(*inputs)
         else:
-            item_iters = itertools.izip_longest(*iters)
+            item_iters = itertools.izip_longest(*inputs)
             calls = (mapper(*args) for args in item_iters)
             return chain_truthy(calls)
 
@@ -357,22 +374,24 @@ class Gob(object):
 
     def run_job(self,name):
         job = self.jobs[name]
-        source_jobs = [self.jobs[s] for s in job.sources]
-        input_paths = self.env.input_paths(source_jobs)
+        input_paths = self.env.input_paths(job.sources)
         return self.env.run(job,input_paths=input_paths)
 
-    def add_source(self, name):
+    def add_source(self, source, name=None):
         """
         Adds a source that the you, the library user, create. This can be used
         to provide starting data.
         """
-        self.add_job(None,name=name)
+        if not name:
+            name = source.__name__.lower()
+        return self.add_job(source_func=source, name=name, job_cls=Source)
 
-    def add_job(self, mapper, sources=(), requires=(), name=None, **kwargs):
+    def add_job(self, mapper=None, sources=(), requires=(), name=None,
+            job_cls=Job, **kwargs):
         """
         add a job to the gob
         sources are files that will be passed as input to the mapper.
-        requires must run before the mapper.
+        requires are names of jobs that must run before the mapper.
         """
         if isinstance(sources,basestring):
             sources = (sources,)
@@ -382,19 +401,25 @@ class Gob(object):
         if name in self.jobs:
             raise ValueError('attempt to insert second job with same name')
 
-        for source in itertools.chain(sources,requires):
-            if source not in self.jobs:
+        source_jobs = [self.jobs[s] for s in sources]
+        for req in requires:
+            if req not in self.jobs:
                 raise LookupError('dependencies must be added first')
 
         if kwargs.get('saver') == 'split_save':
             split = True
         elif kwargs.get('reducer'):
             split = False
-        elif sources:
-            split = any(self.jobs[s].split_data for s in sources)
+        elif source_jobs:
+            split = any(j.split_data for j in source_jobs)
         else:
             split = False
 
-        job = Job(mapper,sources,name=name,split_data=split,**kwargs)
+        job = job_cls(mapper=mapper,
+                     sources=source_jobs,
+                     name=name,
+                     split_data=split,
+                      **kwargs)
 
         self.jobs[name] = job
+        return job

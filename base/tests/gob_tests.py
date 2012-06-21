@@ -8,10 +8,13 @@ from base import gob
 from base.gob import Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv, join_reduce
 
 
+def source():
+    return xrange(100)
+
+
 @gob.mapper()
-def counter():
-    for x in xrange(100):
-        yield x%10,x
+def counter(x):
+    yield x%10,x
 
 
 @gob.mapper()
@@ -40,7 +43,8 @@ class SecondHalf(object):
 
 
 def create_jobs(gob):
-    gob.add_job(counter,saver='split_save')
+    gob.add_source(source)
+    gob.add_job(counter,'source',saver='split_save')
     gob.add_job(expand,'counter')
     gob.add_job(SecondHalf.take,'expand',reducer=join_reduce)
     gob.add_job(SecondHalf.results,'take',saver=None)

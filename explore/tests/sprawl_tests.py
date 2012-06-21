@@ -4,6 +4,7 @@ import json
 
 import mock
 
+from base import gob
 from base.models import User
 from base.tests import SimpleGobTest
 from base.tests.models_tests import MockTwitterResource, MockGisgraphyResource
@@ -26,10 +27,11 @@ class TestSprawlToContacts(SimpleGobTest):
 
     def setUp(self):
         super(TestSprawlToContacts, self).setUp()
-        self.env.save("geotweets", self.geotweets)
 
     def test_mloc_users(self):
-        self.gob.run_job('mloc_users')
+        mock_load = lambda s,p,e: self.geotweets
+        with mock.patch.object(gob.Source,'load_output',mock_load):
+            self.gob.run_job('mloc_users')
         results = self.FS['mloc_users.39']
         self.assertEqual(results[0]['id'], 51839)
         self.assertEqual(results[0]['mloc'], [-95.3,29.2])

@@ -28,7 +28,7 @@ def parse_args(argv):
 def create_jobs(g):
     g.add_job(prep.mloc_uids,saver='split_save')
 
-    g.add_source('geotweets')
+    g.add_source(utils.read_json, name='geotweets')
     g.add_job(sprawl.mloc_users,'geotweets',saver='split_save')
     g.add_job(sprawl.EdgeFinder.find_edges,'mloc_users',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_edges',saver='split_save')
