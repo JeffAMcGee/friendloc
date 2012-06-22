@@ -44,9 +44,9 @@ def create_jobs(g):
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
     if not args or args.single or args.input:
-        env = gob.SimpleFileEnv(path)
+        env = gob.SimpleFileEnv(path,log_crashes=True)
     else:
-        env = gob.MultiProcEnv(path)
+        env = gob.MultiProcEnv(path,log_crashes=True)
     my_gob = gob.Gob(env)
     create_jobs(my_gob)
     return my_gob

@@ -3,11 +3,34 @@ import fnmatch
 import glob
 import inspect
 import itertools
+import logging
 import os.path
+import traceback
 from collections import defaultdict
 from multiprocessing import Pool
 
 import msgpack
+
+
+class StatefulIter(object):
+    "wrap an iterator and keep the most recent value in self.current"
+    NOT_STARTED = object()
+    FINISHED = object()
+
+    def __init__(self,it):
+        self.it = iter(it)
+        self.current = self.NOT_STARTED
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        try:
+            self.current = next(self.it)
+        except StopIteration:
+            self.current = self.FINISHED
+            raise
+        return self.current
 
 
 def mapper(all_items=False):
@@ -56,12 +79,6 @@ def _call_opt_kwargs(func,*args,**kwargs):
         return func(*args,**kwargs)
     safe_kws = {k:v for k,v in kwargs.iteritems() if k in spec.args}
     return func(*args,**safe_kws)
-
-
-def chain_truthy(iters):
-    "takes an iterable of iterators or None values and chains them together"
-    non_empty = itertools.ifilter(None, iters)
-    return itertools.chain.from_iterable(non_empty)
 
 
 class Job(object):
@@ -124,6 +141,10 @@ class Source(Job):
 
 
 class Executor(object):
+    def __init__(self, log_crashes=False, **kwargs):
+        super(Executor,self).__init__(**kwargs)
+        self.log_crashes = log_crashes
+
     def run(self, job, input_paths):
         """
         run the job. save the results. block until it is done.
@@ -150,11 +171,35 @@ class Executor(object):
     def map_single(self, mapper, inputs):
         "run mapper for one set of inputs and return an iterator of results"
         if mapper.all_items or not inputs:
-            return mapper(*inputs)
+            sfi_inputs = [StatefulIter(it) for it in inputs]
+            try:
+                results = mapper(*sfi_inputs)
+                if results:
+                    for res in results:
+                        yield res
+            except:
+                self._handle_err(mapper,[it.current for it in sfi_inputs])
+                raise
         else:
             item_iters = itertools.izip_longest(*inputs)
-            calls = (mapper(*args) for args in item_iters)
-            return chain_truthy(calls)
+            for args in item_iters:
+                try:
+                    results = mapper(*args)
+                    if results:
+                        for res in results:
+                            yield res
+                except:
+                    self._handle_err(mapper,args)
+                    raise
+
+    def _handle_err(self, mapper, args):
+        msg = "map %r failed for %r"%(mapper,args)
+        logging.exception(msg)
+        if self.log_crashes:
+            with open('gobstop.%s.%d'%(mapper.__name__,os.getpid()),'w') as gs:
+                print >>gs,msg
+                traceback.print_exc(file=gs)
+
 
     def reduce_single(self, reducer, map_output):
         grouped = defaultdict(list)
@@ -177,6 +222,10 @@ class Executor(object):
         if job.saver:
             saver = getattr(self,job.saver)
             saver(job.name+self._suffix(in_paths),results)
+        else:
+            # force the generator to generate
+            for res in results:
+                pass
 
     def split_save(self, name, key_item_pairs):
         with self.bulk_saver(name) as saver:

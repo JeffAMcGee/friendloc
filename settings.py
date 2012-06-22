@@ -20,6 +20,7 @@ settings = SettingsBunch(
     mention_weight = .5,
     crawl_ratio = .1,
     log_dir = 'logs',
+    log_crashes = True,
 
     #for predictor
     local_max_dist = 25,
