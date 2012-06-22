@@ -18,7 +18,8 @@ NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
 
 @gob.mapper(all_items=True)
 def mloc_users(tweets):
-    # FIXME: how to read gzipped json?
+    # USAGE:
+    # gunzip -c ~/may/*/*.gz | ./gb.py -s mloc_users
     users = {}
     for i,t in enumerate(tweets):
         if i%10000 ==0:
@@ -99,9 +100,11 @@ class EdgeFinder():
             _save_user_contacts(self.twitter,user)
             user.merge()
         except ResourceNotFound:
+            # FIXME: add to blacklist
             logging.warn("ResourceNotFound for %d",user._id)
             return ()
         except Unauthorized:
+            # FIXME: add to blacklist
             logging.warn("Unauthorized for %d",user._id)
             return ()
 

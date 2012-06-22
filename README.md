@@ -1,24 +1,22 @@
-  
-localcrawl
-========    
+friendloc
+=========
 
-The lo-calorie twitter neighborhood crawler.
-
-This project was merged into friendly location:
-https://github.com/jeffamcgee/friendloc
+a tool for estimating the locations of users on twitter
 
 LICENSE
--------
+=======
 
-This falls under the same license as TornadoWeb,
-the Apache License, Version 2.0
+This falls under the Apache License, Version 2.0
 Get a copy at http://www.apache.org/licenses/LICENSE-2.0.html
 
 REQUIREMENTS
 ------------
-* python 2.5ish
-* couchdbkit
-* maroon (http://github.com/nod/maroon)
+* python 2.7
+* the python packages listed in reqs.pip
+* Gisgraphy (http://www.gisgraphy.com/)
+* data from Twitter's streaming API
+* a Twitter account and application to access the REST API
+
 
 GETTING STARTED
 ---------------
@@ -33,3 +31,20 @@ settings_dev.py.
 You will also need to go through the three-legged oauth to get the information
 that goes in settings_dev.py .  This will help you:
     http://benoitc.github.com/restkit/authentication.html#oauth
+
+To get the crawling process started you will need tweets from Twitter's
+streaming API.  I used @bde's https://github.com/bde/TwitterStreamSaver to
+collect them.
+
+Once you have the gzipped tweets, you can pick the users to crawl with the
+following command:
+
+    gunzip -c ~/may/*/*.gz | ./gb.py -s mloc_users
+
+localcrawl
+----------
+
+The lo-calorie twitter neighborhood crawler.
+
+This was started as a seperate project, but it is now contained in the
+localcrawl subdirectory. It is probably broken.
