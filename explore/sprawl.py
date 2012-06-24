@@ -148,18 +148,3 @@ def pick_nebrs(mloc_uid):
         user.save()
     return user.neighbors
 
-# set_reduce nebrs and split by nebr_uid
-
-def find_leaves(nebr):
-    Edges.fetch_and_save()
-    Tweets.fetch_and_save()
-    nebr.save()
-    for leaf_uid in (Edges and Tweets)[:400]:
-        yield leaf_uid
-
-# set_reduce leafs and split by nebr_uid
-def lookup_leaves(leaf_uid):
-    # do this in groups of 100
-    user = User.lookup(leaf_uid)
-    user.gisgraphy()
-    user.save()

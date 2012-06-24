@@ -26,15 +26,21 @@ def parse_args(argv):
 
 
 def create_jobs(g):
-    g.add_job(prep.mloc_uids,saver='split_save')
-
+    # the crawler
     g.add_source(utils.read_json, name='geotweets')
     g.add_job(sprawl.mloc_users,'geotweets',saver='split_save')
     g.add_job(sprawl.EdgeFinder.find_edges,'mloc_users',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_edges',saver='split_save')
     g.add_job(sprawl.lookup_contacts,'contact_split')
+    g.add_job(prep.mloc_uids,saver='split_save')
     g.add_job(sprawl.pick_nebrs,'mloc_uids',requires=['lookup_contacts'])
+    g.add_job(sprawl.EdgeFinder.find_edges,'pick_nebrs',
+              name='find_leafs',reducer=gob.set_reduce)
+    g.add_job(sprawl.contact_split,'find_leafs',
+              name='leaf_split',saver='split_save')
+    g.add_job(sprawl.lookup_contacts,'leaf_split',name='lookup_leafs')
 
+    # the predictor
     g.add_job(peek.geo_ats)
     g.add_job(prep.edge_d,'mloc_uids')
     g.add_job(fl.edge_vect,'edge_d')
