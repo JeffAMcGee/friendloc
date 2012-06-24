@@ -1,5 +1,4 @@
 import contextlib
-import fnmatch
 import glob
 import inspect
 import itertools
@@ -96,7 +95,7 @@ class Job(object):
 
     def output_files(self, env):
         if self.split_data:
-            return env.glob(self.name+'.*')
+            return env.split_files(self.name)
         return [self.name,]
 
     def load_output(self, path, env):
@@ -233,7 +232,7 @@ class Executor(object):
 
     def reduce_all(self, job, reducer):
         grouped = defaultdict(list)
-        for path in self.glob(job.name+'.*'):
+        for path in self.split_files(job.name):
             for k,v in self.load(path):
                 grouped[k].append(v)
         results = [
@@ -263,8 +262,8 @@ class Storage(object):
         """
         raise NotImplementedError
 
-    def glob(self, pattern):
-        "return a list of the files that match a shell-style pattern"
+    def split_files(self, name):
+        "return an iterator of the names that name was split into"
         raise NotImplementedError
 
     def input_paths(self, source_jobs):
@@ -320,8 +319,8 @@ class DictStorage(Storage):
         for key,items in bs.data.iteritems():
             self.THE_FS[key] = items
 
-    def glob(self, pattern):
-        return fnmatch.filter(self.THE_FS,pattern)
+    def split_files(self, name):
+        return (n for n in self.THE_FS if n.startswith(name+'.'))
 
 
 class FileStorage(Storage):
@@ -330,8 +329,19 @@ class FileStorage(Storage):
         # path should be an absolute path to a directory to store files
         self.path = os.path.abspath(path)
 
-    def _open(self, name, *args):
-        return open(os.path.join(self.path,name), *args)
+    def _open(self, name, mode='r'):
+        parts = name.split('.')
+        path = os.path.join(self.path,*parts)+'.mp'
+        dir = os.path.dirname(path)
+        if 'w' in mode:
+            try:
+                os.makedirs(dir)
+            except OSError:
+                # attempt to make it and then check to avoid race condition
+                if not os.path.exists(dir):
+                    raise
+
+        return open(path,mode)
 
     def save(self, name, items):
         with self._open(name,'w') as f:
@@ -368,8 +378,12 @@ class FileStorage(Storage):
         yield bs
         bs.close()
 
-    def glob(self, pattern):
-        return glob.glob(os.path.join(self.path,pattern))
+    def split_files(self, name):
+        for dirpath, dirs, files in os.walk(os.path.join(self.path,name)):
+            _dir = dirpath.replace(self.path,'').lstrip('/').replace('/','.')
+            for file in files:
+                if file.endswith(".mp"):
+                    yield "%s.%s"%(_dir,file[:-3])
 
 
 def _mp_worker_init(env, job):

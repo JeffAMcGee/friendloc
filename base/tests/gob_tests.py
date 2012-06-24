@@ -119,7 +119,7 @@ class TestSimpleFileEnv(unittest.TestCase):
         create_jobs(self.gob)
 
     def test_load(self):
-        with open(os.path.join(self.env.path,"stuff"),'w') as f:
+        with open(os.path.join(self.env.path,"stuff.mp"),'w') as f:
             f.write(self.packed)
 
         data = list(self.env.load("stuff"))
@@ -127,7 +127,7 @@ class TestSimpleFileEnv(unittest.TestCase):
 
     def test_save(self):
         self.env.save("more_stuff.2",[[1,2,"gigem"]])
-        with open(os.path.join(self.env.path,"more_stuff.2")) as f:
+        with open(os.path.join(self.env.path,"more_stuff","2.mp")) as f:
             data = f.read()
         self.assertEqual(data,self.packed)
 
