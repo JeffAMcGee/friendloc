@@ -4,7 +4,7 @@ import random
 import logging
 from itertools import chain
 
-from restkit.errors import Unauthorized, ResourceNotFound
+from restkit import errors
 
 from base import gob
 from base.models import Edges, User, Tweets
@@ -48,7 +48,7 @@ def mloc_users(tweets):
         yield User.mod_id(user),user
 
 
-def _save_user_contacts(twitter,user):
+def _save_user_contacts(twitter,user,limit):
     edges = Edges.get_id(user._id)
     if not edges:
         edges = twitter.get_edges(user._id)
@@ -74,7 +74,7 @@ def _save_user_contacts(twitter,user):
     for key,s in sets.iteritems():
         l = list(s)
         random.shuffle(l)
-        setattr(user,key,l[:50])
+        setattr(user,key,l[:limit])
 
 
 class EdgeFinder():
@@ -84,31 +84,21 @@ class EdgeFinder():
 
     @gob.mapper()
     def find_edges(self,user_d):
-        self.twitter.sleep_if_needed()
         user = User.get_id(user_d['id'])
-        if user:
-            # FIXME: need better anti-revisit code
-            if user.neighbors:
-                logging.warn("not revisiting %d",user._id)
-                return ()
-            user.update(user_d)
+        if user and any(getattr(user,key) for key in NEBR_KEYS):
+            logging.warn("not revisiting %d",user._id)
         else:
             user = User(user_d)
             user.geonames_place = self.gis.twitter_loc(user.location)
-        logging.info("visit %s - %d",user.screen_name,user._id)
-        try:
-            _save_user_contacts(self.twitter,user)
+            logging.info("visit %s - %d",user.screen_name,user._id)
+            try:
+                _save_user_contacts(self.twitter,user,limit=50)
+            except errors.ResourceError as e:
+                logging.warn("%d for %d",e.status_int,user._id)
+                user.error_status = e.status_int
             user.merge()
-        except ResourceNotFound:
-            # FIXME: add to blacklist
-            logging.warn("ResourceNotFound for %d",user._id)
-            return ()
-        except Unauthorized:
-            # FIXME: add to blacklist
-            logging.warn("Unauthorized for %d",user._id)
-            return ()
 
-        nebrs = chain.from_iterable(getattr(user,key) for key in NEBR_KEYS)
+        nebrs = chain.from_iterable(getattr(user,key) or () for key in NEBR_KEYS)
         return ((User.mod_id(nebr),nebr) for nebr in nebrs)
 
 
@@ -128,7 +118,6 @@ def lookup_contacts(contact_uids):
     chunks = utils.grouper(100, contact_uids)
 
     for chunk in chunks:
-        twtr.sleep_if_needed()
         users = filter(None,twtr.user_lookup(user_ids=list(chunk)))
         for amigo in users:
             amigo.geonames_place = gis.twitter_loc(amigo.location)

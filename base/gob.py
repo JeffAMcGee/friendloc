@@ -170,27 +170,26 @@ class Executor(object):
 
     def map_single(self, mapper, inputs):
         "run mapper for one set of inputs and return an iterator of results"
-        if mapper.all_items or not inputs:
+        all_items = mapper.all_items or not inputs
+        if all_items:
             sfi_inputs = [StatefulIter(it) for it in inputs]
+            item_iters = [ sfi_inputs ]
+        else:
+            item_iters = itertools.izip_longest(*inputs)
+
+        for args in item_iters:
             try:
-                results = mapper(*sfi_inputs)
+                results = mapper(*args)
                 if results:
                     for res in results:
                         yield res
             except:
-                self._handle_err(mapper,[it.current for it in sfi_inputs])
+                if all_items:
+                    current_args = [it.current for it in sfi_inputs]
+                else:
+                    current_args = args
+                self._handle_err(mapper,current_args)
                 raise
-        else:
-            item_iters = itertools.izip_longest(*inputs)
-            for args in item_iters:
-                try:
-                    results = mapper(*args)
-                    if results:
-                        for res in results:
-                            yield res
-                except:
-                    self._handle_err(mapper,args)
-                    raise
 
     def _handle_err(self, mapper, args):
         msg = "map %r failed for %r"%(mapper,args)

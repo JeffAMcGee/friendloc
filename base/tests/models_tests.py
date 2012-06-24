@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from restkit import errors
+
 from base import models
 
 
@@ -15,12 +17,22 @@ class MockGisgraphyResource(object):
         else:
             return None
 
+
 class MockTwitterResource(object):
     def sleep_if_needed(self):
         #Calling sleep() in my unittests may be hazardous to your health!
         pass
 
+    def _raise_on_errors(self,user_id):
+        if user_id==404:
+            raise errors.ResourceNotFound()
+        elif user_id in (401,403):
+            raise errors.Unauthorized()
+        elif 400<=user_id<600:
+            raise errors.RequestFailed(http_code=user_id)
+
     def get_edges(self, user_id):
+        self._raise_on_errors(user_id)
         if user_id == 0:
             friends = followers = [1,3]
         elif user_id == 1:
@@ -36,6 +48,7 @@ class MockTwitterResource(object):
         return edges
 
     def user_timeline(self, user_id):
+        self._raise_on_errors(user_id)
         tweet = models.Tweet(
             _id = user_id,
             mentions = [],
@@ -51,6 +64,7 @@ class MockTwitterResource(object):
         return [tweet]*10
 
     def user_lookup(self, user_ids=[]):
+        self._raise_on_errors(user_ids[0])
         names = dict(enumerate([
             'Joyce','Alberto','Beryl','Chris','Debby','Ernesto','Florence',
             'Gordon','Helene','Issac',

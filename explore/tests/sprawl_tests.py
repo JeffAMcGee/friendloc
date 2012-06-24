@@ -5,7 +5,7 @@ import json
 import mock
 
 from base import gob
-from base.models import User
+from base.models import User, Edges, Tweets
 from base.tests import SimpleGobTest
 from base.tests.models_tests import MockTwitterResource, MockGisgraphyResource
 
@@ -50,6 +50,19 @@ class TestSprawlToContacts(SimpleGobTest):
         flor = User.get_id(6)
         self.assertEqual(flor.just_mentioned,[7])
         self.assertEqual(sorted(flor.just_friends),[12,18,24,30])
+
+    def test_find_edges_errors(self):
+        self.FS['mloc_users.04'] = [dict(id=404)]
+        self.FS['mloc_users.03'] = [dict(id=503)]
+        with _patch_twitter():
+            self.gob.run_job('find_edges')
+        for uid in (404,503):
+            missing = User.get_id(uid)
+            self.assertEqual(missing.error_status,uid)
+            self.assertEqual(missing.neighbors, None)
+            self.assertEqual(missing.rfriends, None)
+            self.assertEqual(Edges.get_id(uid), None)
+            self.assertEqual(Tweets.get_id(uid), None)
 
     def test_contact_split(self):
         User(_id=24).save()

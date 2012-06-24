@@ -80,7 +80,8 @@ class User(TwitterModel):
     neighbors = ListProperty('nebrs')
     many_edges = BoolProperty('mne')
     mod_group = IntProperty('mdg')
-    
+    error_status = IntProperty('err')
+
     #properties from twitter
     verified = BoolProperty("ver")
     created_at = TwitterDateTimeProperty('ca')

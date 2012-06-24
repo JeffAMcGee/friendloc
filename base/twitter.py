@@ -12,7 +12,7 @@ from models import Edges, User, Tweet
 class TwitterResource(Resource):
     # When a request fails, we retry with an exponential backoff from
     # 15 to 240 seconds.
-    backoff_seconds = [15*2**x for x in xrange(5)]
+    backoff_seconds = [15,60,240,0]
 
     def __init__(self):
         consumer = oauth.Consumer(
@@ -31,6 +31,15 @@ class TwitterResource(Resource):
         self.remaining = 10000
 
     def get_d(self, path=None, headers=None, **kwargs):
+        """
+        GET json from the twitter API and return it as a dict.
+
+        If things fail, it will retry 4 times with an exponential backoff.
+        If that doesn't work, it raises all sorts of stuff:
+            404: ResourceNotFound
+            401, 403: Unauthorized
+            other errors: RequestFailed
+        """
         for delay in self.backoff_seconds:
             try:
                 r = self.get(path, headers, **kwargs)
@@ -38,11 +47,13 @@ class TwitterResource(Resource):
                 return json.loads(r.body_string())
             except ValueError:
                 logging.exception("incomplete json")
+                if delay==0:
+                    raise
             except Unauthorized as unauth:
                 self._parse_ratelimit(unauth.response)
                 raise
-            except RequestError:
-                logging.exception("RequestError")
+            #except RequestError:
+                #logging.exception("RequestError")
             except RequestFailed as failure:
                 self._parse_ratelimit(failure.response)
                 if failure.response.status_int == 502:
@@ -52,17 +63,22 @@ class TwitterResource(Resource):
                         failure.response.status,
                         failure.response.final_url
                     )
+                if delay==0:
+                    raise
+                # FIXME: what should I do for 503?
                 if failure.response.status_int in (400,420,503):
                     # The whale says slow WAY down!
                     delay = 240
             time.sleep(delay)
-        raise Exception("Epic Fail Whale! - %s"%path)
 
     def _parse_ratelimit(self,r):
         if 'X-RateLimit-Remaining' in r.headers:
             self.remaining = int(r.headers['X-RateLimit-Remaining'])
             stamp = int(r.headers['X-RateLimit-Reset'])
             self.reset_time = datetime.utcfromtimestamp(stamp)
+            if self.remaining < 25:
+                self.sleep_if_needed()
+
 
     def get_ids(self, path, user_id, **kwargs):
         ids=self.get_d(
