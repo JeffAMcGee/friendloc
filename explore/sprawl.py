@@ -10,6 +10,7 @@ from base import gob
 from base.models import Edges, User, Tweets
 from base import twitter
 from base.gisgraphy import GisgraphyResource
+from collections import defaultdict
 import base.utils as utils
 
 
@@ -17,10 +18,10 @@ NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
 
 
 @gob.mapper(all_items=True)
-def mloc_users(tweets):
+def parse_geotweets(tweets):
     # USAGE:
-    # gunzip -c ~/may/*/*.gz | ./gb.py -s mloc_users
-    users = {}
+    # gunzip -c ~/may/*/*.gz | ./gb.py -s parse_geotweets
+    users = set()
     for i,t in enumerate(tweets):
         if i%10000 ==0:
             logging.info("read %d tweets"%i)
@@ -28,13 +29,24 @@ def mloc_users(tweets):
         uid = t['user']['id']
         if not t.get('coordinates'): continue
         if uid not in users:
-            users[uid] = t['user']
-            users[uid]['locs'] = []
-        users[uid]['locs'].append(t['coordinates']['coordinates'])
+            yield User.mod_id(uid),t['user']
+            users.add(uid)
+        yield User.mod_id(uid),(uid,t['coordinates']['coordinates'])
     logging.info("sending up to %d users"%len(users))
+
+@gob.mapper(all_items=True)
+def mloc_users(users_and_coords):
+    users = {}
+    locs = defaultdict(list)
+    for user_or_coord in users_and_coords:
+        if isinstance(user_or_coord,dict):
+            users[user_or_coord['id']] = user_or_coord
+        else:
+            uid,coord = user_or_coord
+            locs[uid].append(coord)
     for uid,user in users.iteritems():
         logging.debug("considering uid %d"%uid)
-        spots = user['locs']
+        spots = locs[uid]
         if len(spots)<2: continue
         if user['followers_count']==0 and user['friends_count']==0: continue
         median = utils.median_2d(spots)
@@ -43,9 +55,8 @@ def mloc_users(tweets):
         #    continue #not in us
         if numpy.median(dists)>50:
             continue #user moves too much
-        del user['locs']
         user['mloc'] = median
-        yield User.mod_id(user),user
+        yield user
 
 
 def _save_user_contacts(twitter,user,limit):
@@ -92,7 +103,7 @@ class EdgeFinder():
             user.geonames_place = self.gis.twitter_loc(user.location)
             logging.info("visit %s - %d",user.screen_name,user._id)
             try:
-                _save_user_contacts(self.twitter,user,limit=50)
+                _save_user_contacts(self.twitter,user,limit=25)
             except errors.ResourceError as e:
                 logging.warn("%d for %d",e.status_int,user._id)
                 user.error_status = e.status_int

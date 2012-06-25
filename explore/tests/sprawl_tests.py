@@ -31,7 +31,8 @@ class TestSprawlToContacts(SimpleGobTest):
     def test_mloc_users(self):
         mock_load = lambda s,p,e: self.geotweets
         with mock.patch.object(gob.Source,'load_output',mock_load):
-            self.gob.run_job('mloc_users')
+            self.gob.run_job('parse_geotweets')
+        self.gob.run_job('mloc_users')
         results = self.FS['mloc_users.39']
         self.assertEqual(results[0]['id'], 51839)
         self.assertEqual(results[0]['mloc'], [-95.3,29.2])
