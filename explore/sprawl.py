@@ -34,6 +34,7 @@ def parse_geotweets(tweets):
         yield User.mod_id(uid),(uid,t['coordinates']['coordinates'])
     logging.info("sending up to %d users"%len(users))
 
+
 @gob.mapper(all_items=True)
 def mloc_users(users_and_coords):
     users = {}

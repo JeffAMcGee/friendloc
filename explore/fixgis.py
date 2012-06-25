@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 import numpy
-import logging
-import itertools
-from multiprocessing import Pool 
 from collections import defaultdict
 
+from base import utils,gob
 from base.gisgraphy import GisgraphyResource
-import base.utils as utils
 from base.models import User
-
-gis = GisgraphyResource()
 
 
 def fix_user_mdist():
+    gis = GisgraphyResource()
     users = User.find(User.geonames_place.exists(), timeout=False)
     for user in users:
         if not user.geonames_place.mdist:
@@ -20,68 +16,30 @@ def fix_user_mdist():
             user.save()
 
 
-def print_gnp_gps(eval=False):
-    start,end = (4,6) if eval else (0,3)
-    users = {}
-    for i,t in enumerate(utils.read_json()):
-        if i%10000 ==0:
-            logging.info("read %d tweets",i)
-        if 'id' not in t: continue # this is not a tweet
-        uid = t['user']['id']
-        if not t.get('coordinates'): continue
-        if not (start<=uid%10<=end): continue
-        if uid not in users:
-            users[uid] = dict(
-                _id = t['user']['id'],
-                loc = t['user'].get('location',''),
-                locs = [],
-            )
-        users[uid]['locs'].append(t['coordinates']['coordinates'])
-    logging.info("sending %d users",len(users))
-    gnp_users = lookup_gnp_multi(_calc_mloc(u) for u in users.itervalues())
-    utils.write_json(gnp_users,"gnp_gps_%d%d"%(start,end))
-
-
-def lookup_gnp_multi(users):
-    p = Pool(8)
-    items = p.map(
-        _lookup_gnp,
-        itertools.ifilter(None,users),
-        chunksize=100)
-    return itertools.ifilter(None,items)
-
-
-def _lookup_gnp(user):
-    gnp = gis.twitter_loc(user['loc'])
-    if not gnp:
-        return None
-    user['gnp'] = gnp.to_d()
-    return user
-
-
-def _calc_mloc(user):
-    spots = user['locs']
-    if len(spots)<2 or not user['loc']:
-        return None
-    median = utils.median_2d(spots)
-    dists = [utils.coord_in_miles(median,spot) for spot in spots]
-    if numpy.median(dists)>50:
-        return None #user moves too much
-    return dict(
-        _id = user['_id'],
-        loc = user['loc'],
-        mloc = median,
+@gob.mapper()
+def gnp_gps():
+    users = User.database.User.find(
+        {'mloc':{'$exists':1}, 'gnp':{'$ne':None}},
+        fields = ['mloc','gnp'],
         )
+    for user in users:
+        yield User.mod_id(user),(user['gnp'],user['mloc'])
 
-def gisgraphy_mdist(item_cutoff=2,kind_cutoff=5):
+
+@gob.mapper(all_items=True)
+def mdists(gnp_gps):
+    item_cutoff=2
+    kind_cutoff=5
     mdist = {}
+
     dists = defaultdict(list)
     gnps = {}
-    for u in utils.read_json('gnp_gps_03'):
-        d = utils.coord_in_miles(u['gnp'],u['mloc'])
-        id = u['gnp'].get('fid','COORD')
+    for gnp,mloc in gnp_gps:
+        d = utils.coord_in_miles(gnp,mloc)
+        id = gnp.get('fid','COORD')
         dists[id].append(d)
-        gnps[id] = u['gnp']
+        gnps[id] = gnp
+
     codes = defaultdict(list)
     for k,gnp in gnps.iteritems():
         if len(dists[k])>item_cutoff:
@@ -99,4 +57,4 @@ def gisgraphy_mdist(item_cutoff=2,kind_cutoff=5):
             other.extend(code)
     #add a catch-all for everything else
     mdist['other'] = numpy.median(other)
-    utils.write_json([mdist],'mdists')
+    yield mdist

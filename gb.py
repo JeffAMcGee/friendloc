@@ -8,8 +8,7 @@ import numpy
 from maroon import Model
 
 from settings import settings
-from explore import peek
-from explore import sprawl
+from explore import peek, sprawl, fixgis
 from predict import prep, fl
 from base import gob
 from base import utils
@@ -32,9 +31,15 @@ def create_jobs(g):
     g.add_job(sprawl.mloc_users,'parse_geotweets')
     g.add_job(sprawl.EdgeFinder.find_edges,'mloc_users',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_edges',saver='split_save')
-    g.add_job(sprawl.lookup_contacts,'contact_split')
+
+    g.add_job(fixgis.gnp_gps,requires=['find_edges'],saver='split_save')
+    # FIXME: how do we want to cat mod_groups 00-29?
+    g.add_job(fixgis.mdists,'gnp_gps')
     g.add_job(prep.mloc_uids,saver='split_save')
-    g.add_job(sprawl.pick_nebrs,'mloc_uids',requires=['lookup_contacts'])
+
+    g.add_job(sprawl.lookup_contacts,'contact_split')
+    g.add_job(sprawl.pick_nebrs,'mloc_uids',
+              requires=['lookup_contacts','mdists'])
     g.add_job(sprawl.EdgeFinder.find_edges,'pick_nebrs',
               name='find_leafs',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',
