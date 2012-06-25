@@ -325,7 +325,8 @@ class DictStorage(Storage):
 
 class FileStorage(Storage):
     "Store data in a directory"
-    def __init__(self, path):
+    def __init__(self, path, **kwargs):
+        super(FileStorage,self).__init__(**kwargs)
         # path should be an absolute path to a directory to store files
         self.path = os.path.abspath(path)
 
@@ -408,7 +409,7 @@ class MultiProcEnv(FileStorage, Executor):
     def run(self, job, input_paths):
         MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
 
-        pool = Pool(4,_mp_worker_init,[self, job])
+        pool = Pool(6,_mp_worker_init,[self, job])
         pool.map(_mp_worker_run, input_paths)
         pool.close()
         pool.join()
