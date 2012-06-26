@@ -1,7 +1,10 @@
 import json
 import re
+import logging
+import time
 
 from restkit import Resource
+from http_parser.http import NoMoreData
 
 from settings import settings
 from models import GeonamesPlace
@@ -13,7 +16,7 @@ class GisgraphyResource(Resource):
     def __init__(self):
         Resource.__init__(self,
                 settings.gisgraphy_url,
-                client_opts={'timeout':30},
+                client_opts={'timeout':60},
         )
         self._mdist = {}
 
@@ -29,14 +32,22 @@ class GisgraphyResource(Resource):
         return self._mdist.get('other',None)
 
     def fulltextsearch(self, q, headers=None, **kwargs):
-        #we make the query lower case as workaround for "Portland, OR"
-        r = self.get('fulltext/fulltextsearch',
-            headers,
-            q=q,
-            format="json",
-            spellchecking=False,
-            **kwargs)
-        return json.loads(r.body_string())["response"]["docs"]
+        backoff_seconds = [15,60,240,0]
+        for delay in backoff_seconds:
+            try:
+                # make the query lower case as workaround for "Portland, OR"
+                r = self.get('fulltext/fulltextsearch',
+                    headers,
+                    q=q,
+                    format="json",
+                    spellchecking=False,
+                    **kwargs)
+                return json.loads(r.body_string())["response"]["docs"]
+            except NoMoreData:
+                logging.error("incomplete response from gisgraphy")
+                if delay==0:
+                    raise
+            time.sleep(delay)
 
     def twitter_loc(self, q):
         if not q: return None
