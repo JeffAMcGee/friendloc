@@ -6,6 +6,9 @@ from base import models
 
 
 class MockGisgraphyResource(object):
+    def set_mdists(self,mdists):
+        self._mdist = mdists
+
     def twitter_loc(self, q):
         q = q.lower()
         if 'bryan' in q:

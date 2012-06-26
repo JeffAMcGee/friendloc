@@ -303,7 +303,7 @@ class DictStorage(Storage):
         self.THE_FS[name] = list(items)
 
     def load(self, name):
-        return self.THE_FS[name]
+        return iter(self.THE_FS[name])
 
     class BulkSaver(object):
         def __init__(self):

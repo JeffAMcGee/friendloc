@@ -17,6 +17,18 @@ import base.utils as utils
 NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
 
 
+class Sprawler(object):
+    def __init__(self,env):
+        self.twitter = twitter.TwitterResource()
+        self.gis = GisgraphyResource()
+        try:
+            mdists = next(env.load('mdists'))
+        except (IOError,KeyError):
+            pass
+        else:
+            self.gis.set_mdists(mdists)
+
+
 @gob.mapper(all_items=True)
 def parse_geotweets(tweets):
     # USAGE:
@@ -89,18 +101,16 @@ def _save_user_contacts(twitter,user,limit):
         setattr(user,key,l[:limit])
 
 
-class EdgeFinder():
-    def __init__(self,env):
-        self.twitter = twitter.TwitterResource()
-        self.gis = GisgraphyResource()
-
+class EdgeFinder(Sprawler):
     @gob.mapper()
     def find_edges(self,user_d):
+        # FIXME: find_leafs gets user ids, not user_d dicts
         user = User.get_id(user_d['id'])
         if user and any(getattr(user,key) for key in NEBR_KEYS):
             logging.warn("not revisiting %d",user._id)
         else:
             user = User(user_d)
+            # FIXME: we don't want to do this in find_leafs
             user.geonames_place = self.gis.twitter_loc(user.location)
             logging.info("visit %s - %d",user.screen_name,user._id)
             try:
@@ -123,18 +133,17 @@ def contact_split(groups):
                 yield group,id
 
 
-@gob.mapper(all_items=True)
-def lookup_contacts(contact_uids):
-    twtr = twitter.TwitterResource()
-    gis = GisgraphyResource()
-    chunks = utils.grouper(100, contact_uids)
-
-    for chunk in chunks:
-        users = filter(None,twtr.user_lookup(user_ids=list(chunk)))
-        for amigo in users:
-            amigo.geonames_place = gis.twitter_loc(amigo.location)
-            amigo.merge()
-        yield len(users)
+class ContactLookup(Sprawler):
+    @gob.mapper(all_items=True)
+    def lookup_contacts(self,contact_uids):
+        assert self.gis._mdist
+        chunks = utils.grouper(100, contact_uids)
+        for chunk in chunks:
+            users = self.twitter.user_lookup(user_ids=list(chunk))
+            for amigo in filter(None,users):
+                amigo.geonames_place = self.gis.twitter_loc(amigo.location)
+                amigo.merge()
+            yield len(users)
 
 
 def _has_place(user):

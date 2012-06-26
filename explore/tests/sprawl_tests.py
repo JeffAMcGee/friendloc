@@ -79,6 +79,7 @@ class TestSprawlToContacts(SimpleGobTest):
                 ]
 
     def _lookup_contacts(self):
+        self.FS['mdists'] = [dict(other=2)]
         with _patch_twitter():
             with _patch_gisgraphy():
                 self.gob.run_job('contact_split')

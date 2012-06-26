@@ -37,14 +37,15 @@ def create_jobs(g):
     g.add_job(fixgis.mdists,'gnp_gps')
     g.add_job(prep.mloc_uids,saver='split_save')
 
-    g.add_job(sprawl.lookup_contacts,'contact_split')
+    g.add_job(sprawl.ContactLookup.lookup_contacts,'contact_split')
     g.add_job(sprawl.pick_nebrs,'mloc_uids',
               requires=['lookup_contacts','mdists'])
     g.add_job(sprawl.EdgeFinder.find_edges,'pick_nebrs',
               name='find_leafs',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
-    g.add_job(sprawl.lookup_contacts,'leaf_split',name='lookup_leafs')
+    g.add_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
+              name='lookup_leafs')
 
     # the predictor
     g.add_job(peek.geo_ats)

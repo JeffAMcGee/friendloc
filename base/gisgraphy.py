@@ -5,7 +5,7 @@ from restkit import Resource
 
 from settings import settings
 from models import GeonamesPlace
-from utils import in_local_box, read_json
+from utils import in_local_box
 
 class GisgraphyResource(Resource):
     COORD_RE = re.compile('(-?\d+\.\d+), *(-?\d+\.\d+)')
@@ -15,10 +15,9 @@ class GisgraphyResource(Resource):
                 settings.gisgraphy_url,
                 client_opts={'timeout':30},
         )
-        try:
-            self._mdist = list(read_json('mdists'))[0]
-        except IOError:
-            self._mdist = {}
+
+    def set_mdists(self,mdists):
+        self._mdist = mdists
 
     def mdist(self,gnp):
         id = str(gnp.feature_id)
