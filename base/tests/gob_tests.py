@@ -110,9 +110,11 @@ def clean_data_dir():
 
 
 class TestSimpleFileEnv(unittest.TestCase):
+    UNICODE_STR = u'Unicode is \U0001F4A9!'
+
     def setUp(self):
         path = clean_data_dir()
-        self.packed = msgpack.packb((1,2,"gigem"))
+        self.packed = msgpack.packb((1,2,"gigem",self.UNICODE_STR))
 
         self.env = SimpleFileEnv(path)
         self.gob = Gob(self.env)
@@ -123,10 +125,11 @@ class TestSimpleFileEnv(unittest.TestCase):
             f.write(self.packed)
 
         data = list(self.env.load("stuff"))
-        self.assertEqual(data,[(1,2,"gigem")])
+        self.assertEqual(data,[(1,2,"gigem",self.UNICODE_STR)])
+        self.assertTrue(isinstance(data[0][-1],unicode))
 
     def test_save(self):
-        self.env.save("more_stuff.2",[[1,2,"gigem"]])
+        self.env.save("more_stuff.2",[[1,2,"gigem",self.UNICODE_STR]])
         with open(os.path.join(self.env.path,"more_stuff","2.mp")) as f:
             data = f.read()
         self.assertEqual(data,self.packed)

@@ -364,7 +364,7 @@ class FileStorage(Storage):
     def load(self, name):
         # Can we just return the iterator or is close a problem?
         with self._open(name) as f:
-            for item in msgpack.Unpacker(f):
+            for item in msgpack.Unpacker(f,encoding='utf-8'):
                 yield item
 
     class BulkSaver(object):
