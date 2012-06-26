@@ -72,56 +72,68 @@ def mloc_users(users_and_coords):
         yield user
 
 
-def _save_user_contacts(twitter,user,limit):
-    edges = Edges.get_id(user._id)
-    if not edges:
-        edges = twitter.get_edges(user._id)
-        edges.save()
-
-    tweets = Tweets.get_id(user._id)
-    if not tweets:
-        tweets_ = twitter.user_timeline(user._id)
-        tweets = Tweets(_id=user._id,tweets=tweets_)
-        tweets.save()
-
-    ated = set(tweets.ats or [])
-    frds = set(edges.friends)
-    fols = set(edges.followers)
-    sets = dict(
-        rfriends = frds&fols,
-        just_friends = frds-fols,
-        just_followers = fols-frds,
-        just_mentioned = ated-(frds|fols),
-        )
-
-    #pick uids from sets
-    for key,s in sets.iteritems():
-        l = list(s)
-        random.shuffle(l)
-        setattr(user,key,l[:limit])
-
-
 class EdgeFinder(Sprawler):
+    def _pick_contacts(self, user, limit):
+        edges = Edges.get_id(user._id)
+        if not edges:
+            edges = self.twitter.get_edges(user._id)
+            edges.save()
+
+        tweets = Tweets.get_id(user._id)
+        if not tweets:
+            tweets_ = self.twitter.user_timeline(user._id)
+            tweets = Tweets(_id=user._id,tweets=tweets_)
+            tweets.save()
+
+        ated = set(tweets.ats or [])
+        frds = set(edges.friends)
+        fols = set(edges.followers)
+        sets = dict(
+            rfriends = frds&fols,
+            just_friends = frds-fols,
+            just_followers = fols-frds,
+            just_mentioned = ated-(frds|fols),
+            )
+
+        #pick uids from sets
+        for key,s in sets.iteritems():
+            l = list(s)
+            random.shuffle(l)
+            setattr(user,key,l[:limit])
+
+
+    def _save_user_contacts(self,user,limit):
+        logging.info("visit %s - %d",user.screen_name,user._id)
+        try:
+            self._pick_contacts(user,limit)
+        except errors.ResourceError as e:
+            logging.warn("%d for %d",e.status_int,user._id)
+            user.error_status = e.status_int
+        user.save()
+
+    def _my_nebrs(self,user):
+        nebrs = chain.from_iterable(
+                    getattr(user,key) or ()
+                    for key in NEBR_KEYS
+                    )
+        return ((User.mod_id(nebr),nebr) for nebr in nebrs)
+
     @gob.mapper()
-    def find_edges(self,user_d):
-        # FIXME: find_leafs gets user ids, not user_d dicts
+    def find_contacts(self,user_d):
         user = User.get_id(user_d['id'])
-        if user and any(getattr(user,key) for key in NEBR_KEYS):
+        if user:
             logging.warn("not revisiting %d",user._id)
         else:
             user = User(user_d)
-            # FIXME: we don't want to do this in find_leafs
             user.geonames_place = self.gis.twitter_loc(user.location)
-            logging.info("visit %s - %d",user.screen_name,user._id)
-            try:
-                _save_user_contacts(self.twitter,user,limit=25)
-            except errors.ResourceError as e:
-                logging.warn("%d for %d",e.status_int,user._id)
-                user.error_status = e.status_int
-            user.merge()
+            self._save_user_contacts(user,limit=25)
+        return self._my_nebrs(user)
 
-        nebrs = chain.from_iterable(getattr(user,key) or () for key in NEBR_KEYS)
-        return ((User.mod_id(nebr),nebr) for nebr in nebrs)
+    @gob.mapper()
+    def find_leafs(self,uid):
+        user = User.get_id(uid)
+        self._save_user_contacts(user,limit=25)
+        return self._my_nebrs(user)
 
 
 @gob.mapper(all_items=True)
@@ -168,4 +180,3 @@ def pick_nebrs(mloc_uid):
         user.neigbors = _pick_neighbors(user)
         user.save()
     return user.neighbors
-

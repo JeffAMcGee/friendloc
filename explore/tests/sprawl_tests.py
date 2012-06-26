@@ -38,25 +38,25 @@ class TestSprawlToContacts(SimpleGobTest):
         self.assertEqual(results[0]['mloc'], [-95.3,29.2])
         self.assertEqual(len(results), 1)
 
-    def _find_edges_6(self):
+    def _find_contacts_6(self):
         self.FS['mloc_users.06'] = [dict(id=6)]
         with _patch_twitter():
-            self.gob.run_job('find_edges')
+            self.gob.run_job('find_contacts')
 
-    def test_find_edges(self):
-        self._find_edges_6()
-        results = self.FS['find_edges.06']
+    def test_find_contacts(self):
+        self._find_contacts_6()
+        results = self.FS['find_contacts.06']
         s_res = sorted(list(r[1])[0] for r in results)
         self.assertEqual(s_res, [0,1,2,3,7,12,18,24,30])
         flor = User.get_id(6)
         self.assertEqual(flor.just_mentioned,[7])
         self.assertEqual(sorted(flor.just_friends),[12,18,24,30])
 
-    def test_find_edges_errors(self):
+    def test_find_contacts_errors(self):
         self.FS['mloc_users.04'] = [dict(id=404)]
         self.FS['mloc_users.03'] = [dict(id=503)]
         with _patch_twitter():
-            self.gob.run_job('find_edges')
+            self.gob.run_job('find_contacts')
         for uid in (404,503):
             missing = User.get_id(uid)
             self.assertEqual(missing.error_status,uid)
@@ -67,13 +67,13 @@ class TestSprawlToContacts(SimpleGobTest):
 
     def test_contact_split(self):
         User(_id=24).save()
-        self._find_edges_6()
+        self._find_contacts_6()
         self.gob.run_job('contact_split')
         self.assertEqual(self.FS['contact_split.18'],[18])
         self.assertNotIn('contact_split.24', self.FS)
 
-    def _fake_find_edges(self, *ids):
-        self.FS['find_edges'] = [
+    def _fake_find_contacts(self, *ids):
+        self.FS['find_contacts'] = [
                 (User.mod_id(uid),[uid])
                 for uid in ids
                 ]
@@ -86,7 +86,7 @@ class TestSprawlToContacts(SimpleGobTest):
                 self.gob.run_job('lookup_contacts')
 
     def test_lookup_contacts(self):
-        self._fake_find_edges(2,3)
+        self._fake_find_contacts(2,3)
         self._lookup_contacts()
         beryl = User.get_id(2)
         self.assertEqual(beryl.screen_name,'user_2')
@@ -94,7 +94,7 @@ class TestSprawlToContacts(SimpleGobTest):
         self.assertEqual(beryl.geonames_place.mdist,3)
 
     def test_pick_nebrs(self):
-        self._fake_find_edges(2,3,7)
+        self._fake_find_contacts(2,3,7)
         self._lookup_contacts()
         flor = User(_id=6, just_mentioned=[7], just_friends=[1,2,3])
         flor.save()
