@@ -3,6 +3,7 @@ import glob
 import inspect
 import itertools
 import logging
+import sys
 import os.path
 import traceback
 from collections import defaultdict
@@ -293,6 +294,14 @@ class SingleThreadExecutor(Executor):
 
         if funcs['reduce']:
             self.reduce_all(job, funcs['reduce'])
+
+    def _handle_err(self, mapper, args):
+        msg = "map %r failed for %r"%(mapper,args)
+        logging.exception(msg)
+        print msg
+        traceback.print_exc()
+        import ipdb
+        ipdb.post_mortem(sys.exc_info()[2])
 
 
 class DictStorage(Storage):

@@ -15,6 +15,7 @@ class GisgraphyResource(Resource):
                 settings.gisgraphy_url,
                 client_opts={'timeout':30},
         )
+        self._mdist = {}
 
     def set_mdists(self,mdists):
         self._mdist = mdists

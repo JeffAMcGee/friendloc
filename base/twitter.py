@@ -5,6 +5,7 @@ import time
 import logging
 from datetime import datetime
 from restkit.errors import RequestFailed, Unauthorized, RequestError
+from http_parser.http import NoMoreData
 from settings import settings
 from models import Edges, User, Tweet
 
@@ -45,8 +46,8 @@ class TwitterResource(Resource):
                 r = self.get(path, headers, **kwargs)
                 self._parse_ratelimit(r)
                 return json.loads(r.body_string())
-            except ValueError:
-                logging.exception("incomplete json")
+            except (ValueError,NoMoreData):
+                logging.exception("incomplete response")
                 if delay==0:
                     raise
             except Unauthorized as unauth:
