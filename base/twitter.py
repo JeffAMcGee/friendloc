@@ -13,7 +13,7 @@ from models import Edges, User, Tweet
 class TwitterResource(Resource):
     # When a request fails, we retry with an exponential backoff from
     # 15 to 240 seconds.
-    backoff_seconds = [15,60,240,0]
+    backoff_seconds = [20,60,180,540,0]
 
     def __init__(self):
         consumer = oauth.Consumer(
@@ -49,7 +49,7 @@ class TwitterResource(Resource):
             except (ValueError,NoMoreData) as e:
                 logging.error("incomplete response (%s)",type(e).__name__)
                 if delay==0:
-                    raise
+                    raise RequestFailed(http_code=0)
             except Unauthorized as unauth:
                 self._parse_ratelimit(unauth.response)
                 raise
