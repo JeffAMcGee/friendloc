@@ -4,7 +4,7 @@ import json
 import time
 import logging
 from datetime import datetime
-from restkit.errors import RequestFailed, Unauthorized, RequestError
+from restkit.errors import RequestFailed, Unauthorized
 from http_parser.http import NoMoreData
 from settings import settings
 from models import Edges, User, Tweet
@@ -46,15 +46,13 @@ class TwitterResource(Resource):
                 r = self.get(path, headers, **kwargs)
                 self._parse_ratelimit(r)
                 return json.loads(r.body_string())
-            except (ValueError,NoMoreData):
-                logging.exception("incomplete response")
+            except (ValueError,NoMoreData) as e:
+                logging.error("incomplete response (%s)",type(e).__name__)
                 if delay==0:
                     raise
             except Unauthorized as unauth:
                 self._parse_ratelimit(unauth.response)
                 raise
-            #except RequestError:
-                #logging.exception("RequestError")
             except RequestFailed as failure:
                 self._parse_ratelimit(failure.response)
                 if failure.response.status_int == 502:
@@ -75,6 +73,8 @@ class TwitterResource(Resource):
     def _parse_ratelimit(self,r):
         if 'X-RateLimit-Remaining' in r.headers:
             self.remaining = int(r.headers['X-RateLimit-Remaining'])
+            if self.remaining%500==0:
+                logging.info("api calls remaining: %d",self.remaining)
             stamp = int(r.headers['X-RateLimit-Reset'])
             self.reset_time = datetime.utcfromtimestamp(stamp)
             if self.remaining < 25:
