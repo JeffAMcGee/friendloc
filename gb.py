@@ -60,7 +60,7 @@ def make_gob(args):
     if not args or args.single or args.input:
         env = gob.SimpleFileEnv(path,log_crashes=True)
     else:
-        env = gob.MultiProcEnv(path,log_crashes=True)
+        env = gob.MultiProcEnv(path,log_crashes=True,log_level=logging.INFO)
     my_gob = gob.Gob(env)
     create_jobs(my_gob)
     return my_gob

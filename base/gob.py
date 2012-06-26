@@ -1,5 +1,4 @@
 import contextlib
-import glob
 import inspect
 import itertools
 import logging
@@ -141,9 +140,40 @@ class Source(Job):
 
 
 class Executor(object):
-    def __init__(self, log_crashes=False, **kwargs):
+    def __init__(self, log_crashes=False, log_path="logs", log_level=None,
+                 **kwargs):
         super(Executor,self).__init__(**kwargs)
         self.log_crashes = log_crashes
+
+        self._file_hdlr = None
+        self._log_path = log_path
+        self._log_level = log_level
+
+    def setup_logging(self, label):
+        if self._log_level is None:
+            return
+        root = logging.getLogger()
+        if len(root.handlers)==0:
+            # send logs to stdout if they aren't already headed there
+            hdlr = logging.StreamHandler()
+            root.addHandler(hdlr)
+            hdlr.setLevel(self._log_level)
+            root.setLevel(self._log_level)
+        if self._log_path is not None:
+            filepath = os.path.join(self._log_path, label)
+            file_hdlr = logging.FileHandler(filepath, 'a')
+            fmt = logging.Formatter(
+                "%(levelname)s:%(module)s:%(asctime)s:%(message)s",
+                "%H:%M:%S")
+            file_hdlr.setFormatter(fmt)
+            root.addHandler(file_hdlr)
+            file_hdlr.setLevel(self._log_level)
+            self._file_hdlr = file_hdlr
+
+    def stop_logging(self):
+        if self._file_hdlr:
+            logging.getLogger().removeHandler(self._file_hdlr)
+
 
     def run(self, job, input_paths):
         """
@@ -359,8 +389,6 @@ class FileStorage(Storage):
             for item in items:
                 f.write(packer.pack(item))
 
-    # FIXME: should we be storing utf-8?
-
     def load(self, name):
         # Can we just return the iterator or is close a problem?
         with self._open(name) as f:
@@ -399,6 +427,7 @@ class FileStorage(Storage):
 def _mp_worker_init(env, job):
     MultiProcEnv._worker_data['env'] = env
     MultiProcEnv._worker_data['job'] = job
+    env.setup_logging('%s.%d'%(job.name,os.getpid()))
 
 
 def _mp_worker_run(source_set):
