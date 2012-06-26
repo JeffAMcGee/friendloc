@@ -1,15 +1,16 @@
-beanstalkc
-Fabric
-ipdb
--e git+git://github.com/JeffAMcGee/maroon.git#egg=maroon
-matplotlib
-mock
-msgpack-python
-networkx
-numpy
-nose
-pyflakes
-pymongo
-restkit
-scikit-learn
-scipy
+beanstalkc==0.2.0
+Fabric==1.4.0
+ipdb==0.6.1
+-e git://github.com/JeffAMcGee/maroon.git@83b418c7ae9213820fd127afcba1365a42d66722#egg=maroon-dev
+matplotlib==1.1.0
+mock==0.8.0
+msgpack-python==0.1.13
+networkx==1.6
+nose==1.1.2
+numpy==1.6.1
+pyflakes==0.5.0
+pymongo==2.1.1
+restkit==3.3.0
+scikit-learn==0.10
+scipy==0.10.1
+ujson==1.18
