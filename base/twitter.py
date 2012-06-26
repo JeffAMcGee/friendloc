@@ -27,7 +27,7 @@ class TwitterResource(Resource):
         Resource.__init__(self,
                 url,
                 filters=[auth],
-                client_opts={'timeout':30}
+                client_opts={'timeout':60}
         )
         self.remaining = 10000
 
