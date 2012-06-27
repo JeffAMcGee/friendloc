@@ -57,9 +57,9 @@ def join_reduce(key, items, rereduce):
 @reducer()
 def set_reduce(key, items, rereduce):
     if rereduce:
-        return set(itertools.chain.from_iterable(items))
+        return tuple(set(itertools.chain.from_iterable(items)))
     else:
-        return set(items)
+        return tuple(set(items))
 
 
 @reducer()

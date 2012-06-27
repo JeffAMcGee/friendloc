@@ -5,7 +5,8 @@ import unittest
 import msgpack
 
 from base import gob
-from base.gob import Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv, join_reduce
+from base.gob import (Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv,
+                      join_reduce, set_reduce)
 
 
 def source():
@@ -133,6 +134,13 @@ class TestSimpleFileEnv(unittest.TestCase):
         with open(os.path.join(self.env.path,"more_stuff","2.mp")) as f:
             data = f.read()
         self.assertEqual(data,self.packed)
+
+    def test_set_reduce(self):
+        res = set_reduce(1,(2,4,5,2),rereduce=False)
+        self.assertTrue(isinstance(res,tuple))
+        self.assertEqual(sorted(res),[2,4,5])
+        # make sure msgpack doesn't raise an exception
+        msgpack.packb(res)
 
     def test_whole_gob(self):
         # integration test
