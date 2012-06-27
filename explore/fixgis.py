@@ -18,6 +18,7 @@ def fix_user_mdist():
 
 @gob.mapper()
 def gnp_gps():
+    # rewrite to read from mloc_users
     users = User.database.User.find(
         {'mloc':{'$exists':1}, 'gnp':{'$ne':None}},
         fields = ['mloc','gnp'],

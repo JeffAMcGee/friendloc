@@ -2,6 +2,7 @@
 import numpy
 import random
 import logging
+import itertools
 from itertools import chain
 
 from restkit import errors
@@ -69,7 +70,7 @@ def mloc_users(users_and_coords):
         user['mloc'] = median
         selected.append(user)
     random.shuffle(selected)
-    return selected[:2500]
+    return selected
 
 
 class EdgeFinder(Sprawler):
@@ -118,16 +119,18 @@ class EdgeFinder(Sprawler):
                     )
         return ((User.mod_id(nebr),nebr) for nebr in nebrs)
 
-    @gob.mapper()
-    def find_contacts(self,user_d):
-        user = User.get_id(user_d['id'])
-        if user:
-            logging.warn("not revisiting %d",user._id)
-        else:
-            user = User(user_d)
-            user.geonames_place = self.gis.twitter_loc(user.location)
-            self._save_user_contacts(user,limit=25)
-        return self._my_nebrs(user)
+    @gob.mapper(all_items=True)
+    def find_contacts(self,user_ds):
+        for user_d in itertools.islice(user_ds,2600):
+            user = User.get_id(user_d['id'])
+            if user:
+                logging.warn("not revisiting %d",user._id)
+            else:
+                user = User(user_d)
+                user.geonames_place = self.gis.twitter_loc(user.location)
+                self._save_user_contacts(user,limit=25)
+            for mod_nebr in self._my_nebrs(user):
+                yield mod_nebr
 
     @gob.mapper()
     def find_leafs(self,uid):
