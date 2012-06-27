@@ -57,19 +57,19 @@ def mloc_users(users_and_coords):
         else:
             uid,coord = user_or_coord
             locs[uid].append(coord)
+    selected = []
     for uid,user in users.iteritems():
-        logging.debug("considering uid %d"%uid)
         spots = locs[uid]
-        if len(spots)<2: continue
+        if len(spots)<=2: continue
         if user['followers_count']==0 and user['friends_count']==0: continue
         median = utils.median_2d(spots)
         dists = [utils.coord_in_miles(median,spot) for spot in spots]
-        #if not (-126<median[0]<-66 and 24<median[1]<50):
-        #    continue #not in us
         if numpy.median(dists)>50:
             continue #user moves too much
         user['mloc'] = median
-        yield user
+        selected.append(user)
+    random.shuffle(selected)
+    return selected[:2500]
 
 
 class EdgeFinder(Sprawler):
