@@ -130,6 +130,13 @@ class Job(object):
         return res
 
 
+class Cat(Job):
+    def load_output(self, path, env):
+        job = self.sources[0]
+        loads = (job.load_output(p,env) for p in job.output_files(env))
+        return itertools.chain.from_iterable(loads)
+
+
 class Source(Job):
     def __init__(self, source_func=None, **kwargs):
         super(Source,self).__init__(**kwargs)
@@ -478,6 +485,10 @@ class Gob(object):
         input_paths = self.env.input_paths(job.sources)
         return self.env.run(job,input_paths=input_paths)
 
+    def add_cat(self, name, source):
+        """ concatenate a split source into one source """
+        return self.add_job(sources=(source,), name=name, job_cls=Cat)
+
     def add_source(self, source, name=None):
         """
         Adds a source that the you, the library user, create. This can be used
@@ -507,9 +518,10 @@ class Gob(object):
             if req not in self.jobs:
                 raise LookupError('dependencies must be added first')
 
+        # FIXME: this is UGLY.
         if kwargs.get('saver') == 'split_save':
             split = True
-        elif kwargs.get('reducer'):
+        elif kwargs.get('reducer') or job_cls==Cat:
             split = False
         elif source_jobs:
             split = any(j.split_data for j in source_jobs)

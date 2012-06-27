@@ -10,10 +10,12 @@ class TestSprawlToContacts(SimpleGobTest):
             (btx,[-96,32],),
             (btx,[-96,32],),
             (btx,[-96,31],),
+        ]
+        self.FS['gnp_gps.04'] = [
             (cstx,[-96,30],),
         ]
         self.gob.run_job('mdists')
-        mdists = self.FS['mdists.03'][0]
+        mdists = self.FS['mdists'][0]
         self.assertEqual(mdists['other'],0)
         self.assertAlmostEqual(mdists['17'],69.0976,places=3)
         self.assertEqual(len(mdists),2)

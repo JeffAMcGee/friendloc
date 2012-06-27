@@ -34,8 +34,8 @@ def create_jobs(g):
     g.add_job(sprawl.contact_split,'find_contacts',saver='split_save')
 
     g.add_job(fixgis.gnp_gps,'mloc_users')
-    g.add_job(fixgis.mdists,'gnp_gps')
-    # FIXME: cat gnp_gps results
+    g.add_cat('cat_gnp_gps','gnp_gps')
+    g.add_job(fixgis.mdists,'cat_gnp_gps')
     g.add_job(prep.mloc_uids,saver='split_save')
 
     g.add_job(sprawl.ContactLookup.lookup_contacts,'contact_split')
