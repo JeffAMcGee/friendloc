@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-import numpy
 from collections import defaultdict
+import itertools
+
+import numpy
 
 from base import utils,gob
 from base.gisgraphy import GisgraphyResource
@@ -16,15 +18,12 @@ def fix_user_mdist():
             user.save()
 
 
-@gob.mapper()
-def gnp_gps():
-    # rewrite to read from mloc_users
-    users = User.database.User.find(
-        {'mloc':{'$exists':1}, 'gnp':{'$ne':None}},
-        fields = ['mloc','gnp'],
-        )
-    for user in users:
-        yield User.mod_id(user),(user['gnp'],user['mloc'])
+@gob.mapper(all_items=True)
+def gnp_gps(users):
+    gis = GisgraphyResource()
+    for user in itertools.islice(users,2600,None):
+        gnp = gis.twitter_loc(user['location']).to_d()
+        yield User.mod_id(user),(gnp,user['mloc'])
 
 
 @gob.mapper(all_items=True)
