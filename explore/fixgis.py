@@ -22,8 +22,9 @@ def fix_user_mdist():
 def gnp_gps(users):
     gis = GisgraphyResource()
     for user in itertools.islice(users,2600,None):
-        gnp = gis.twitter_loc(user['location']).to_d()
-        yield User.mod_id(user),(gnp,user['mloc'])
+        gnp = gis.twitter_loc(user['location'])
+        if gnp:
+            yield (gnp.to_d(), user['mloc'])
 
 
 @gob.mapper(all_items=True)
