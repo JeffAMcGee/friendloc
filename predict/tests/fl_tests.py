@@ -15,7 +15,9 @@ class TestFriendLoc(unittest.TestCase):
 
     def test_edge_vect_flow(self):
         # integration test
-        self.gob.run_job('mloc_uids')
+        SimpleEnv.THE_FS['mloc_uids.03'] = [3]
+        SimpleEnv.THE_FS['mloc_uids.06'] = [6]
+        self.gob.run_job('training_users')
         self.gob.run_job('edge_d')
         self.gob.run_job('edge_vect')
         vects03 = SimpleEnv.THE_FS['edge_vect.03']

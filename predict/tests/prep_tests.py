@@ -12,15 +12,9 @@ class TestPrep(unittest.TestCase):
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
 
-    def test_mloc_users(self):
-        self.gob.run_job('mloc_uids')
-        uids = SimpleEnv.THE_FS['mloc_uids.03']
-        self.assertEqual(len(uids),1)
-        self.assertEqual(uids[0]['name'], 'Chris')
-        self.assertEqual(uids[0]['folc'], 9)
-
     def test_edge_d(self):
-        self.gob.run_job('mloc_uids')
+        SimpleEnv.THE_FS['mloc_uids.03'] = [3]
+        self.gob.run_job('training_users')
         self.gob.run_job('edge_d')
         edge03 = SimpleEnv.THE_FS['edge_d.03']
         self.assertEqual(len(edge03),1)

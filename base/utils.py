@@ -3,6 +3,7 @@ import os
 import errno
 import sys
 import math
+import functools
 from collections import defaultdict
 
 import numpy
@@ -29,7 +30,7 @@ def grouper(n, iterable, fillvalue=None, dontfill=False):
     args = [iter(iterable)] * n
     res = itertools.izip_longest(*args, fillvalue=fillvalue)
     if dontfill:
-        f = functools.partial(itertools.ifilterfalse,lambda x: x is sentine)
+        f = functools.partial(itertools.ifilterfalse,lambda x: x is sentinel)
         res = itertools.imap(f,res)
     return res
 

@@ -49,6 +49,17 @@ def parse_geotweets(tweets):
 
 
 @gob.mapper(all_items=True)
+def mloc_uids(user_ds):
+    retrieved = [u['id'] for u in itertools.islice(user_ds,2600)]
+    # this query is probably painful.
+    users = User.find(User._id.is_in(retrieved) and User.neighbors.exists())
+    good_ = { u._id for u in users }
+    good = [uid for uid in retrieved if uid in good_]
+    # throw away accounts that didn't work to get down to the 2500 good users
+    return good[:2500]
+
+
+@gob.mapper(all_items=True)
 def mloc_users(users_and_coords):
     users = {}
     locs = defaultdict(list)
