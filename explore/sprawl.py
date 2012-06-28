@@ -142,13 +142,32 @@ class EdgeFinder(Sprawler):
 @gob.mapper(all_items=True)
 def mloc_uids(user_ds):
     retrieved = [u['id'] for u in itertools.islice(user_ds,2600)]
-    # this query is probably painful.
     users = User.find(User._id.is_in(retrieved))
     good_ = { u._id for u in users if any(getattr(u,k) for k in NEBR_KEYS)}
     good = [uid for uid in retrieved if uid in good_]
     logging.info("found %d of %d",len(good),len(retrieved))
     # throw away accounts that didn't work to get down to the 2500 good users
     return good[:2500]
+
+
+@gob.mapper(all_items=True)
+def trash_extra_mloc(mloc_uids):
+    "remove the mloc_users that mloc_uids skipped over"
+    # This scares me a bit, but it's too late to go back and fix find_contacts.
+    # I really wish I had limited find_contacts to stop after 2500 good users.
+    db = User.database
+    mloc_uids = set(mloc_uids)
+    group_ = set(uid%100 for uid in mloc_uids)
+    assert len(group_)==1
+    group = next(iter(group_))
+    query = {'_id':{'$mod':[100,group]}}
+    stored = {u['_id'] for u in db.User.find(query,fields=[])}
+    trash = list(stored - mloc_uids)
+    logging.debug("trashing %d users",len(trash))
+    logging.debug("full list: %r",trash)
+    db.User.remove({'_id':{'$in':trash}})
+    db.Edeges.remove({'_id':{'$in':trash}})
+    db.Tweets.remove({'_id':{'$in':trash}})
 
 
 @gob.mapper(all_items=True)
