@@ -163,11 +163,11 @@ def trash_extra_mloc(mloc_uids):
     query = {'_id':{'$mod':[100,group]}}
     stored = {u['_id'] for u in db.User.find(query,fields=[])}
     trash = list(stored - mloc_uids)
-    logging.debug("trashing %d users",len(trash))
+    logging.info("trashing %d users",len(trash))
     logging.debug("full list: %r",trash)
-    db.User.remove({'_id':{'$in':trash}})
-    db.Edeges.remove({'_id':{'$in':trash}})
+    db.Edges.remove({'_id':{'$in':trash}})
     db.Tweets.remove({'_id':{'$in':trash}})
+    db.User.remove({'_id':{'$in':trash}})
 
 
 @gob.mapper(all_items=True)

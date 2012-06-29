@@ -178,5 +178,8 @@ class TwitterResource(Resource):
         if self.remaining > 100: return
         delta = (self.reset_time-datetime.utcnow())
         logging.info("goodnight for %r",delta)
-        #sleep an extra minute in case clocks are wrong
-        time.sleep(60+delta.seconds if delta.days==0 else 120)
+        if delta.days==0:
+            #sleep an extra minute in case clocks are wrong
+            time.sleep(max(60+delta.seconds,3600))
+        else:
+            time.sleep(120)
