@@ -455,7 +455,7 @@ class MultiProcEnv(FileStorage, Executor):
         MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
 
         pool = Pool(6,_mp_worker_init,[self, job])
-        pool.map(_mp_worker_run, input_paths)
+        pool.map(_mp_worker_run, input_paths, chunksize=1)
         pool.close()
         pool.join()
 
