@@ -85,12 +85,13 @@ class Job(object):
     everything you need to know about a job when you are not running it
     """
     def __init__(self, mapper=None, sources=(), saver='save', reducer=None,
-                 name=None, split_data=False):
+                 name=None, split_data=False, procs=6):
         self.mapper = mapper
         self.saver = saver
         self.sources = sources
         self.reducer = reducer
         self.name = name
+        self.procs = procs
         self.split_data = split_data
 
     def output_files(self, env):
@@ -454,7 +455,7 @@ class MultiProcEnv(FileStorage, Executor):
     def run(self, job, input_paths):
         MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
 
-        pool = Pool(6,_mp_worker_init,[self, job])
+        pool = Pool(job.procs,_mp_worker_init,[self, job])
         pool.map(_mp_worker_run, input_paths, chunksize=1)
         pool.close()
         pool.join()

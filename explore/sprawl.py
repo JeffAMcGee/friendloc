@@ -173,7 +173,9 @@ def trash_extra_mloc(mloc_uids):
 @gob.mapper(all_items=True)
 def contact_split(groups):
     visited = set(u._id for u in User.find(fields=[]))
+    logging.info('loaded list of %d users',len(visited))
     for group,ids in groups:
+        logging.info('yielding up to %d for group %s',len(ids),group)
         for id in ids:
             if id not in visited:
                 yield group,id

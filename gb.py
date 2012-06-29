@@ -37,7 +37,7 @@ def create_jobs(g):
     g.add_cat('cat_gnp_gps','gnp_gps')
     g.add_job(fixgis.mdists,'cat_gnp_gps')
 
-    g.add_job(sprawl.ContactLookup.lookup_contacts,'contact_split')
+    g.add_job(sprawl.ContactLookup.lookup_contacts,'contact_split',procs=15)
     g.add_job(sprawl.mloc_uids,'mloc_users')
     g.add_job(sprawl.trash_extra_mloc,'mloc_uids')
     g.add_job(sprawl.pick_nebrs,'mloc_uids',
