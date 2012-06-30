@@ -112,12 +112,8 @@ class EdgeFinder(Sprawler):
             user.error_status = e.status_int
         user.save()
 
-    def _my_nebrs(self,user):
-        nebrs = chain.from_iterable(
-                    getattr(user,key) or ()
-                    for key in NEBR_KEYS
-                    )
-        return ((User.mod_id(nebr),nebr) for nebr in nebrs)
+    def _my_contacts(self,user):
+        return ((User.mod_id(c),c) for c in user.contacts)
 
     @gob.mapper(all_items=True)
     def find_contacts(self,user_ds):
@@ -129,14 +125,14 @@ class EdgeFinder(Sprawler):
                 user = User(user_d)
                 user.geonames_place = self.gis.twitter_loc(user.location)
                 self._save_user_contacts(user,limit=25)
-            for mod_nebr in self._my_nebrs(user):
+            for mod_nebr in self._my_contacts(user):
                 yield mod_nebr
 
     @gob.mapper()
     def find_leafs(self,uid):
         user = User.get_id(uid)
         self._save_user_contacts(user,limit=25)
-        return self._my_nebrs(user)
+        return self._my_contacts(user)
 
 
 @gob.mapper(all_items=True)
@@ -196,17 +192,22 @@ class ContactLookup(Sprawler):
 
 def _has_place(user):
     gnp = user.geonames_place
-    return gnp and gnp.mdist<1000 and gnp.population<10**7
+    return gnp and gnp.mdist<1000
 
 
 def _pick_neighbors(user):
     nebrs = {}
     for key in NEBR_KEYS:
         cids = getattr(user,key)
+        if not cids:
+            continue
+
         # this is slowish
         contacts = User.find(User._id.is_in(cids), fields=['gnp'])
-        nebrs[key] = set(u['_id'] for u in contacts if _has_place(u))
-    return nebrs
+        nebrs[key] = set(u._id for u in contacts if _has_place(u))
+    picked =  list(itertools.chain.from_iterable(nebrs.itervalues()))
+    logging.info('picked %d of %d contacts',len(picked),len(user.contacts))
+    return picked
 
 
 @gob.mapper()
@@ -214,7 +215,7 @@ def pick_nebrs(mloc_uid):
     # reads predict.prep.mloc_uids, requires lookup_contacts, but don't read it.
     user = User.get_id(mloc_uid)
     if not user.neighbors:
-        user.neigbors = _pick_neighbors(user)
+        user.neighbors = _pick_neighbors(user)
         user.save()
     return user.neighbors
 

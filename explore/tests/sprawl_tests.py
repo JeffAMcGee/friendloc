@@ -8,6 +8,7 @@ from base import gob
 from base.models import User, Edges, Tweets
 from base.tests import SimpleGobTest
 from base.tests.models_tests import MockTwitterResource, MockGisgraphyResource
+from explore import sprawl
 
 
 def _patch_twitter():
@@ -94,10 +95,12 @@ class TestSprawl(SimpleGobTest):
         self.assertEqual(beryl.geonames_place.mdist,3)
 
     def test_pick_nebrs(self):
-        self._fake_find_contacts(2,3,7)
-        self._lookup_contacts()
-        flor = User(_id=6, just_mentioned=[7], just_friends=[1,2,3])
-        flor.save()
+        User(_id=6, just_mentioned=[7], just_friends=[1,2,3]).save()
+        User(_id=1, gnp=dict(mdist=1000)).save()
+        User(_id=2, gnp=dict(mdist=5)).save()
+        User(_id=3, gnp=dict(mdist=10)).save()
+        nebrs = sprawl.pick_nebrs(6)
+        self.assertEqual(list(nebrs),[2,3])
 
     def test_fix_mloc_mdists(self):
         self.FS['mdists'] = [dict(other=2)]

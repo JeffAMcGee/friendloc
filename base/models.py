@@ -1,4 +1,5 @@
 import json
+from itertools import chain
 
 from maroon import *
 
@@ -60,6 +61,7 @@ class User(TwitterModel):
         'show_all_inline_media', 'time_zone', 'status', 'notifications',
         'id', 'id_str', 'is_translator'
     ]
+    NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
 
     #local properties
     tweets_per_hour = FloatProperty('tph')
@@ -126,6 +128,14 @@ class User(TwitterModel):
             User.just_friends.exists() & User.just_followers.exists() & User.rfriends.exists(),
             **kwargs
             )
+
+    @property
+    def contacts(self):
+        return tuple(chain.from_iterable(
+                    getattr(self,key) or ()
+                    for key in self.NEBR_KEYS
+                    ))
+
 
 class Tweet(TwitterModel):
     _id = TwitterIdProperty('_id')
