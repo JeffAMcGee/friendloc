@@ -228,10 +228,11 @@ class MDistFixer(Sprawler):
         # running find_contacts.
         assert self.gis._mdist
         fixed = 0
-        users = User.find(User._id.is_in(mloc_uids))
+        users = User.find(User._id.is_in(tuple(mloc_uids)))
         for user in users:
             user.geonames_place = self.gis.twitter_loc(user.location)
             user.save()
             if user.geonames_place:
                 fixed+=1
+        logging.info("fixed %d mdists",fixed)
         return [fixed]
