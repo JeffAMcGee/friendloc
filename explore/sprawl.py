@@ -209,10 +209,28 @@ def _pick_neighbors(user):
     return nebrs
 
 
-# read predict.prep.mloc_uids, require lookup_contacts, but don't read it.
+@gob.mapper()
 def pick_nebrs(mloc_uid):
+    # reads predict.prep.mloc_uids, requires lookup_contacts, but don't read it.
     user = User.get_id(mloc_uid)
     if not user.neighbors:
         user.neigbors = _pick_neighbors(user)
         user.save()
     return user.neighbors
+
+
+class MDistFixer(Sprawler):
+    @gob.mapper(all_items=True)
+    def fix_mloc_mdists(self,mloc_uids):
+        # We didn't have mdists at the time the mloc users were saved. This
+        # function could be avoided by running the mdist calculation before
+        # running find_contacts.
+        assert self.gis._mdist
+        fixed = 0
+        users = User.find(User._id.is_in(mloc_uids))
+        for user in users:
+            user.geonames_place = self.gis.twitter_loc(user.location)
+            user.save()
+            if user.geonames_place:
+                fixed+=1
+        return [fixed]

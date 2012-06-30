@@ -17,7 +17,7 @@ def _patch_gisgraphy():
     return mock.patch("explore.sprawl.GisgraphyResource",MockGisgraphyResource)
 
 
-class TestSprawlToContacts(SimpleGobTest):
+class TestSprawl(SimpleGobTest):
     @classmethod
     def setUpClass(cls):
         CWD = os.path.abspath(os.path.dirname(__file__))
@@ -26,7 +26,7 @@ class TestSprawlToContacts(SimpleGobTest):
             cls.geotweets = [json.loads(l) for l in file]
 
     def setUp(self):
-        super(TestSprawlToContacts, self).setUp()
+        super(TestSprawl, self).setUp()
 
     def test_mloc_users(self):
         mock_load = lambda s,p,e: self.geotweets
@@ -98,3 +98,16 @@ class TestSprawlToContacts(SimpleGobTest):
         self._lookup_contacts()
         flor = User(_id=6, just_mentioned=[7], just_friends=[1,2,3])
         flor.save()
+
+    def test_fix_mloc_mdists(self):
+        self.FS['mdists'] = [dict(other=2)]
+        self.FS['mloc_uids.03'] = [3,103]
+        User(_id=3, location="Texas").save()
+        User(_id=103, location="Bryan, TX").save()
+        with _patch_gisgraphy():
+            self.gob.run_job('fix_mloc_mdists')
+        u3 = User.get_id(3)
+        u103 = User.get_id(103)
+        self.assertEqual(u3.geonames_place.mdist,2000)
+        self.assertEqual(u103.geonames_place.mdist,2)
+

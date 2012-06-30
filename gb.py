@@ -36,12 +36,14 @@ def create_jobs(g):
     g.add_job(fixgis.gnp_gps,'mloc_users')
     g.add_cat('cat_gnp_gps','gnp_gps')
     g.add_job(fixgis.mdists,'cat_gnp_gps')
-
     g.add_job(sprawl.ContactLookup.lookup_contacts,'contact_split',procs=15)
     g.add_job(sprawl.mloc_uids,'mloc_users')
     g.add_job(sprawl.trash_extra_mloc,'mloc_uids')
+    g.add_job(sprawl.MDistFixer.fix_mloc_mdists,'mloc_uids',requires=['mdists'])
+
     g.add_job(sprawl.pick_nebrs,'mloc_uids',
-              requires=['lookup_contacts','mdists','trash_extra_mloc'])
+              requires=['lookup_contacts','mdists','trash_extra_mloc',
+                        'fix_mloc_mdists'])
     g.add_job(sprawl.EdgeFinder.find_leafs,'pick_nebrs',
               name='find_leafs',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',
