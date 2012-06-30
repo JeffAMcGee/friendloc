@@ -175,17 +175,17 @@ def contact_split(groups):
     visited = set(u._id for u in User.find(fields=[]))
     logging.info('loaded list of %d users',len(visited))
     for group,ids in groups:
-        logging.info('yielding up to %d for group %s',len(ids),group)
-        for id in ids:
-            if id not in visited:
-                yield group,id
+        fetch = [id for id in ids if id not in visited]
+        logging.info('yielding up to %d for group %s',len(fetch),group)
+        for id in fetch:
+            yield group,id
 
 
 class ContactLookup(Sprawler):
     @gob.mapper(all_items=True)
     def lookup_contacts(self,contact_uids):
         assert self.gis._mdist
-        chunks = utils.grouper(100, contact_uids)
+        chunks = utils.grouper(100, contact_uids, dontfill=True)
         for chunk in chunks:
             users = self.twitter.user_lookup(user_ids=list(chunk))
             for amigo in filter(None,users):

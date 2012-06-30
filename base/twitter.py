@@ -4,7 +4,7 @@ import json
 import time
 import logging
 from datetime import datetime
-from restkit.errors import RequestFailed, Unauthorized
+from restkit.errors import RequestFailed, Unauthorized, ResourceNotFound
 from http_parser.http import NoMoreData
 from settings import settings
 from models import Edges, User, Tweet
@@ -100,7 +100,7 @@ class TwitterResource(Resource):
                 user_id=ids,
                 **kwargs
             )
-        except RequestFailed:
+        except (RequestFailed,ResourceNotFound):
             #ick. Twitter dies for some users.  Do a binary search to avoid them.
             if len(user_ids)>1:
                 split = len(user_ids)/2
