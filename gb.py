@@ -46,7 +46,8 @@ def create_jobs(g):
                         'fix_mloc_mdists'],
               reducer=gob.set_reduce,
               )
-    g.add_job(sprawl.EdgeFinder.find_leafs,'pick_nebrs',
+    g.add_job(sprawl.nebr_split, 'pick_nebrs', saver='split_save')
+    g.add_job(sprawl.EdgeFinder.find_leafs,'nebr_split',
               name='find_leafs',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')

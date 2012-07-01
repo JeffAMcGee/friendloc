@@ -3,7 +3,6 @@ import numpy
 import random
 import logging
 import itertools
-from itertools import chain
 
 from restkit import errors
 
@@ -239,3 +238,14 @@ class MDistFixer(Sprawler):
                 fixed+=1
         logging.info("fixed %d mdists",fixed)
         return [fixed]
+
+
+@gob.mapper(all_items=True)
+def nebr_split(groups):
+    # This method should really be built into gob somehow.
+    return (
+        (group, id)
+        for group,ids in groups
+        for id in ids
+        )
+
