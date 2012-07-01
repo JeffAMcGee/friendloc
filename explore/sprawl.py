@@ -205,7 +205,11 @@ def _pick_neighbors(user):
         # this is slowish
         contacts = User.find(User._id.is_in(cids), fields=['gnp'])
         nebrs[key] = set(u._id for u in contacts if _has_place(u))
-    picked =  list(itertools.chain.from_iterable(nebrs.itervalues()))
+
+    picked_ = filter(None,
+                itertools.chain.from_iterable(
+                    itertools.izip_longest(*nebrs.values())))
+    picked = picked_[:25]
     logging.info('picked %d of %d contacts',len(picked),len(user.contacts))
     return picked
 
@@ -214,9 +218,8 @@ def _pick_neighbors(user):
 def pick_nebrs(mloc_uid):
     # reads predict.prep.mloc_uids, requires lookup_contacts, but don't read it.
     user = User.get_id(mloc_uid)
-    if not user.neighbors:
-        user.neighbors = _pick_neighbors(user)
-        user.save()
+    user.neighbors = _pick_neighbors(user)
+    user.save()
     return ((User.mod_id(n),n) for n in user.neighbors)
 
 
