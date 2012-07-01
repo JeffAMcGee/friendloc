@@ -100,7 +100,7 @@ class TestSprawl(SimpleGobTest):
         User(_id=2, gnp=dict(mdist=5)).save()
         User(_id=3, gnp=dict(mdist=10)).save()
         nebrs = sprawl.pick_nebrs(6)
-        self.assertEqual(list(nebrs),[2,3])
+        self.assertEqual([n[1] for n in nebrs],[2,3])
 
     def test_fix_mloc_mdists(self):
         self.FS['mdists'] = [dict(other=2)]

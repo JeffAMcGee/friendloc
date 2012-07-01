@@ -43,7 +43,9 @@ def create_jobs(g):
 
     g.add_job(sprawl.pick_nebrs,'mloc_uids',
               requires=['lookup_contacts','mdists','trash_extra_mloc',
-                        'fix_mloc_mdists'])
+                        'fix_mloc_mdists'],
+              reducer=gob.set_reduce,
+              )
     g.add_job(sprawl.EdgeFinder.find_leafs,'pick_nebrs',
               name='find_leafs',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',

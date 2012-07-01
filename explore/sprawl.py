@@ -217,7 +217,7 @@ def pick_nebrs(mloc_uid):
     if not user.neighbors:
         user.neighbors = _pick_neighbors(user)
         user.save()
-    return user.neighbors
+    return ((User.mod_id(n),n) for n in user.neighbors)
 
 
 class MDistFixer(Sprawler):
