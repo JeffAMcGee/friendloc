@@ -7,6 +7,7 @@ import os.path
 import traceback
 from collections import defaultdict
 from multiprocessing import Pool
+import signal
 
 import msgpack
 
@@ -432,10 +433,16 @@ class FileStorage(Storage):
                     yield "%s.%s"%(_dir,file[:-3])
 
 
+def _usr1_handler(sig, frame):
+    traceback.print_stack(frame)
+    print frame.f_locals
+
+
 def _mp_worker_init(env, job):
     MultiProcEnv._worker_data['env'] = env
     MultiProcEnv._worker_data['job'] = job
     env.setup_logging('%s.%d'%(job.name,os.getpid()))
+    signal.signal(signal.SIGUSR1, _usr1_handler)
 
 
 def _mp_worker_run(source_set):
