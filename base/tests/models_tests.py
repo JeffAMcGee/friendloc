@@ -66,8 +66,7 @@ class MockTwitterResource(object):
             tweet.mentions = [7]
         return [tweet]*10
 
-    def user_lookup(self, user_ids=[]):
-        self._raise_on_errors(user_ids[0])
+    def user_lookup(self, user_ids=()):
         names = dict(enumerate([
             'Joyce','Alberto','Beryl','Chris','Debby','Ernesto','Florence',
             'Gordon','Helene','Issac',
@@ -75,6 +74,7 @@ class MockTwitterResource(object):
 
         users = []
         for uid in user_ids:
+            self._raise_on_errors(uid)
             if uid is None:
                 users.append(None)
                 continue

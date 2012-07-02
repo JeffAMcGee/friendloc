@@ -71,28 +71,27 @@ class TestSprawl(SimpleGobTest):
         self._find_contacts_6()
         self.gob.run_job('contact_split')
         self.assertEqual(self.FS['contact_split.18'],[18])
-        self.assertNotIn('contact_split.24', self.FS)
-
-    def _fake_find_contacts(self, *ids):
-        self.FS['find_contacts'] = [
-                (User.mod_id(uid),[uid])
-                for uid in ids
-                ]
-
-    def _lookup_contacts(self):
-        self.FS['mdists'] = [dict(other=2)]
-        with _patch_twitter():
-            with _patch_gisgraphy():
-                self.gob.run_job('contact_split')
-                self.gob.run_job('lookup_contacts')
 
     def test_lookup_contacts(self):
-        self._fake_find_contacts(2,3)
-        self._lookup_contacts()
-        beryl = User.get_id(2)
-        self.assertEqual(beryl.screen_name,'user_2')
+        self.FS['mdists'] = [dict(other=2.5)]
+        self.FS['contact_split.04'] = [4,404]
+        User.database.User = mock.MagicMock()
+        User.database.User.find.return_value = [
+            # MockTwitterResource will throw a 404 if you lookup user 404.
+            # This lets us know the user was skipped.
+            dict(_id=404),
+        ]
+
+        with _patch_twitter():
+            with _patch_gisgraphy():
+                self.gob.run_job('lookup_contacts')
+
+        beryl = User.get_id(4)
+        self.assertEqual(beryl.screen_name,'user_4')
         self.assertEqual(beryl.geonames_place.feature_code,'PPLA2')
         self.assertEqual(beryl.geonames_place.mdist,3)
+        missing = User.get_id(404)
+        self.assertEqual(missing,None)
 
     def test_pick_nebrs(self):
         User(_id=6, just_mentioned=[7], just_friends=[1,2,3]).save()
