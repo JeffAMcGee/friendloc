@@ -52,7 +52,7 @@ def create_jobs(g):
     g.add_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
     g.add_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
-              name='lookup_leafs')
+              name='lookup_leafs',procs=15)
 
     # the graphs
     g.add_job(prep.training_users,'mloc_uids')

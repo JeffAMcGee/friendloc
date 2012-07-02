@@ -155,8 +155,7 @@ def trash_extra_mloc(mloc_uids):
     group_ = set(uid%100 for uid in mloc_uids)
     assert len(group_)==1
     group = next(iter(group_))
-    query = {'_id':{'$mod':[100,group]}}
-    stored = {u['_id'] for u in db.User.find(query,fields=[])}
+    stored = User.mod_id_set(group)
     trash = list(stored - mloc_uids)
     logging.info("trashing %d users",len(trash))
     logging.debug("full list: %r",trash)
@@ -167,12 +166,9 @@ def trash_extra_mloc(mloc_uids):
 
 @gob.mapper(all_items=True)
 def contact_split(groups):
-    visited = set(u._id for u in User.find(fields=[]))
-    logging.info('loaded list of %d users',len(visited))
+    # FIXME this is now identical to nebr_split
     for group,ids in groups:
-        fetch = [id for id in ids if id not in visited]
-        logging.info('yielding up to %d for group %s',len(fetch),group)
-        for id in fetch:
+        for id in ids:
             yield group,id
 
 
@@ -180,10 +176,18 @@ class ContactLookup(Sprawler):
     @gob.mapper(all_items=True)
     def lookup_contacts(self,contact_uids):
         assert self.gis._mdist
-        chunks = utils.grouper(100, contact_uids, dontfill=True)
+
+        # FIXME: we need a better way to know which file we are on.
+        first, contact_uids = utils.peek(contact_uids)
+        group = first%100
+        stored = User.mod_id_set(group)
+        missing = (id for id in contact_uids if id not in stored)
+
+        chunks = utils.grouper(100, missing, dontfill=True)
         for chunk in chunks:
             users = self.twitter.user_lookup(user_ids=list(chunk))
             for amigo in filter(None,users):
+                assert amigo._id%100==group
                 amigo.geonames_place = self.gis.twitter_loc(amigo.location)
                 amigo.merge()
             yield len(users)

@@ -136,6 +136,12 @@ class User(TwitterModel):
                     for key in self.NEBR_KEYS
                     ))
 
+    @classmethod
+    def mod_id_set(cls, group):
+        coll = cls.database.User
+        query = {'_id':{'$mod':[100,group]}}
+        return {u['_id'] for u in coll.find(query,fields=[])}
+
 
 class Tweet(TwitterModel):
     _id = TwitterIdProperty('_id')
