@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from restkit import errors
+from mock import MagicMock
 
+from base import twitter
 from base import models
 
 
@@ -27,12 +28,11 @@ class MockTwitterResource(object):
         pass
 
     def _raise_on_errors(self,user_id):
-        if user_id==404:
-            raise errors.ResourceNotFound()
-        elif user_id in (401,403):
-            raise errors.Unauthorized()
-        elif 400<=user_id<600:
-            raise errors.RequestFailed(http_code=user_id)
+        if 400<=user_id<600:
+            resp = MagicMock()
+            resp.status_code = user_id
+            resp.request = "mock failed request"
+            raise twitter.TwitterFailure(resp)
 
     def get_edges(self, user_id):
         self._raise_on_errors(user_id)

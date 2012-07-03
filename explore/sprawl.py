@@ -4,8 +4,6 @@ import random
 import logging
 import itertools
 
-from restkit import errors
-
 from base import gob
 from base.models import Edges, User, Tweets
 from base import twitter
@@ -106,9 +104,9 @@ class EdgeFinder(Sprawler):
         logging.info("visit %s - %d",user.screen_name,user._id)
         try:
             self._pick_contacts(user,limit)
-        except errors.ResourceError as e:
-            logging.warn("%d for %d",e.status_int,user._id)
-            user.error_status = e.status_int
+        except twitter.TwitterFailure as e:
+            logging.warn("%d for %d",e.status_code,user._id)
+            user.error_status = e.status_code
         user.save()
 
     def _my_contacts(self,user):

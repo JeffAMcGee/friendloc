@@ -31,13 +31,12 @@ class GisgraphyResource(Resource):
             return self._mdist[gnp.feature_code]
         return self._mdist.get('other',None)
 
-    def fulltextsearch(self, q, headers=None, **kwargs):
+    def fulltextsearch(self, q, **kwargs):
         backoff_seconds = [15,60,240,0]
         for delay in backoff_seconds:
             try:
                 # make the query lower case as workaround for "Portland, OR"
                 r = self.get('fulltext/fulltextsearch',
-                    headers,
                     q=q,
                     format="json",
                     spellchecking=False,

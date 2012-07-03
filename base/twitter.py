@@ -1,74 +1,69 @@
-from restkit import OAuthFilter, Resource
-import restkit.oauth2 as oauth
 import json
 import time
 import logging
 from datetime import datetime
-from restkit.errors import RequestFailed, Unauthorized, ResourceNotFound
-from http_parser.http import NoMoreData
+
+from oauth_hook import OAuthHook
+import requests
+
 from settings import settings
 from models import Edges, User, Tweet
 
 
-class TwitterResource(Resource):
+class TwitterFailure(Exception):
+    def __init__(self,response):
+        msg = "%d for %r"%(response.status_code,response.request)
+        super(TwitterFailure,self).__init__(msg)
+        self.response = response
+        self.status_code = response.status_code
+
+
+class TwitterResource(object):
     # When a request fails, we retry with an exponential backoff from
     # 15 to 240 seconds.
     backoff_seconds = [20,60,180,540,0]
 
     def __init__(self):
-        consumer = oauth.Consumer(
-                key=settings.consumer_key,
-                secret=settings.consumer_secret)
-        token = oauth.Token(
-                key=settings.token_key,
-                secret=settings.token_secret)
-        url = "http://api.twitter.com/1/"
-        auth = OAuthFilter('*', consumer, token)
-        Resource.__init__(self,
-                url,
-                filters=[auth],
-                client_opts={'timeout':60}
-        )
+        oauth_hook = OAuthHook(
+                        settings.token_key,
+                        settings.token_secret,
+                        settings.consumer_key,
+                        settings.consumer_secret,
+                        header_auth=True)
+        self.client = requests.session(
+                        hooks={'pre_request': oauth_hook},
+                        timeout=60,
+                        )
         self.remaining = 10000
 
-    def get_d(self, path=None, headers=None, **kwargs):
+    def get_d(self, path=None, **kwargs):
         """
         GET json from the twitter API and return it as a dict.
 
-        If things fail, it will retry 4 times with an exponential backoff.
-        If that doesn't work, it raises all sorts of stuff:
-            404: ResourceNotFound
-            401, 403: Unauthorized
-            other errors: RequestFailed
+        If things fail, it will retry 5 times with an exponential backoff.
+        If that doesn't work, it raises a TwitterFailure.
         """
         for delay in self.backoff_seconds:
-            try:
-                r = self.get(path, headers, **kwargs)
-                self._parse_ratelimit(r)
-                return json.loads(r.body_string())
-            except (ValueError,NoMoreData) as e:
-                logging.error("incomplete response (%s)",type(e).__name__)
-                if delay==0:
-                    raise RequestFailed(http_code=0)
-            except Unauthorized as unauth:
-                self._parse_ratelimit(unauth.response)
-                raise
-            except RequestFailed as failure:
-                self._parse_ratelimit(failure.response)
-                if failure.response.status_int == 502:
-                    logging.info("Fail whale says slow down!")
-                else:
-                    logging.error("%s while retrieving %s",
-                        failure.response.status,
-                        failure.response.final_url
-                    )
-                if delay==0:
-                    raise
-                # FIXME: what should I do for 503?
-                if failure.response.status_int in (400,420,503):
+            url = "http://api.twitter.com/1/%s.json"%path
+            resp = self.client.get(url, params=kwargs)
+            self._parse_ratelimit(resp)
+
+            if resp.status_code == 200:
+                return json.loads(resp.text)
+            elif resp.status_code in (401,403,404):
+                raise TwitterFailure(resp)
+            elif resp.status_code == 502:
+                logging.info("Fail whale says slow down!")
+            else:
+                logging.error("%s while retrieving %s",
+                    resp.status_code,
+                    resp.url,
+                )
+                if resp.status_code in (400,420,503):
                     # The whale says slow WAY down!
                     delay = 240
             time.sleep(delay)
+        raise TwitterFailure(resp)
 
     def _parse_ratelimit(self,r):
         if 'X-RateLimit-Remaining' in r.headers:
@@ -95,12 +90,12 @@ class TwitterResource(Resource):
         names = ','.join(screen_names)
         try:
             lookup = self.get_d(
-                "users/lookup.json",
+                "users/lookup",
                 screen_name=names,
                 user_id=ids,
                 **kwargs
             )
-        except (RequestFailed,ResourceNotFound):
+        except TwitterFailure:
             #ick. Twitter dies for some users.  Do a binary search to avoid them.
             if len(user_ids)>1:
                 split = len(user_ids)/2
@@ -118,10 +113,10 @@ class TwitterResource(Resource):
         return [d.get(uid,None) for uid in user_ids]
 
     def friends_ids(self, user_id):
-        return self.get_ids("friends/ids.json", user_id)
+        return self.get_ids("friends/ids", user_id)
 
     def followers_ids(self, user_id):
-        return self.get_ids("followers/ids.json", user_id)
+        return self.get_ids("followers/ids", user_id)
 
     def get_edges(self, user_id):
         return Edges(
@@ -132,7 +127,7 @@ class TwitterResource(Resource):
 
     def user_timeline(self, user_id, count=100, **kwargs):
         timeline = self.get_d(
-            "statuses/user_timeline.json",
+            "statuses/user_timeline",
             user_id=user_id,
             trim_user=1,
             include_rts=1,
@@ -155,9 +150,11 @@ class TwitterResource(Resource):
                     since_id = since_id,
                     count=160,
                 )
-            except Unauthorized:
-                logging.warn("unauthorized!")
-                break
+            except TwitterFailure as fail:
+                if fail.status_code in (401,403):
+                    logging.warn("unauthorized!")
+                    break
+                raise
             if not tweets:
                 logging.warn("no tweets after %d for %s",len(all_tweets),uid)
                 break
