@@ -44,8 +44,9 @@ class TwitterResource(Resource):
         for delay in self.backoff_seconds:
             try:
                 r = self.get(path, headers, **kwargs)
+                decoded = json.loads(r.body_string())
                 self._parse_ratelimit(r)
-                return json.loads(r.body_string())
+                return decoded
             except (ValueError,NoMoreData) as e:
                 logging.error("incomplete response (%s)",type(e).__name__)
                 if delay==0:
