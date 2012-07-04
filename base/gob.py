@@ -242,12 +242,11 @@ class Executor(object):
                     current_args = [it.current for it in sfi_inputs]
                 else:
                     current_args = args
-                self._handle_err(mapper,current_args)
+                self._handle_map_err(mapper,current_args)
                 raise
 
-    def _handle_err(self, mapper, args):
+    def _handle_map_err(self, mapper, args):
         msg = "map %r failed for %r"%(mapper,args)
-        logging.exception(msg)
         if self.log_crashes:
             with open('gobstop.%s.%d'%(mapper.__name__,os.getpid()),'w') as gs:
                 print >>gs,msg
@@ -356,7 +355,7 @@ class SingleThreadExecutor(Executor):
         if funcs['reduce']:
             self.reduce_all(job, funcs['reduce'])
 
-    def _handle_err(self, mapper, args):
+    def _handle_map_err(self, mapper, args):
         msg = "map %r failed for %r"%(mapper,args)
         logging.exception(msg)
         print msg
@@ -486,7 +485,7 @@ class FileStorage(Storage):
         with self._cursor() as cur:
             cur.execute( 'select status from outputs where name=?', (name,) )
             row = cur.fetchone()
-        return row['status'] if row else 'new'
+        return row[0] if row else 'new'
 
     def set_job_status(self, name, status):
         with self._cursor(commit=True) as cur:
@@ -514,7 +513,13 @@ def _mp_worker_run(source_set):
     env = MultiProcEnv._worker_data['env']
     job = MultiProcEnv._worker_data['job']
     funcs = MultiProcEnv._worker_data['funcs']
-    env.map_reduce_save(job, source_set, funcs)
+    # letting exceptions bubble outside of the process confuses Pool
+    try:
+        env.map_reduce_save(job, source_set, funcs)
+    except:
+        logging.exception("crash is child proc")
+        return False
+    return True
 
 
 class MultiProcEnv(FileStorage, Executor):
@@ -526,9 +531,12 @@ class MultiProcEnv(FileStorage, Executor):
         MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
 
         pool = Pool(job.procs,_mp_worker_init,[self, job])
-        pool.map(_mp_worker_run, input_paths, chunksize=1)
+        results = pool.map(_mp_worker_run, input_paths, chunksize=1)
         pool.close()
         pool.join()
+
+        if not all(results):
+            raise Exception("child job failed!")
 
         reducer = MultiProcEnv._worker_data['funcs']['reduce']
         if reducer:

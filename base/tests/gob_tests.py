@@ -2,6 +2,8 @@ import os
 import os.path
 import shutil
 import unittest
+
+import mock
 import msgpack
 
 from base import gob
@@ -66,6 +68,25 @@ class BaseGobTests(object):
         # with a 2 or 7.
         results = dict(self.env.load('take'))
         self.assertEqual(set(results[2]), {42,47})
+
+    def test_rerun(self):
+        self.env.save("counter.2", range(2,100,10))
+
+        with mock.patch.object(self.env,'map_single') as map_sing:
+            map_sing.side_effect = ValueError()
+            with self.assertRaises(Exception):
+                self.gob.run_job('expand')
+            status = self.env.job_status('expand.2')
+            self.assertEqual(status, 'started')
+
+            map_sing.side_effect = None
+            self.gob.run_job('expand')
+            status = self.env.job_status('expand.2')
+            self.assertEqual(status, 'done')
+
+            # since the job is done, map_single should not get called
+            map_sing.side_effect = ValueError()
+            self.gob.run_job('expand')
 
 
 class TestSimpleEnv(unittest.TestCase, BaseGobTests):
