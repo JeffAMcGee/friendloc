@@ -11,6 +11,7 @@ class TestPrep(unittest.TestCase):
         use_mongo('fl_fixture')
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
+        SimpleEnv.JOB_DB = {}
 
     def test_edge_d(self):
         SimpleEnv.THE_FS['mloc_uids.03'] = [3]

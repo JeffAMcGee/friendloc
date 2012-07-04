@@ -3,6 +3,7 @@ import inspect
 import itertools
 import logging
 import sys
+import sqlite3
 import os.path
 import traceback
 from collections import defaultdict
@@ -82,9 +83,6 @@ def _call_opt_kwargs(func,*args,**kwargs):
 
 
 class Job(object):
-    """
-    everything you need to know about a job when you are not running it
-    """
     def __init__(self, mapper=None, sources=(), saver='save', reducer=None,
                  name=None, split_data=False, procs=6):
         self.mapper = mapper
@@ -99,6 +97,16 @@ class Job(object):
         if self.split_data:
             return env.split_files(self.name)
         return [self.name,]
+
+
+    def output_name(self, in_paths):
+        "the output name for a set of inputs"
+        def suffix(path):
+            name = os.path.basename(path)
+            pos = name.find('.')
+            return name[pos:] if pos!=-1 else ''
+
+        return self.name + ''.join(suffix(sp) for sp in in_paths)
 
     def load_output(self, path, env):
         "load the results of a previous run of this job"
@@ -196,6 +204,13 @@ class Executor(object):
     def map_reduce_save(self, job, in_paths, funcs):
         "completely process one file -> map, reduce, and save"
         assert len(job.sources) == len(in_paths)
+
+        output = job.output_name(in_paths)
+        if self.job_status(output)=='done':
+            # FIXME: check that the file exists before returning
+            return
+        self.set_job_status(output,'started')
+
         inputs = [
                 src.load_output(path, self)
                 for src, path in zip(job.sources,in_paths)
@@ -205,7 +220,7 @@ class Executor(object):
             results = self.reduce_single(funcs['reduce'],results)
 
         self.save_single(job, in_paths, results)
-        return results
+        self.set_job_status(output,'done')
 
     def map_single(self, mapper, inputs):
         "run mapper for one set of inputs and return an iterator of results"
@@ -248,18 +263,10 @@ class Executor(object):
             for key,items in grouped.iteritems()
             ]
 
-    def _suffix(self, in_paths):
-        def suffix(path):
-            name = os.path.basename(path)
-            pos = name.find('.')
-            return name[pos:] if pos!=-1 else ''
-
-        return ''.join(suffix(sp) for sp in in_paths)
-
     def save_single(self, job, in_paths, results):
         if job.saver:
             saver = getattr(self,job.saver)
-            saver(job.name+self._suffix(in_paths),results)
+            saver(job.output_name(in_paths),results)
         else:
             # force the generator to generate
             for res in results:
@@ -283,6 +290,13 @@ class Executor(object):
 
 
 class Storage(object):
+    """
+    AbstractBaseClass for Storage objects.
+
+    Subclasses of this class must implement all the methods that raise a
+    NotImplementedError.
+    """
+    STATUSES = ["new","started","done","crashed"]
 
     def save(self, name, items):
         "store items in the file 'name'. items is an iterator."
@@ -311,6 +325,14 @@ class Storage(object):
         if not all(inputs):
             raise ValueError("missing dependencies for job")
         return itertools.product(*inputs)
+
+    def job_status(self, name):
+        "return the status field for an input"
+        raise NotImplementedError
+
+    def set_job_status(self, name, status):
+        "change the status field for an input"
+        raise NotImplementedError
 
 
 class SingleThreadExecutor(Executor):
@@ -346,6 +368,7 @@ class SingleThreadExecutor(Executor):
 class DictStorage(Storage):
     "Store data in a dict in this class for testing and debugging."
     THE_FS = {}
+    JOB_DB = {}
 
     def save(self, name, items):
         self.THE_FS[name] = list(items)
@@ -370,6 +393,13 @@ class DictStorage(Storage):
     def split_files(self, name):
         return (n for n in self.THE_FS if n.startswith(name+'.'))
 
+    def job_status(self, name):
+        return self.JOB_DB.get(name,{}).get('status','new')
+
+    def set_job_status(self, name, status):
+        state = self.JOB_DB.setdefault(name,{})
+        state['status'] = status
+
 
 class FileStorage(Storage):
     "Store data in a directory"
@@ -377,6 +407,13 @@ class FileStorage(Storage):
         super(FileStorage,self).__init__(**kwargs)
         # path should be an absolute path to a directory to store files
         self.path = os.path.abspath(path)
+        self._job_db = None
+        self._job_pid = None
+        with self._cursor(commit=True) as cur:
+            cur.execute("""
+                create table if not exists outputs
+                ( name text primary key, status text )
+                """)
 
     def _open(self, name, mode='r'):
         parts = name.split('.')
@@ -431,6 +468,32 @@ class FileStorage(Storage):
             for file in files:
                 if file.endswith(".mp"):
                     yield "%s.%s"%(_dir,file[:-3])
+
+    @contextlib.contextmanager
+    def _cursor(self,commit=False):
+        pid = os.getpid()
+        if not self._job_db or self._job_db_pid!=pid:
+            self._job_db_pid = pid
+            self._job_db = sqlite3.connect(os.path.join(self.path,'job.db'))
+        cursor = self._job_db.cursor()
+        yield cursor
+        if commit:
+            self._job_db.commit()
+        cursor.close()
+
+
+    def job_status(self, name):
+        with self._cursor() as cur:
+            cur.execute( 'select status from outputs where name=?', (name,) )
+            row = cur.fetchone()
+        return row['status'] if row else 'new'
+
+    def set_job_status(self, name, status):
+        with self._cursor(commit=True) as cur:
+            cur.execute(
+                "replace into outputs (name, status) values ( ?, ? )",
+                (name, status)
+            )
 
 
 def _usr1_handler(sig, frame):

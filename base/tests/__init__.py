@@ -23,6 +23,7 @@ class SimpleGobTest(MockedMongoTest):
         self.gob = Gob(self.env)
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
+        SimpleEnv.JOB_DB = {}
 
     @property
     def FS(self):

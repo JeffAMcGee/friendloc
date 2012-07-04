@@ -12,6 +12,7 @@ class TestFriendLoc(unittest.TestCase):
         use_mongo('fl_fixture')
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
+        SimpleEnv.JOB_DB = {}
 
     def test_edge_vect_flow(self):
         # integration test

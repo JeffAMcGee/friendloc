@@ -56,6 +56,7 @@ class TestSimpleEnv(unittest.TestCase):
         self.gob = Gob(SimpleEnv())
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
+        SimpleEnv.JOB_DB = {}
 
     def test_split_saver(self):
         self.gob.run_job('counter')
