@@ -127,12 +127,14 @@ def save_users():
     users[3].just_friends = [6,9]
     users[3].just_followers = []
     users[3].just_mentioned = [2]
+    users[6].neighbors = [1,2,6,9]
 
     users[6].median_loc = [-96,31]
     users[6].rfriends = [0,1]
     users[6].just_friends = []
     users[6].just_followers = [2,3]
     users[6].just_mentioned = [7]
+    users[6].neighbors = [0,1,2,7] # not 3
 
     users[7].protected = True
     for user in users:

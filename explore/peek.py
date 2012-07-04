@@ -188,44 +188,27 @@ def rfr_net(me):
         rfrs = rfrs,
         )
 
-def edges_json(me):
-    #./do.py save_user_json edges_json 
+@gob.mapper()
+def edges_d(user_d):
+    me = User(user_d)
+    if not me.neighbors:
+        return []
+    nebrs = set(me.neighbors)
     tweets = Tweets.get_id(me._id,fields=['ats'])
     ats = set(tweets.ats or [])
 
-    #store public users
+    #store neighbors users
     keys = {'just_followers':'jfol',
             'just_friends':'jfrd',
             'rfriends':'rfrd',
             'just_mentioned':'jat'}
     rels = dict(_id = me._id, mloc = me.median_loc)
     for long,short in keys.iteritems():
-        amigos = getattr(me,long)
+        amigos = [a for a in getattr(me,long) if a in nebrs]
         if amigos:
             rels[short] = _rel_d(User.get_id(amigos[0]),ats)
 
-    #get a list of all the user's relationships
-    edges = Edges.get_id(me._id)
-    frds = set(edges.friends or [])
-    fols = set(edges.followers or [])
-    lookups = edges.lookups if edges.lookups else list(ats|frds|fols)
-    
-    #get the protected users - this will be SLOW
-    pusers = User.find(
-            User._id.is_in(lookups) & (User.protected==True),
-            fields =['gnp','frdc','folc']
-            )
-    puser_groups = defaultdict(list)
-    #pick random protected users
-    for puser in pusers:
-        if puser._id in frds:
-            label = 'prfrd' if puser._id in fols else 'pjfrd'
-        else:
-            label = 'pjfol' if puser._id in fols else 'pjat'
-        puser_groups[label].append(puser)
-    for label,users in puser_groups.iteritems():
-        rels[label] = _rel_d(random.choice(users),ats)
-    return rels
+    return [rels]
 
 def _rel_d(user,ats):
     gnp = user.geonames_place.to_d()
@@ -234,6 +217,7 @@ def _rel_d(user,ats):
     return dict(
         folc=user.followers_count,
         frdc=user.friends_count,
+        prot=user.protected,
         lat=gnp['lat'],
         lng=gnp['lng'],
         mdist=gnp['mdist'],
