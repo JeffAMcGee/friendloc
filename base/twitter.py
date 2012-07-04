@@ -51,7 +51,11 @@ class TwitterResource(object):
             self._parse_ratelimit(resp)
 
             if resp.status_code == 200:
-                return json.loads(resp.text)
+                try:
+                    return json.loads(resp.text)
+                except ValueError:
+                    logging.error("incomplete response for %s",url)
+                    raise TwitterFailure(resp)
             elif resp.status_code in (401,403,404):
                 raise TwitterFailure(resp)
             elif resp.status_code == 502:
