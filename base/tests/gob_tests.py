@@ -51,9 +51,27 @@ def create_jobs(gob):
     gob.add_job(SecondHalf.results,'take',saver=None)
 
 
-class TestSimpleEnv(unittest.TestCase):
+class BaseGobTests(object):
+    # This does not extend unittest.TestCase because I want these tests to run
+    # in the subclasses to test all the environments.
+
+    def test_whole_gob(self):
+        # integration test
+        self.gob.run_job('counter')
+        self.gob.run_job('expand')
+        self.gob.run_job('take')
+        self.gob.run_job('results')
+
+        # These jobs find numbers less than 100 that begin with a four and end
+        # with a 2 or 7.
+        results = dict(self.env.load('take'))
+        self.assertEqual(set(results[2]), {42,47})
+
+
+class TestSimpleEnv(unittest.TestCase, BaseGobTests):
     def setUp(self):
-        self.gob = Gob(SimpleEnv())
+        self.env = SimpleEnv()
+        self.gob = Gob(self.env)
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
         SimpleEnv.JOB_DB = {}
@@ -92,17 +110,6 @@ class TestSimpleEnv(unittest.TestCase):
         self.gob.run_job('results')
         self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
 
-    def test_whole_gob(self):
-        # integration test
-        self.gob.run_job('counter')
-        self.gob.run_job('expand')
-        self.gob.run_job('take')
-        self.gob.run_job('results')
-
-        # These jobs find numbers less than 100 that begin with a four and end
-        # with a 2 or 7.
-        self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
-
 
 def clean_data_dir():
     path = os.path.join(os.path.dirname(__file__),'data')
@@ -111,7 +118,7 @@ def clean_data_dir():
     return path
 
 
-class TestSimpleFileEnv(unittest.TestCase):
+class TestSimpleFileEnv(unittest.TestCase, BaseGobTests):
     UNICODE_STR = u'Unicode is \U0001F4A9!'
 
     def setUp(self):
@@ -143,19 +150,8 @@ class TestSimpleFileEnv(unittest.TestCase):
         # make sure msgpack doesn't raise an exception
         msgpack.packb(res)
 
-    def test_whole_gob(self):
-        # integration test
-        self.gob.run_job('counter')
-        self.gob.run_job('expand')
-        self.gob.run_job('take')
-        self.gob.run_job('results')
 
-        # These jobs find numbers less than 100 that begin with a four and end
-        # with a 2 or 7.
-        self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
-
-
-class TestMultiProcEnv(unittest.TestCase):
+class TestMultiProcEnv(unittest.TestCase, BaseGobTests):
     def setUp(self):
         path = clean_data_dir()
 
@@ -169,11 +165,3 @@ class TestMultiProcEnv(unittest.TestCase):
         self.gob.run_job('expand')
         first = self.env.load('expand.2').next()
         self.assertEqual( first, {'digits':(2,),'num':2} )
-
-    def test_whole_gob(self):
-        # integration test
-        self.gob.run_job('counter')
-        self.gob.run_job('expand')
-        self.gob.run_job('take')
-        results = dict(self.env.load('take'))
-        self.assertEqual(set(results[2]), {42,47})
