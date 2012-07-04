@@ -1,27 +1,21 @@
-import unittest
-
+from base.tests import SimpleGobTest
 from base.utils import use_mongo
-from base.gob import SimpleEnv, Gob
 from predict import fl
-from gb import create_jobs
 
 
-class TestFriendLoc(unittest.TestCase):
+class TestFriendLoc(SimpleGobTest):
     def setUp(self):
-        self.gob = Gob(SimpleEnv())
+        super(TestFriendLoc,self).setUp()
         use_mongo('fl_fixture')
-        create_jobs(self.gob)
-        SimpleEnv.THE_FS = {}
-        SimpleEnv.JOB_DB = {}
 
     def test_edge_vect_flow(self):
         # integration test
-        SimpleEnv.THE_FS['mloc_uids.03'] = [3]
-        SimpleEnv.THE_FS['mloc_uids.06'] = [6]
+        self.FS['mloc_uids.03'] = [3]
+        self.FS['mloc_uids.06'] = [6]
         self.gob.run_job('training_users')
         self.gob.run_job('edge_d')
         self.gob.run_job('edge_vect')
-        vects03 = SimpleEnv.THE_FS['edge_vect.03']
+        vects03 = self.FS['edge_vect.03']
         # there are 4 relationships
         self.assertEqual(len(vects03),4)
 
