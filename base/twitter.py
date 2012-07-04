@@ -30,9 +30,11 @@ class TwitterResource(object):
                         settings.consumer_key,
                         settings.consumer_secret,
                         header_auth=True)
-        self.client = requests.session(
+        self.session = requests.session(
                         hooks={'pre_request': oauth_hook},
                         timeout=60,
+                        config=dict(max_retries=2,safe_mode=True),
+                        prefetch=True,
                         )
         self.remaining = 10000
 
@@ -45,7 +47,7 @@ class TwitterResource(object):
         """
         for delay in self.backoff_seconds:
             url = "http://api.twitter.com/1/%s.json"%path
-            resp = self.client.get(url, params=kwargs)
+            resp = requests.get(url, params=kwargs, session=self.session)
             self._parse_ratelimit(resp)
 
             if resp.status_code == 200:
@@ -59,6 +61,8 @@ class TwitterResource(object):
                     resp.status_code,
                     resp.url,
                 )
+                if resp.status_code == 0:
+                    logging.error("error: %r",resp.error)
                 if resp.status_code in (400,420,503):
                     # The whale says slow WAY down!
                     delay = 240
