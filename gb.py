@@ -57,6 +57,7 @@ def create_jobs(g):
     # the graphs
     g.add_job(prep.training_users,'mloc_uids')
     g.add_job(peek.edges_d,'training_users')
+    g.add_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
 
     # the predictor
     g.add_job(peek.geo_ats)

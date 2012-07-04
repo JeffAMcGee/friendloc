@@ -224,3 +224,14 @@ def _rel_d(user,ats):
         ated=user._id in ats,
         _id=user._id,
         )
+
+
+@gob.mapper()
+def edge_dists(edge_d):
+    keys = ('jfol','jfrd','rfrd','jat')
+    for key in keys:
+        amigo = edge_d.get(key)
+        if amigo:
+            assert amigo['mdist']<1000
+            dist = coord_in_miles(edge_d['mloc'],amigo)
+            yield (key,amigo['ated'],amigo['prot']),dist
