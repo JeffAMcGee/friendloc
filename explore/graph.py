@@ -229,7 +229,7 @@ CONTACT_GROUPS = dict(
 )
 
 @gob.mapper(all_items=True)
-def compare_edge_types_cuml(edge_dists):
+def graph_edge_types_cuml(edge_dists):
     data = defaultdict(list)
 
     for key,dists in edge_dists:
@@ -247,6 +247,48 @@ def compare_edge_types_cuml(edge_dists):
             ylabel = "fraction of users",
             xlabel = "distance to contact in miles",
             bins = dist_bins(120),
+            )
+
+@gob.mapper(all_items=True)
+def graph_edge_types_prot(edge_dists):
+    data = defaultdict(list)
+
+    for key,dists in edge_dists:
+        conf = CONTACT_GROUPS[key[0]]
+        fill = 'solid' if key[2] else 'dotted'
+        data[(conf['label'],conf['color'],fill)].extend(dists)
+
+    graph_hist(data,
+            "edge_types_prot.png",
+            xlim = (1,30000),
+            normed=True,
+            label_len=True,
+            kind="cumulog",
+            ylabel = "fraction of users",
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(80),
+            )
+
+@gob.mapper(all_items=True)
+def graph_edge_types_norm(edge_dists):
+    data = defaultdict(list)
+    for key,dists in edge_dists:
+        conf = CONTACT_GROUPS[key[0]]
+        data[(conf['label'],conf['color'],'solid')].extend(dists)
+    for key,dists in data.iteritems():
+        data[key] = [d+1 for d in dists]
+
+    graph_hist(data,
+            "edge_types_norm.png",
+            xlim = (1,30000),
+            normed=True,
+            label_len=True,
+            kind="logline",
+            ylabel = "fraction of users",
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(40),
+            ylim = .6,
+            window = numpy.bartlett(7),
             )
 
 
