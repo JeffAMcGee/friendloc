@@ -8,7 +8,7 @@ import numpy
 from maroon import Model
 
 from settings import settings
-from explore import peek, sprawl, fixgis
+from explore import peek, sprawl, fixgis, graph
 from predict import prep, fl
 from base import gob
 from base import utils
@@ -58,6 +58,7 @@ def create_jobs(g):
     g.add_job(prep.training_users,'mloc_uids')
     g.add_job(peek.edges_d,'training_users')
     g.add_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
+    g.add_job(graph.compare_edge_types_cuml,'edge_dists')
 
     # the predictor
     g.add_job(peek.geo_ats)

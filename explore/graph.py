@@ -15,8 +15,9 @@ import numpy
 
 from settings import settings
 import base.gisgraphy as gisgraphy
-from base.models import *
-from base.utils import *
+#from base.models import *
+#from base.utils import *
+from base import gob
 
 
 def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
@@ -220,75 +221,32 @@ def _plot_dist_model(ax, row, *ignored):
     Y = (math.e**b) * (X**a)
     ax.plot(X, Y, '-', color='k',alpha=.2)
 
+CONTACT_GROUPS = dict(
+    jfol = dict(label='just followers',color='g'),
+    jfrd = dict(label='just friends',color='b'),
+    rfrd = dict(label='recip friends',color='r'),
+    rat = dict(label='just mentioned',color='c'),
+)
 
-def compare_edge_types(cmd=""):
-    #set flags
-    if cmd=="cuml":
-        cuml, prot, mdist = True, False, False
-        kwargs = dict(
-            xlabel = "distance to contact in miles",
-            bins = dist_bins(120),
-            )
-    elif cmd=="prot":
-        cuml, prot, mdist = True, True, False
-        kwargs = dict(
-            xlabel = "distance to contact in miles",
-            bins = dist_bins(80),
-            )
-    elif cmd=="mdist":
-        cuml, prot, mdist = False, False, True
-        kwargs = dict(
-            xlabel = "distance to contact divided by location error",
-            bins = numpy.insert(10**numpy.linspace(-1.975,3.975,120),0,0),
-            dist_scale = True,
-            logline_fn = _plot_dist_model,
-            ylim=(10**-7,1),
-            )
-    else:
-        cuml, prot, mdist = False, False, False
-        kwargs = dict(
-            xlabel = "distance to contact in miles",
-            bins = dist_bins(40),
-            ylim = .6,
-            window = numpy.bartlett(7),
-            )
-
-    labels = ('just followers','just friends','recip friends','just mentioned')
-    keys = ('jfol','jfrd','rfrd','jat')
-    colors = "gbrc"
+@gob.mapper(all_items=True)
+def compare_edge_types_cuml(edge_dists):
     data = defaultdict(list)
-    edges = list(read_json('data/edges_json'))
-    for user in edges:
-        for key,label,color in zip(keys,labels,colors):
-            #protected amigo
-            pam = user.get('p'+key)
-            if prot and pam and pam['mdist']<1000:
-                dist = coord_in_miles(user['mloc'],pam)
-                data[(label,color,'solid')].append(dist)
- 
-            #public amigo
-            amigo = user.get(key)
-            if amigo and amigo['mdist']<1000:
-                dist = coord_in_miles(user['mloc'],amigo)
-                if mdist:
-                    dist = dist/amigo['mdist']
-                if not cuml and not mdist:
-                    dist+=1
-                data[(label,color,'dashed' if prot else 'solid')].append(dist)
+
+    for key,dists in edge_dists:
+        conf = CONTACT_GROUPS[key]
+        data[(conf['label'],conf['color'],'solid')].extend(dists)
+
     for k,v in data.iteritems():
-        print k,sum(1.0 for x in v if x<25)/len(v) 
-    if not cuml and not mdist:
-        rands = 1 + shuffled_dists(edges)
-        scaled_rands = [r if random.random()<.459 else 40000 for r in rands]
-        data[('random recip friend','k','dotted',3)] = scaled_rands
+        print k,sum(1.0 for x in v if x<25)/len(v)
     graph_hist(data,
-            "edge_types_%s.pdf"%cmd,
-            xlim=(.01,10**4) if mdist else (1,30000),
+            "edge_types_cuml.png",
+            xlim= (1,30000),
             normed=True,
             label_len=True,
-            kind="cumulog" if cuml else "logline",
+            kind="cumulog",
             ylabel = "fraction of users",
-            **kwargs
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(120),
             )
 
 
