@@ -182,9 +182,9 @@ class TwitterResource(object):
         logging.info("api calls remaining: %d",self.remaining)
         if self.remaining > 100: return
         delta = (self.reset_time-datetime.utcnow())
-        logging.info("goodnight for %r",delta)
+        logging.info("goodnight for %r til %r",delta,self.reset_time)
         if delta.days==0:
             #sleep an extra minute in case clocks are wrong
-            time.sleep(max(60+delta.seconds,3600))
+            time.sleep(min(60+delta.seconds,3600))
         else:
-            time.sleep(120)
+            time.sleep(60)
