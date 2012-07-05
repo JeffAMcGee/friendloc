@@ -211,8 +211,8 @@ class Executor(object):
         assert len(job.sources) == len(in_paths)
 
         output = job.output_name(in_paths)
-        if self.job_status(output)=='done':
-            # FIXME: check that the file exists before returning
+        if self.job_status(output)=='done' and self.name_exists(output):
+            logging.info("skipping map for %s - already done",output)
             return
         self.set_job_status(output,'started')
 
@@ -302,6 +302,13 @@ class Storage(object):
     """
     STATUSES = ["new","started","done","crashed"]
 
+    def name_exists(self, name):
+        """
+        True if there is a file for name, False otherwise.
+        If this returns false, self.load(name) should raise an exception.
+        """
+        raise NotImplementedError
+
     def save(self, name, items):
         "store items in the file 'name'. items is an iterator."
         raise NotImplementedError
@@ -380,6 +387,9 @@ class DictStorage(Storage):
     def load(self, name):
         return iter(self.THE_FS[name])
 
+    def name_exists(self, name):
+        return name in self.THE_FS
+
     class BulkSaver(object):
         def __init__(self):
             self.data = defaultdict(list)
@@ -419,9 +429,12 @@ class FileStorage(Storage):
                 ( name text primary key, status text )
                 """)
 
-    def _open(self, name, mode='r'):
+    def _path(self, name):
         parts = name.split('.')
-        path = os.path.join(self.path,*parts)+'.mp'
+        return os.path.join(self.path,*parts)+'.mp'
+
+    def _open(self, name, mode='r'):
+        path = self._path(name)
         dir = os.path.dirname(path)
         if 'w' in mode:
             try:
@@ -430,8 +443,10 @@ class FileStorage(Storage):
                 # attempt to make it and then check to avoid race condition
                 if not os.path.exists(dir):
                     raise
-
         return open(path,mode)
+
+    def name_exists(self, name):
+        return os.path.exists(self._path(name))
 
     def save(self, name, items):
         with self._open(name,'w') as f:
