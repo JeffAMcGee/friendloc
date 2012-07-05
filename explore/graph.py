@@ -225,7 +225,7 @@ CONTACT_GROUPS = dict(
     jfol = dict(label='just followers',color='g'),
     jfrd = dict(label='just friends',color='b'),
     rfrd = dict(label='recip friends',color='r'),
-    rat = dict(label='just mentioned',color='c'),
+    jat = dict(label='just mentioned',color='c'),
 )
 
 @gob.mapper(all_items=True)
@@ -233,7 +233,7 @@ def compare_edge_types_cuml(edge_dists):
     data = defaultdict(list)
 
     for key,dists in edge_dists:
-        conf = CONTACT_GROUPS[key]
+        conf = CONTACT_GROUPS[key[0]]
         data[(conf['label'],conf['color'],'solid')].extend(dists)
 
     for k,v in data.iteritems():
