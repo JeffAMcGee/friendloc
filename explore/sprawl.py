@@ -178,6 +178,7 @@ class ContactLookup(Sprawler):
         # FIXME: we need a better way to know which file we are on.
         first, contact_uids = utils.peek(contact_uids)
         group = first%100
+        logging.info('lookup old uids for %d',group)
         stored = User.mod_id_set(group)
         logging.info('loaded mod_group %d of %d users',group,len(stored))
         missing = (id for id in contact_uids if id not in stored)
