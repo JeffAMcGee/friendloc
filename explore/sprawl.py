@@ -179,6 +179,7 @@ class ContactLookup(Sprawler):
         first, contact_uids = utils.peek(contact_uids)
         group = first%100
         stored = User.mod_id_set(group)
+        logging.info('loaded mod_group %d of %d users',group,len(stored))
         missing = (id for id in contact_uids if id not in stored)
 
         chunks = utils.grouper(100, missing, dontfill=True)

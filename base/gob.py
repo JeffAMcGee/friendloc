@@ -21,6 +21,7 @@ class StatefulIter(object):
     def __init__(self,it):
         self.it = iter(it)
         self.current = self.NOT_STARTED
+        self.index = -1
 
     def __iter__(self):
         return self
@@ -28,9 +29,13 @@ class StatefulIter(object):
     def next(self):
         try:
             self.current = next(self.it)
+            self.index+=1
         except StopIteration:
             self.current = self.FINISHED
+            self.index = None
             raise
+        if self.index and self.index%1000==0:
+            logging.info("Iter at %d, current is %r",self.index,self.current)
         return self.current
 
 

@@ -47,12 +47,11 @@ def create_jobs(g):
               reducer=gob.set_reduce,
               )
     g.add_job(sprawl.nebr_split, 'pick_nebrs', saver='split_save')
-    g.add_job(sprawl.EdgeFinder.find_leafs,'nebr_split',
-              name='find_leafs',reducer=gob.set_reduce)
+    g.add_job(sprawl.EdgeFinder.find_leafs,'nebr_split',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
     g.add_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
-              name='lookup_leafs',procs=15)
+              name='lookup_leafs')
 
     # the graphs
     g.add_job(prep.training_users,'mloc_uids')
