@@ -20,7 +20,10 @@ def parse_args(argv):
     parser.add_argument('-s','--single',action="store_true",
                         help='run in a single process')
     parser.add_argument('-m','--mongo')
-    parser.add_argument('-i','--input')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-i','--input')
+    group.add_argument('--rm',action="store_true")
+    group.add_argument('--force',action="store_true")
     return parser.parse_args(argv)
 
 
@@ -97,10 +100,7 @@ def inspect(job_name, source_set):
     return my_gob.env.map_reduce_save(job, source_set, funcs)
 
 
-def main(*argv):
-    args = parse_args(argv or None)
-    my_gob = make_gob(args)
-    setup(args)
+def run(my_gob,args):
     if args.input:
         # just run the function for one input
         job = my_gob.jobs[args.job[0]]
@@ -108,7 +108,16 @@ def main(*argv):
         my_gob.env.run(job,input_paths=input_paths)
     else:
         for cmd in args.job:
-            my_gob.run_job(cmd)
+            if args.rm or args.force:
+                my_gob.clear_job(cmd)
+            if not args.rm:
+                my_gob.run_job(cmd)
+
+def main(*argv):
+    args = parse_args(argv or None)
+    my_gob = make_gob(args)
+    setup(args)
+    run(my_gob,args)
 
 
 if __name__ == '__main__':

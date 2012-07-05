@@ -579,6 +579,12 @@ class Gob(object):
         self.jobs = {}
         self.env = env
 
+    def clear_job(self,name):
+        job = self.jobs[name]
+        for f in job.output_files(self.env):
+            # FIXME: this should delete the files
+            self.env.set_job_status(f,'new')
+
     def run_job(self,name):
         job = self.jobs[name]
         input_paths = self.env.input_paths(job.sources)
