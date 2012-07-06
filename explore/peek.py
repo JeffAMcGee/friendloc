@@ -260,3 +260,21 @@ def edge_dists(edge_d):
             assert amigo['mdist']<1000
             dist = coord_in_miles(edge_d['mloc'],amigo)
             yield (key,amigo['ated'],amigo['prot']),dist
+
+@gob.mapper()
+def edge_leaf_dists(edge_d):
+    #FIXME: limit to contacts in 20..29 for now
+    if not edge_d.get('rfrd') or str(edge_d['rfrd'])[-2]!='2':
+        return
+    rfrd = User.get_id(edge_d['rfrd']['_id'])
+    edge_dist = coord_in_miles(edge_d['mloc'],rfrd)
+    contacts = User.find(User._id.is_in(rfrd.contacts), fields=['gnp'])
+    dists = [
+        coord_in_miles(edge_d['rfrd'],contact.geonames_place.to_d())
+        for contact in contacts
+        if contact.has_place()
+        ]
+    if dists:
+        yield edge_dist,dists
+
+

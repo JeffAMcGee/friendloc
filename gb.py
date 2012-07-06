@@ -62,6 +62,7 @@ def create_jobs(g):
     g.add_job(prep.training_users,'mloc_uids')
     g.add_job(peek.edges_d,'training_users')
     g.add_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
+    g.add_job(peek.edge_leaf_dists,'edges_d')
     g.add_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_job(graph.graph_edge_types_prot,'edge_dists')
     g.add_job(graph.graph_edge_types_norm,'edge_dists')
