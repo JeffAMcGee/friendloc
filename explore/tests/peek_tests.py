@@ -16,7 +16,7 @@ class TestPeek(SimpleGobTest):
     def test_contact_blur(self):
         saver = mock.patch.object(models.User,'save',mocksignature=True)
         with saver as s:
-            peek.contact_blur(6)
+            list(peek.contact_blur(6))
             user = s.call_args[0][0]
         self.assertAlmostEqual(user.follower_blur, 31.094, places=2)
         self.assertAlmostEqual(user.friend_blur, 38.004, places=2)

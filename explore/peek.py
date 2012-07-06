@@ -37,9 +37,10 @@ def contact_blur(nebr_id):
         dists = [
             coord_in_miles(user_loc,contact.geonames_place.to_d())
             for contact in contacts]
-        blur = numpy.median(dists)
+        blur = numpy.median(dists) if dists else None
+        if dists:
+            yield len(dists),blur
         setattr(user,'%s_blur'%kind,blur)
-        #FIXME: deal with zero and one contact case!
     user.save()
 
 

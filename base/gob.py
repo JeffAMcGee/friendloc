@@ -68,6 +68,15 @@ def set_reduce(key, items, rereduce):
     else:
         return tuple(set(items))
 
+@reducer()
+def avg_reduce(key, items, rereduce):
+    # avg is stored as sum and count so that rereduce works
+    items = tuple(items)
+    if rereduce:
+        return sum(it[0] for it in items),len(items)
+    else:
+        return sum(items),len(items)
+
 
 @reducer()
 def sum_reduce(key, items):

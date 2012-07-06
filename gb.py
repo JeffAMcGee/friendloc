@@ -58,7 +58,7 @@ def create_jobs(g):
               name='lookup_leafs',requires=['saved_users'])
 
     # the graphs
-    g.add_job(peek.contact_blur,'nebr_split')
+    g.add_job(peek.contact_blur,'nebr_split',reducer=gob.avg_reduce)
     g.add_job(prep.training_users,'mloc_uids')
     g.add_job(peek.edges_d,'training_users')
     g.add_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
