@@ -83,6 +83,8 @@ class User(TwitterModel):
     many_edges = BoolProperty('mne')
     mod_group = IntProperty('mdg')
     error_status = IntProperty('err')
+    friend_blur = FloatProperty('frdbr')
+    follower_blur = FloatProperty('folbr')
 
     #properties from twitter
     verified = BoolProperty("ver")
@@ -128,6 +130,10 @@ class User(TwitterModel):
             User.just_friends.exists() & User.just_followers.exists() & User.rfriends.exists(),
             **kwargs
             )
+
+    def has_place(self):
+        gnp = self.geonames_place
+        return gnp and gnp.mdist<1000
 
     @property
     def contacts(self):

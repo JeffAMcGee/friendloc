@@ -193,11 +193,6 @@ class ContactLookup(Sprawler):
             yield len(users)
 
 
-def _has_place(user):
-    gnp = user.geonames_place
-    return gnp and gnp.mdist<1000
-
-
 def _pick_neighbors(user):
     nebrs = {}
     for key in NEBR_KEYS:
@@ -207,7 +202,7 @@ def _pick_neighbors(user):
 
         # this is slowish
         contacts = User.find(User._id.is_in(cids), fields=['gnp'])
-        nebrs[key] = set(u._id for u in contacts if _has_place(u))
+        nebrs[key] = set(u._id for u in contacts if u.has_place())
 
     picked_ = filter(None,
                 itertools.chain.from_iterable(
@@ -252,4 +247,3 @@ def nebr_split(groups):
         for group,ids in groups
         for id in ids
         )
-

@@ -3,20 +3,43 @@ import calendar
 import os
 import sys
 import random
-from collections import defaultdict
+import json
 from datetime import datetime as dt
 from datetime import timedelta
 from operator import itemgetter
 from multiprocessing import Pool
 
+import numpy
+
 from settings import settings
 #from base.gisgraphy import GisgraphyResource
-from base.models import *
-from base.utils import *
+from base.models import User, Tweets, Edges, Tweet
+from base.utils import coord_in_miles, use_mongo, write_json
 from base import gob
 
 
 #gis = GisgraphyResource()
+
+@gob.mapper()
+def contact_blur(nebr_id):
+    leafs = {}
+    user = User.get_id(nebr_id)
+    for key in ['rfriends','just_followers','just_friends']:
+        cids = getattr(user,key)
+        if cids:
+            contacts = User.find(User._id.is_in(cids), fields=['gnp'])
+            leafs[key] = [u for u in contacts if u.has_place()]
+        else:
+            leafs[key] = []
+    user_loc = user.geonames_place.to_d()
+    for kind in ('friend','follower'):
+        contacts = leafs['rfriends'] + leafs['just_%ss'%kind]
+        dists = [
+            coord_in_miles(user_loc,contact.geonames_place.to_d())
+            for contact in contacts]
+        blur = numpy.median(dists)
+        setattr(user,'%s_blur'%kind,blur)
+    user.save()
 
 
 @gob.mapper()

@@ -1,3 +1,7 @@
+from maroon import Model
+
+import mock
+
 from explore import peek
 from base import models, utils
 from base.tests import SimpleGobTest
@@ -8,6 +12,15 @@ class TestPeek(SimpleGobTest):
         super(TestPeek,self).setUp()
         # FIXME: this is stupid boilerplate
         utils.use_mongo('fl_fixture')
+
+    def test_contact_blur(self):
+        saver = mock.patch.object(models.User,'save',mocksignature=True)
+        with saver as s:
+            peek.contact_blur(6)
+            user = s.call_args[0][0]
+        self.assertAlmostEqual(user.follower_blur, 31.094, places=2)
+        self.assertAlmostEqual(user.friend_blur, 38.004, places=2)
+
 
     def test_edges_d(self):
         user_d = models.User.get_id(6).to_d()
