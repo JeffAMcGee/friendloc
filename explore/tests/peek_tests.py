@@ -21,7 +21,6 @@ class TestPeek(SimpleGobTest):
         self.assertAlmostEqual(user.follower_blur, 31.094, places=2)
         self.assertAlmostEqual(user.friend_blur, 38.004, places=2)
 
-
     def test_edges_d(self):
         user_d = models.User.get_id(6).to_d()
         edges_d = peek.edges_d(user_d)

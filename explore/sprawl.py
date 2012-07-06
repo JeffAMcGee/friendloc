@@ -19,6 +19,7 @@ class Sprawler(object):
     def __init__(self,env):
         self.twitter = twitter.TwitterResource()
         self.gis = GisgraphyResource()
+        self.env = env
         try:
             mdists = next(env.load('mdists'))
         except (IOError,KeyError):
@@ -170,6 +171,12 @@ def contact_split(groups):
             yield group,id
 
 
+@gob.mapper()
+def saved_users():
+    users = User.database.User.find({},fields=[],timeout=False)
+    return ((User.mod_id(u['_id']),u['_id']) for u in users)
+
+
 class ContactLookup(Sprawler):
     @gob.mapper(all_items=True)
     def lookup_contacts(self,contact_uids):
@@ -177,17 +184,21 @@ class ContactLookup(Sprawler):
 
         # FIXME: we need a better way to know which file we are on.
         first, contact_uids = utils.peek(contact_uids)
-        group = first%100
-        logging.info('lookup old uids for %d',group)
-        stored = User.mod_id_set(group)
-        logging.info('loaded mod_group %d of %d users',group,len(stored))
+        group = User.mod_id(first)
+        logging.info('lookup old uids for %s',group)
+        save_name = 'saved_users.%s'%group
+        if self.env.name_exists(save_name):
+            stored = set(self.env.load(save_name))
+        else:
+            stored = User.mod_id_set(int(group))
+        logging.info('loaded mod_group %s of %d users',group,len(stored))
         missing = (id for id in contact_uids if id not in stored)
 
         chunks = utils.grouper(100, missing, dontfill=True)
         for chunk in chunks:
             users = self.twitter.user_lookup(user_ids=list(chunk))
             for amigo in filter(None,users):
-                assert amigo._id%100==group
+                assert User.mod_id(amigo._id)==group
                 amigo.geonames_place = self.gis.twitter_loc(amigo.location)
                 amigo.merge()
             yield len(users)

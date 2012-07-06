@@ -53,8 +53,9 @@ def create_jobs(g):
     g.add_job(sprawl.EdgeFinder.find_leafs,'nebr_split',reducer=gob.set_reduce)
     g.add_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
+    g.add_job(sprawl.saved_users,saver='split_save')
     g.add_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
-              name='lookup_leafs')
+              name='lookup_leafs',requires=['saved_users'])
 
     # the graphs
     g.add_job(peek.contact_blur,'nebr_split')

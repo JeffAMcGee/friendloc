@@ -39,6 +39,7 @@ def contact_blur(nebr_id):
             for contact in contacts]
         blur = numpy.median(dists)
         setattr(user,'%s_blur'%kind,blur)
+        #FIXME: deal with zero and one contact case!
     user.save()
 
 
