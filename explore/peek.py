@@ -267,7 +267,7 @@ def edge_leaf_dists(edge_d):
     if not edge_d.get('rfrd') or str(edge_d['rfrd'])[-2]!='2':
         return
     rfrd = User.get_id(edge_d['rfrd']['_id'])
-    edge_dist = coord_in_miles(edge_d['mloc'],rfrd)
+    edge_dist = coord_in_miles(edge_d['mloc'],edge_d['rfrd'])
     contacts = User.find(User._id.is_in(rfrd.contacts), fields=['gnp'])
     dists = [
         coord_in_miles(edge_d['rfrd'],contact.geonames_place.to_d())
