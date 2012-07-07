@@ -18,8 +18,8 @@ class TestPeek(SimpleGobTest):
         with saver as s:
             list(peek.contact_blur(6))
             user = s.call_args[0][0]
-        self.assertAlmostEqual(user.follower_blur, 31.094, places=2)
-        self.assertAlmostEqual(user.friend_blur, 38.004, places=2)
+        self.assertEqual(user.local_followers, .25)
+        self.assertEqual(user.local_friends, 0)
 
     def test_edges_d(self):
         user_d = models.User.get_id(6).to_d()

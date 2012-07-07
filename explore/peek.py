@@ -4,12 +4,11 @@ import os
 import sys
 import random
 import json
+import logging
 from datetime import datetime as dt
 from datetime import timedelta
 from operator import itemgetter
 from multiprocessing import Pool
-
-import numpy
 
 from settings import settings
 #from base.gisgraphy import GisgraphyResource
@@ -32,15 +31,17 @@ def contact_blur(nebr_id):
         else:
             leafs[key] = []
     user_loc = user.geonames_place.to_d()
-    for kind in ('friend','follower'):
-        contacts = leafs['rfriends'] + leafs['just_%ss'%kind]
+    for kind in ('friends','followers'):
+        contacts = leafs['rfriends'] + leafs['just_'+kind]
         dists = [
             coord_in_miles(user_loc,contact.geonames_place.to_d())
             for contact in contacts]
-        blur = numpy.median(dists) if dists else None
+        blur = sum(1.0 for d in dists if d<25)/len(dists)
         if dists:
             yield len(dists),blur
-        setattr(user,'%s_blur'%kind,blur)
+        else:
+            logging.info('no %s for %s - %d',kind,user.screen_name,user._id)
+        setattr(user,'local_'+kind,blur)
     user.save()
 
 

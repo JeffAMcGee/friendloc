@@ -83,8 +83,8 @@ class User(TwitterModel):
     many_edges = BoolProperty('mne')
     mod_group = IntProperty('mdg')
     error_status = IntProperty('err')
-    friend_blur = FloatProperty('frdbr')
-    follower_blur = FloatProperty('folbr')
+    local_friends = FloatProperty('lofrd')
+    local_followers = FloatProperty('lofol')
 
     #properties from twitter
     verified = BoolProperty("ver")
