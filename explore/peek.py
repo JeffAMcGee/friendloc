@@ -23,6 +23,8 @@ from base import gob
 def contact_blur(nebr_id):
     leafs = {}
     user = User.get_id(nebr_id)
+    if user.local_friends is not None or user.local_followers is not None:
+        return
     for key in ['rfriends','just_followers','just_friends']:
         cids = getattr(user,key)
         if cids:
