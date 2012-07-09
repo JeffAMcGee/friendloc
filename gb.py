@@ -57,8 +57,11 @@ def create_jobs(g):
     g.add_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
+    # FIXME: nebr_split_2 is temporary!
+    g.add_job(None,name='nebr_split_2',saver='split_save')
+    g.add_job(peek.contact_blur,'nebr_split_2',reducer=gob.avg_reduce)
+
     # the graphs
-    g.add_job(peek.contact_blur,'nebr_split',reducer=gob.avg_reduce)
     g.add_job(prep.training_users,'mloc_uids')
     g.add_job(peek.edges_d,'training_users')
     g.add_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)

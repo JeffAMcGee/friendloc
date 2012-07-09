@@ -38,10 +38,11 @@ def contact_blur(nebr_id):
         dists = [
             coord_in_miles(user_loc,contact.geonames_place.to_d())
             for contact in contacts]
-        blur = sum(1.0 for d in dists if d<25)/len(dists)
         if dists:
+            blur = sum(1.0 for d in dists if d<25)/len(dists)
             yield len(dists),blur
         else:
+            blur = None
             logging.info('no %s for %s - %d',kind,user.screen_name,user._id)
         setattr(user,'local_'+kind,blur)
     user.save()
