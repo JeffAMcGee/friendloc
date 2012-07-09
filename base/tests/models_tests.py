@@ -127,7 +127,7 @@ def save_users():
     users[3].just_friends = [6,9]
     users[3].just_followers = []
     users[3].just_mentioned = [2]
-    users[6].neighbors = [1,2,6,9]
+    users[3].neighbors = [1,2,6,9]
 
     users[6].median_loc = [-96,31]
     users[6].rfriends = [0,1]

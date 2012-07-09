@@ -73,6 +73,7 @@ def create_jobs(g):
     # the predictor
     g.add_job(peek.geo_ats)
     g.add_job(prep.edge_d,'training_users')
+    g.add_job(prep.nebrs_d,'training_users')
     g.add_job(fl.edge_vect,'edge_d')
     g.add_job(fl.fl_learn,'edge_vect')
 

@@ -5,6 +5,13 @@ from base import gob
 from base.models import User, Tweets, Edges
 
 
+NEBR_FLAGS = {
+    'fols':4,
+    'frds':2,
+    'ated':1,
+}
+
+
 @gob.mapper(all_items=True)
 def training_users(uids):
     for g in grouper(100,uids,dontfill=True):
@@ -12,6 +19,45 @@ def training_users(uids):
         if ids_group[0]%100<50:
             for u in User.find(User._id.is_in(ids_group)):
                 yield u.to_d()
+
+@gob.mapper()
+def nebrs_d(user_d):
+    nebrs_ = User.find(User._id.is_in(user_d['nebrs']))
+    tweets = Tweets.get_id(user_d['_id'],fields=['ats'])
+    rfrds = set(user_d['rfrds'])
+
+    contacts = dict(
+        ated = set(tweets.ats),
+        frds = rfrds.union(user_d['jfrds']),
+        fols = rfrds.union(user_d['jfols']),
+    )
+
+    nebrs = []
+    for nebr in nebrs_:
+        kind = sum(
+                bit if nebr._id in contacts[key] else 0
+                for key,bit in NEBR_FLAGS.iteritems()
+                )
+        nebrs.append(dict(
+            folc=nebr.friends_count,
+            frdc=nebr.followers_count,
+            lofrd=nebr.local_friends,
+            lofol=nebr.local_followers,
+            lat=nebr.geonames_place.lat,
+            lng=nebr.geonames_place.lng,
+            mdist=nebr.geonames_place.mdist,
+            kind=kind,
+            prot=nebr.protected,
+            _id=nebr._id,
+            ))
+    res = dict(
+        _id = user_d['_id'],
+        mloc = user_d['mloc'],
+        nebrs = nebrs,
+        )
+    if user_d.get('gnp'):
+        res['gnp'] = user_d['gnp']
+    yield res
 
 
 @gob.mapper()
@@ -51,7 +97,7 @@ def edge_d(user):
         )
     if user.get('gnp'):
         res['gnp'] = user['gnp']
-    return (res,) # mappers return an iterable
+    yield res
 
 
 def _rel_d(user, kind):

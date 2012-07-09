@@ -78,7 +78,6 @@ class User(TwitterModel):
     just_friends = ListProperty('jfrds')
     just_followers = ListProperty('jfols')
     just_mentioned = ListProperty('jats')
-    mentioned = ListProperty('ated')
     neighbors = ListProperty('nebrs')
     many_edges = BoolProperty('mne')
     mod_group = IntProperty('mdg')
