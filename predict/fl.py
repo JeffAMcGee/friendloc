@@ -10,17 +10,21 @@ from base.utils import coord_in_miles
 def logify(x):
     return int(math.ceil(math.log(x+1,2)))
 
+def _scaled_local(x):
+    return int(10*x) if x is not None else 3
+
 @gob.mapper()
-def edge_vect(user):
-
-    dists = [ logify(coord_in_miles(user['mloc'],rel)) for rel in user['rels'] ]
-
-    for index,rel in enumerate(user['rels']):
-        oth_dists = dists[:index] + dists[index+1:]
-        fol_dist = int(np.median(dists)) if oth_dists else 8
-        flags = [rel['kind'] >>i & 1 for i in range(4)]
-        vals = [logify(rel[k]) for k in ('mdist','folc')]
-        yield flags+vals+[fol_dist, dists[index]]
+def nebr_vect(user):
+    for nebr in user['nebrs']:
+        flags = [nebr['kind'] >>i & 1 for i in range(3)]
+        logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
+        others = [
+            _scaled_local(nebr['lofrd']),
+            _scaled_local(nebr['lofol']),
+            int(bool(nebr['prot'])),
+            logify(coord_in_miles(user['mloc'],nebr)),
+        ]
+        yield flags + logged + others
 
 
 def _transformed(vects):

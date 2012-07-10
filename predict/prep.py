@@ -27,7 +27,7 @@ def nebrs_d(user_d):
     rfrds = set(user_d['rfrds'])
 
     contacts = dict(
-        ated = set(tweets.ats),
+        ated = set(tweets.ats or []),
         frds = rfrds.union(user_d['jfrds']),
         fols = rfrds.union(user_d['jfols']),
     )

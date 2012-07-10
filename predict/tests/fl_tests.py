@@ -13,21 +13,23 @@ class TestFriendLoc(SimpleGobTest):
         self.FS['mloc_uids.03'] = [3]
         self.FS['mloc_uids.06'] = [6]
         self.gob.run_job('training_users')
-        self.gob.run_job('edge_d')
-        self.gob.run_job('edge_vect')
-        vects03 = self.FS['edge_vect.03']
+        self.gob.run_job('nebrs_d')
+        self.gob.run_job('nebr_vect')
+        vects03 = self.FS['nebr_vect.03']
         # there are 4 relationships
         self.assertEqual(len(vects03),4)
 
     def test_edge_vect(self):
-        rel = dict(lat=31, lng=-96, kind=6, folc=7, mdist=3)
+        rel = dict(lat=31, lng=-96, mdist=3,
+                   kind=6, folc=7, frdc=1, prot=True,
+                   lofrd=None, lofol=.43,)
         user = dict(
-                rels = [rel],
+                nebrs = [rel],
                 _id = 3,
                 mloc = [-96,30],
                 )
-        vect = fl.edge_vect(user)
-        # (priv, ated, is_frd, is_fol, mdist, folc, dist)
-        self.assertEqual(next(vect), [0, 1, 1, 0, 2, 3, 8, 7])
+        vect = fl.nebr_vect(user)
+        # (ated, is_frd, is_fol, mdist, folc, frdc, lofrd, lofol, prot, dist)
+        self.assertEqual(next(vect), [0,1,1,2,3,1,3,4,1,7])
 
 
