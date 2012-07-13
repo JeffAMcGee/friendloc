@@ -28,8 +28,10 @@ class TestFriendLoc(SimpleGobTest):
                 _id = 3,
                 mloc = [-96,30],
                 )
-        vect = fl.nebr_vect(user)
+        vect = next(fl.nebr_vect(user))
+        vect[-1] = int(vect[-1])
         # (ated, is_frd, is_fol, mdist, folc, frdc, lofrd, lofol, prot, dist)
-        self.assertEqual(next(vect), [0,1,1,2,3,1,3,4,1,7])
+        self.assertEqual(vect, [0,1,1,2,3,1,.3,.43,1,6])
+
 
 

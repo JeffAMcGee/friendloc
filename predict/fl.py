@@ -7,11 +7,11 @@ import numpy as np
 from base import gob
 from base.utils import coord_in_miles
 
-def logify(x):
-    return int(math.ceil(math.log(x+1,2)))
+def logify(x,fudge=1):
+    return math.log(x+1,2)
 
 def _scaled_local(x):
-    return int(10*x) if x is not None else 3
+    return x if x is not None else .3
 
 @gob.mapper()
 def nebr_vect(user):
@@ -22,17 +22,17 @@ def nebr_vect(user):
             _scaled_local(nebr['lofrd']),
             _scaled_local(nebr['lofol']),
             int(bool(nebr['prot'])),
-            logify(coord_in_miles(user['mloc'],nebr)),
+            logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
         ]
         yield flags + logged + others
 
 
 def _transformed(vects):
     # convert vects to a scaled numpy array
-    vects_ = np.fromiter( chain.from_iterable(vects), int )
+    vects_ = np.fromiter( chain.from_iterable(vects), np.float32 )
     vects_.shape = (len(vects_)//10),10
-    X = np.array(vects_[:,:-1],float)
-    y = np.array(vects_[:,-1],int)
+    X = np.array(vects_[:,:-1])
+    y = np.array(vects_[:,-1])
     #scaler = preprocessing.Scaler().fit(X)
 
     # In final system, you will want to only fit the training data.

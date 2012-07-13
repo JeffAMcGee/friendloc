@@ -16,7 +16,7 @@ from base import utils
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Run gob jobs.')
-    parser.add_argument('job',nargs='+')
+    parser.add_argument('job',nargs='*')
     parser.add_argument('-s','--single',action="store_true",
                         help='run in a single process')
     parser.add_argument('-m','--mongo')
@@ -121,10 +121,13 @@ def run(my_gob,args):
                 my_gob.run_job(cmd)
 
 def main(*argv):
+    # set globals so that we can %run this in ipython
+    global my_gob, env
     args = parse_args(argv or None)
     my_gob = make_gob(args)
     setup(args)
     run(my_gob,args)
+    env = my_gob.env
 
 
 if __name__ == '__main__':
