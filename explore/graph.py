@@ -1,14 +1,21 @@
+OUTPUT_TYPE = None # 'png', 'pdf', or None
+
 import random
 import logging
 import math
 import bisect
+import contextlib
 from collections import defaultdict, namedtuple
 from datetime import datetime as dt
 from datetime import timedelta
 
 import networkx as nx
 import matplotlib
-matplotlib.use('Agg')
+
+# this needs to happen before pyplot is imported - it cannot be changed
+if OUTPUT_TYPE:
+    matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy
@@ -20,10 +27,54 @@ import base.gisgraphy as gisgraphy
 from base import gob
 
 
-def graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
+@contextlib.contextmanager
+def axes(path='', figsize=(12,8), legend_loc=4,
+         xlabel=None, ylabel=None, xlim=None, ylim=None, ):
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+    yield ax
+    if xlim is not None:
+        try:
+            ax.set_xlim(*xlim)
+        except TypeError:
+            ax.set_xlim(0,xlim)
+    if ylim is not None:
+        try:
+            ax.set_ylim(*ylim)
+        except TypeError:
+            ax.set_ylim(0,ylim)
+
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    if legend_loc:
+        ax.legend(loc=legend_loc)
+    if OUTPUT_TYPE:
+        fig.savefig('../www/'+path+'.'+OUTPUT_TYPE,bbox_inches='tight')
+
+
+def linhist(ax, row, bins, dist_scale=False, window=None, normed=False,
+            marker='-', **hargs):
+    "works like ax.hist, but without jagged edges"
+    hist,b = numpy.histogram(row,bins)
+    step_size = b[2]/b[1]
+    hist = hist*(1.0*step_size/(step_size-1))
+    if window is not None:
+        hist = numpy.convolve(hist,window,mode='same')/sum(window)
+    if normed:
+        hist = hist * (1.0/len(row))
+    if dist_scale:
+        hist = hist/b[1:]
+        ax.set_yscale('log')
+    ax.set_xscale('log')
+    ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
+
+def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-', logline_fn=None,
         label_len=False, auto_ls=False, dist_scale=False, ax=None,
         window=None, ordered_label=False, **kwargs):
+    # DEPRECATED - TOO COMPLEX!
     if ax:
         fig = None
     else:
@@ -133,7 +184,7 @@ def graph_results(path="results"):
             data[(k,None,linestyle[k])].extend(v)
     for k,v in data.iteritems():
         print k[0], 1.0*sum(1 for d in v if d<25)/len(v)
-    graph_hist(data,
+    ugly_graph_hist(data,
             "top_results.pdf",
             bins=dist_bins(120),
             xlim=(1,30000),
@@ -196,7 +247,7 @@ def graph_rtt(path=None):
         t.ca - cas[bisect.bisect_left(ids,t.rtt)]
         for t in tweets[len(tweets)/2:]
         if t.rtt>ids[0]]
-    graph_hist(deltas,
+    ugly_graph_hist(deltas,
             "reply_time_sum",
             bins=xrange(0,3600*12,60),
             xlabel="seconds between tweet and reply",
@@ -238,7 +289,7 @@ def graph_edge_types_cuml(edge_dists):
 
     for k,v in data.iteritems():
         print k,sum(1.0 for x in v if x<25)/len(v)
-    graph_hist(data,
+    ugly_graph_hist(data,
             "edge_types_cuml.png",
             xlim= (1,30000),
             normed=True,
@@ -258,7 +309,7 @@ def graph_edge_types_prot(edge_dists):
         fill = 'solid' if key[2] else 'dotted'
         data[(conf['label'],conf['color'],fill)].extend(dists)
 
-    graph_hist(data,
+    ugly_graph_hist(data,
             "edge_types_prot.png",
             xlim = (1,30000),
             normed=True,
@@ -278,7 +329,7 @@ def graph_edge_types_norm(edge_dists):
     for key,dists in data.iteritems():
         data[key] = [d+1 for d in dists]
 
-    graph_hist(data,
+    ugly_graph_hist(data,
             "edge_types_norm.png",
             xlim = (1,30000),
             normed=True,
@@ -330,7 +381,7 @@ def tweets_over_time():
             Tweet.created_at.range(dt(2011,2,19),dt(2011,3,1)),
             fields=['ca'])
     days = [tweet.created_at.hour/24.0+tweet.created_at.day for tweet in tweets]
-    graph_hist(
+    ugly_graph_hist(
             days,
             "twitpic_hr_lim",
             kind="linear",
@@ -463,7 +514,7 @@ def com_types():
             data[d['com_type']].append(d['dist'])
         for k,v in data.iteritems():
             print edge_type,k,sum(1.0 for x in v if x<25)/len(v) 
-        graph_hist(data, "", ax=ax,
+        ugly_graph_hist(data, "", ax=ax,
                 legend_loc=2,
                 bins=dist_bins(80),
                 kind="cumulog",
@@ -495,7 +546,7 @@ def triad_types():
                     d['dist']
                     for d in counts
                     if part==bool(d[field])]
-        graph_hist(data, "", ax=ax,
+        ugly_graph_hist(data, "", ax=ax,
                 bins=dist_bins(80),
                 kind="cumulog",
                 xlim=(1,30000),
@@ -521,7 +572,7 @@ def diff_gnp_gps():
                 dists['PLE<'+key].append(d)
             dists[('all','k','solid',2)].append(d)
             dists[('PLE','.6','dashed',1)].append(md)
-    graph_hist(dists,
+    ugly_graph_hist(dists,
             "diff_gnp_gps.eps",
             bins = dist_bins(120),
             kind="cumulog",
