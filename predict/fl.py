@@ -45,6 +45,8 @@ def fl_learn(vects):
     #./gb.py -i edge_vect.22 fl_learn
     X, y = _transformed(vects)
     clf = tree.DecisionTreeRegressor(max_depth=8)
+    clf.fit(X,y)
+    import ipdb; ipdb.set_trace()
     scores = cross_validation.cross_val_score(clf,X,y,cv=5)
     print "Accuracy: %0.2f (+/- %0.2f)" % (scores.mean(), scores.std() / 2)
     return []

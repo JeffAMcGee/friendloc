@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import contextlib
 import inspect
 import itertools
@@ -9,6 +11,9 @@ import traceback
 from collections import defaultdict
 from multiprocessing import Pool
 import signal
+import json
+import pickle
+import functools
 
 import msgpack
 
@@ -220,7 +225,8 @@ class Executor(object):
         assert len(job.sources) == len(in_paths)
 
         output = job.output_name(in_paths)
-        if self.job_status(output)=='done' and self.name_exists(output):
+        # FIXME: mp is hardcoded
+        if self.job_status(output)=='done' and self.name_exists(output, encoding='mp'):
             logging.info("skipping map for %s - already done",output)
             return
         self.set_job_status(output,'started')
@@ -263,7 +269,7 @@ class Executor(object):
         msg = "map %r failed for %r"%(mapper,args)
         if self.log_crashes:
             with open('gobstop.%s.%d'%(mapper.__name__,os.getpid()),'w') as gs:
-                print >>gs,msg
+                print(msg,file=gs)
                 traceback.print_exc(file=gs)
 
 
@@ -311,22 +317,22 @@ class Storage(object):
     """
     STATUSES = ["new","started","done","crashed"]
 
-    def name_exists(self, name):
+    def name_exists(self, name, encoding=None):
         """
         True if there is a file for name, False otherwise.
         If this returns false, self.load(name) should raise an exception.
         """
         raise NotImplementedError
 
-    def save(self, name, items):
+    def save(self, name, items, encoding=None):
         "store items in the file 'name'. items is an iterator."
         raise NotImplementedError
 
-    def load(self, name):
+    def load(self, name, encoding=None):
         "return an iterator over the items stored in the file 'name'"
         raise NotImplementedError
 
-    def bulk_saver(self, name):
+    def bulk_saver(self, name, encoding=None):
         """
         context manager that returns a BulkSaver object, which can save to
         multiple open files at the same time. The object will have this method:
@@ -379,7 +385,7 @@ class SingleThreadExecutor(Executor):
     def _handle_map_err(self, mapper, args):
         msg = "map %r failed for %r"%(mapper,args)
         logging.exception(msg)
-        print msg
+        print(msg)
         traceback.print_exc()
         import ipdb
         ipdb.post_mortem(sys.exc_info()[2])
@@ -390,13 +396,13 @@ class DictStorage(Storage):
     THE_FS = {}
     JOB_DB = {}
 
-    def save(self, name, items):
+    def save(self, name, items, encoding=None):
         self.THE_FS[name] = list(items)
 
-    def load(self, name):
+    def load(self, name, encoding=None):
         return iter(self.THE_FS[name])
 
-    def name_exists(self, name):
+    def name_exists(self, name, encoding=None):
         return name in self.THE_FS
 
     class BulkSaver(object):
@@ -407,7 +413,7 @@ class DictStorage(Storage):
             self.data[name].append(item)
 
     @contextlib.contextmanager
-    def bulk_saver(self, name):
+    def bulk_saver(self, name, encoding=None):
         bs = DictStorage.BulkSaver()
         yield bs
         for key,items in bs.data.iteritems():
@@ -432,18 +438,19 @@ class FileStorage(Storage):
         self.path = os.path.abspath(path)
         self._job_db = None
         self._job_pid = None
+
         with self._cursor(commit=True) as cur:
             cur.execute("""
                 create table if not exists outputs
                 ( name text primary key, status text )
                 """)
 
-    def _path(self, name):
+    def _path(self, name, encoding):
         parts = name.split('.')
-        return os.path.join(self.path,*parts)+'.mp'
+        return os.path.join(self.path,*parts)+'.'+encoding
 
-    def _open(self, name, mode='r'):
-        path = self._path(name)
+    def _open(self, name, encoding, mode='rb'):
+        path = self._path(name,encoding)
         dir = os.path.dirname(path)
         if 'w' in mode:
             try:
@@ -454,41 +461,67 @@ class FileStorage(Storage):
                     raise
         return open(path,mode)
 
-    def name_exists(self, name):
-        return os.path.exists(self._path(name))
+    def name_exists(self, name, encoding='mp'):
+        return os.path.exists(self._path(name,encoding))
 
-    def save(self, name, items):
-        with self._open(name,'w') as f:
+    def _encoder_ending(self,encoding):
+        if encoding =='mp':
             packer = msgpack.Packer()
-            for item in items:
-                f.write(packer.pack(item))
+            return packer.pack,''
+        elif encoding =='json':
+            return json.dumps,'\n'
+        elif encoding =='pkl':
+            return functools.partial(pickle.dumps,protocol=2),''
+        else:
+            raise ValueError('unsupported encoding')
 
-    def load(self, name):
+    def save(self, name, items, encoding='mp'):
+        with self._open(name,encoding,'wb') as f:
+            encoder,ending = self._encoder_ending(encoding)
+            for item in items:
+                print(encoder(item),end=ending,file=f)
+
+    def load(self, name, encoding='mp'):
         # Can we just return the iterator or is close a problem?
-        with self._open(name) as f:
-            for item in msgpack.Unpacker(f,encoding='utf-8'):
-                yield item
+        with self._open(name,encoding) as f:
+            if encoding =='mp':
+                for item in msgpack.Unpacker(f,encoding='utf-8'):
+                    yield item
+            elif encoding =='json':
+                for line in f:
+                    yield json.loads(line)
+            elif encoding =='pkl':
+                uper = pickle.Unpickler(f)
+                try:
+                    while True:
+                        yield uper.load()
+                except EOFError:
+                    return
+            else:
+                raise ValueError('unsupported encoding')
+
 
     class BulkSaver(object):
-        def __init__(self,storage):
+        def __init__(self,storage,encoding):
             self.files = {}
-            self.packer = msgpack.Packer()
+            self.encoding = encoding
+            self.encoder,self.ending = storage._encoder_ending(encoding)
             self.storage = storage
 
         def add(self, name, item):
             if name not in self.files:
-                self.files[name] = self.storage._open(name,'w')
-            self.files[name].write(self.packer.pack(item))
+                self.files[name] = self.storage._open(name,self.encoding,'w')
+            print(self.encoder(item),end=self.ending,file=self.files[name])
 
-        def close(self):
+        def _close(self):
             for file in self.files.itervalues():
                 file.close()
 
     @contextlib.contextmanager
-    def bulk_saver(self, name):
-        bs = self.BulkSaver(self)
+    def bulk_saver(self, name, encoding='mp'):
+        bs = self.BulkSaver(self, encoding)
         yield bs
-        bs.close()
+        bs._close()
 
     def split_files(self, name):
         for dirpath, dirs, files in os.walk(os.path.join(self.path,name)):
@@ -526,7 +559,7 @@ class FileStorage(Storage):
 
 def _usr1_handler(sig, frame):
     traceback.print_stack(frame)
-    print frame.f_locals
+    print(frame.f_locals)
 
 
 def _mp_worker_init(env, job):
