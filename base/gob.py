@@ -12,6 +12,7 @@ from collections import defaultdict
 from multiprocessing import Pool
 import signal
 import json
+import re
 import pickle
 import functools
 
@@ -103,7 +104,7 @@ def _call_opt_kwargs(func,*args,**kwargs):
 
 class Job(object):
     def __init__(self, mapper=None, sources=(), saver='save', reducer=None,
-                 name=None, split_data=False, procs=6):
+                 name=None, split_data=False, procs=6, encoding='mp'):
         self.mapper = mapper
         self.saver = saver
         self.sources = sources
@@ -111,6 +112,7 @@ class Job(object):
         self.name = name
         self.procs = procs
         self.split_data = split_data
+        self.encoding = encoding
 
     def output_files(self, env):
         if self.split_data:
@@ -129,7 +131,7 @@ class Job(object):
 
     def load_output(self, path, env):
         "load the results of a previous run of this job"
-        return env.load(path)
+        return env.load(path, encoding=self.encoding)
 
     def runnable_funcs(self, env):
         """
@@ -160,9 +162,19 @@ class Job(object):
 
 
 class Cat(Job):
+    def __init__(self, pattern=None, **kwargs):
+        super(Cat,self).__init__(**kwargs)
+        if isinstance(pattern,basestring):
+            self.pattern = re.compile(pattern)
+        else:
+            self.pattern = pattern
+
     def load_output(self, path, env):
         job = self.sources[0]
-        loads = (job.load_output(p,env) for p in job.output_files(env))
+        files = job.output_files(env)
+        if self.pattern:
+            files = filter(self.pattern.match,files)
+        loads = (job.load_output(p,env) for p in files)
         return itertools.chain.from_iterable(loads)
 
 
@@ -225,8 +237,10 @@ class Executor(object):
         assert len(job.sources) == len(in_paths)
 
         output = job.output_name(in_paths)
-        # FIXME: mp is hardcoded
-        if self.job_status(output)=='done' and self.name_exists(output, encoding='mp'):
+        if (
+                self.job_status(output)=='done' and
+                self.name_exists(output, encoding=job.encoding)
+            ):
             logging.info("skipping map for %s - already done",output)
             return
         self.set_job_status(output,'started')
@@ -285,14 +299,14 @@ class Executor(object):
     def save_single(self, job, in_paths, results):
         if job.saver:
             saver = getattr(self,job.saver)
-            saver(job.output_name(in_paths),results)
+            saver(job.output_name(in_paths),results,encoding=job.encoding)
         else:
             # force the generator to generate
             for res in results:
                 pass
 
-    def split_save(self, name, key_item_pairs):
-        with self.bulk_saver(name) as saver:
+    def split_save(self, name, key_item_pairs, encoding=None):
+        with self.bulk_saver(name,encoding) as saver:
             for key,value in key_item_pairs:
                 saver.add(_path(name,key),value)
 
@@ -305,7 +319,7 @@ class Executor(object):
             ( key, _call_opt_kwargs(reducer,key,items,rereduce=True) )
             for key,items in grouped.iteritems()
             ]
-        self.save(job.name,results)
+        self.save(job.name,results,encoding=job.encoding)
 
 
 class Storage(object):
@@ -632,9 +646,14 @@ class Gob(object):
         input_paths = self.env.input_paths(job.sources)
         return self.env.run(job,input_paths=input_paths)
 
-    def add_cat(self, name, source):
+    def add_cat(self, name, source, pattern=None):
         """ concatenate a split source into one source """
-        return self.add_job(sources=(source,), name=name, job_cls=Cat)
+        return self.add_job(
+                        sources=(source,),
+                        name=name,
+                        job_cls=Cat,
+                        pattern=pattern
+                        )
 
     def add_source(self, source, name=None):
         """
