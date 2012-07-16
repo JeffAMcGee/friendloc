@@ -1,5 +1,6 @@
 import math
 from itertools import chain
+import operator
 
 from sklearn import preprocessing, tree, cross_validation
 import numpy as np
@@ -7,8 +8,12 @@ import numpy as np
 from base import gob
 from base.utils import coord_in_miles
 
+
 def logify(x,fudge=1):
-    return math.log(x+1,2)
+    return math.log(x+fudge,2)
+
+def unlogify(x,fudge=1):
+    return 2**x - fudge
 
 def _scaled_local(x):
     return x if x is not None else .3
@@ -47,3 +52,19 @@ def nebr_clf(vects):
     clf.fit(X,y)
     yield clf
 
+
+class NebrRanker(object):
+    def __init__(self,env):
+        self.env = env
+        self.clf = next(env.load('nebr_clf','pkl'))
+
+    @gob.mapper()
+    def nearest_nebr(self, nebrs_d):
+        vects = list(nebr_vect(nebrs_d))
+        if not vects:
+            return
+        omni = min(v[-1] for v in vects)
+        X, y = _transformed(vects)
+        results = zip(y,self.clf.predict(X))
+        best = min(results, key=operator.itemgetter(1))
+        yield unlogify(omni,.01), unlogify(best[0],.01)

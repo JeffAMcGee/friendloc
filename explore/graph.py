@@ -280,6 +280,24 @@ CONTACT_GROUPS = dict(
 )
 
 @gob.mapper(all_items=True)
+def omni_vs_near(nebrs):
+    data = defaultdict(list)
+    for omni,near in nebrs:
+        data['omni'].append(omni)
+        data['near'].append(near)
+
+    ugly_graph_hist(data,
+            "omni_near.png",
+            xlim= (1,30000),
+            normed=True,
+            label_len=True,
+            kind="cumulog",
+            ylabel = "fraction of users",
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(120),
+            )
+
+@gob.mapper(all_items=True)
 def graph_edge_types_cuml(edge_dists):
     data = defaultdict(list)
 

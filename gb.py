@@ -76,8 +76,10 @@ def create_jobs(g):
     g.add_job(prep.nebrs_d,'training_users')
     g.add_job(fl.nebr_vect,'nebrs_d')
     g.add_cat('nebr_fit','nebr_vect',pattern='nebr_vect.2[0-4]')
-    g.add_cat('nebr_pred','nebr_vect',pattern='nebr_vect.2[5-9]')
+    g.add_cat('nebrs_pred','nebrs_d',pattern='nebrs_d.2[5-9]')
     g.add_job(fl.nebr_clf,'nebr_fit',encoding='pkl')
+    g.add_job(fl.NebrRanker.nearest_nebr,'nebrs_pred')
+    g.add_job(graph.omni_vs_near,'nearest_nebr')
 
 
 def make_gob(args):
