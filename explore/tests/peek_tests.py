@@ -18,9 +18,9 @@ class TestPeek(SimpleGobTest):
         self.FS['contact_split.05'] = [5,6]
         self.gob.run_job('contact_count')
         four = self.FS['contact_count.04']
-        self.assertEqual(four, [((-97, 30), 1)])
+        self.assertEqual(four, [((-964, 304), 1)])
         sums = self.FS['contact_count']
-        self.assertEqual(sums, [((-97, 30), 3)])
+        self.assertEqual(dict(sums),{(-964,306):1,(-964,305):1,(-964,304):1})
 
     def test_contact_blur(self):
         saver = mock.patch.object(models.User,'save',mocksignature=True)

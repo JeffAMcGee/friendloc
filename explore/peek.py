@@ -28,8 +28,8 @@ def contact_count(uids):
         contacts = User.find(User._id.is_in(list(group)), fields=['gnp'])
         for contact in contacts:
             if contact.geonames_place.mdist<1000:
-                lat=int(math.floor(contact.geonames_place.lat))
-                lng=int(math.floor(contact.geonames_place.lng))
+                lat=int(math.floor(10*contact.geonames_place.lat))
+                lng=int(math.floor(10*contact.geonames_place.lng))
                 counts[lng,lat]+=1
     return counts.iteritems()
 
