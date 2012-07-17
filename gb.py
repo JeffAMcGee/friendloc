@@ -71,6 +71,7 @@ def create_jobs(g):
     g.add_job(graph.graph_edge_types_norm,'edge_dists')
 
     # the predictor
+    g.add_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
     g.add_job(peek.geo_ats)
     g.add_job(prep.edge_d,'training_users')
     g.add_job(prep.nebrs_d,'training_users')

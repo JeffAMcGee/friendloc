@@ -3,8 +3,10 @@ import calendar
 import os
 import sys
 import random
+import math
 import json
 import logging
+import collections
 from datetime import datetime as dt
 from datetime import timedelta
 from operator import itemgetter
@@ -14,10 +16,23 @@ from settings import settings
 #from base.gisgraphy import GisgraphyResource
 from base.models import User, Tweets, Edges, Tweet
 from base.utils import coord_in_miles, use_mongo, write_json
-from base import gob
+from base import gob, utils
 
 
-#gis = GisgraphyResource()
+@gob.mapper(all_items=True)
+def contact_count(uids):
+    counts = collections.defaultdict(int)
+    # save some round trips by asking for 100 at a time
+    groups = utils.grouper(100, uids, dontfill=True)
+    for group in groups:
+        contacts = User.find(User._id.is_in(list(group)), fields=['gnp'])
+        for contact in contacts:
+            if contact.geonames_place.mdist<1000:
+                lat=int(math.floor(contact.geonames_place.lat))
+                lng=int(math.floor(contact.geonames_place.lng))
+                counts[lng,lat]+=1
+    return counts.iteritems()
+
 
 @gob.mapper()
 def contact_blur(nebr_id):
