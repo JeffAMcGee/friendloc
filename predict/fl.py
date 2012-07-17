@@ -1,6 +1,7 @@
 import math
 from itertools import chain
 import operator
+from collections import defaultdict
 
 from sklearn import preprocessing, tree, cross_validation
 import numpy as np
@@ -53,18 +54,56 @@ def nebr_clf(vects):
     yield clf
 
 
-class NebrRanker(object):
+class Predictor():
+    def predict(self,nebrs_d):
+        "return the index of a neighbor or (eventually) a coordinate"
+        raise NotImplementedError
+
+
+class Omni(Predictor):
+    def predict(self,nebrs_d):
+        values = (v[-1] for v in nebrs_d['vects'])
+        index, dist = min(enumerate(values), key=operator.itemgetter(1))
+        return index
+
+
+class Nearest(Predictor):
     def __init__(self,env):
         self.env = env
         self.clf = next(env.load('nebr_clf','pkl'))
 
-    @gob.mapper()
-    def nearest_nebr(self, nebrs_d):
-        vects = list(nebr_vect(nebrs_d))
-        if not vects:
-            return
-        omni = min(v[-1] for v in vects)
-        X, y = _transformed(vects)
-        results = zip(y,self.clf.predict(X))
-        best = min(results, key=operator.itemgetter(1))
-        yield unlogify(omni,.01), unlogify(best[0],.01)
+    def predict(self,nebrs_d):
+        X, y = _transformed(nebrs_d['vects'])
+        dists = self.clf.predict(X)
+        index, dist = min(enumerate(dists), key=operator.itemgetter(1))
+        return index
+
+class FacebookMLE(Predictor):
+
+    def predict(self,nebrs_d):
+        X, y = _transformed(nebrs_d['vects'])
+        dists = self.clf.predict(X)
+        index, dist = min(enumerate(dists), key=operator.itemgetter(1))
+        return index
+
+class Predictors(object):
+    def __init__(self,env):
+        self.env = env
+        self.classifiers = dict(
+            omni=Omni(),
+            nearest=Nearest(env),
+        )
+
+    @gob.mapper(all_items=True)
+    def predictions(self, nebrs_ds):
+        results = defaultdict(list)
+
+        for nebrs_d in nebrs_ds:
+            if not nebrs_d['nebrs']:
+                continue
+            nebrs_d['vects'] = list(nebr_vect(nebrs_d))
+            for key,classifier in self.classifiers.iteritems():
+                index = classifier.predict(nebrs_d)
+                dist = nebrs_d['vects'][index][-1]
+                results[key].append(unlogify(dist,.01))
+        return results.iteritems()

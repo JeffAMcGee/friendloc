@@ -280,14 +280,11 @@ CONTACT_GROUPS = dict(
 )
 
 @gob.mapper(all_items=True)
-def omni_vs_near(nebrs):
-    data = defaultdict(list)
-    for omni,near in nebrs:
-        data['omni'].append(omni)
-        data['near'].append(near)
+def gr_preds(preds):
+    data = dict(preds)
 
     ugly_graph_hist(data,
-            "omni_near.png",
+            "gr_preds.png",
             xlim= (1,30000),
             normed=True,
             label_len=True,
