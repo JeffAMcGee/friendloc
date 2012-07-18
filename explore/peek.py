@@ -12,6 +12,8 @@ from datetime import timedelta
 from operator import itemgetter
 from multiprocessing import Pool
 
+import numpy as np
+
 from settings import settings
 #from base.gisgraphy import GisgraphyResource
 from base.models import User, Tweets, Edges, Tweet
@@ -47,13 +49,19 @@ def mloc_tile(mloc_uids):
         yield _tile(lat),user.to_d()
 
 
-# stick another stupid shuffle and collate step here...
-
 @gob.mapper()
 def nebr_dists(mloc_tile):
     nebrs = User.find(User._id.is_in(mloc_tile['nebrs']),fields=['gnp'])
     for nebr in nebrs:
         yield coord_in_miles(edge_d['mloc'],nebr)
+
+
+@gob.mapper(all_items=True)
+def tile_split(groups):
+    # FIXME this is evil boilerplate!
+    for group,tiled_users in groups:
+        for tiled_user in tiled_users:
+            yield group,tiled_user
 
 
 class StrangerDists(object):
@@ -64,16 +72,16 @@ class StrangerDists(object):
     def _dists_for_lat(self,lat):
         lat_range = np.radians(np.linspace(-89.95,89.95,1800))
         lng_range = np.radians(np.linspace(.05,179.95,1800))
-        lng_grid,lat_grid = numpy.meshgrid(lng_range, lat_range)
+        lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
         centered_lat = .05 + .1*_tile(lat)
-        lat_ar = lat_np.empty_like(lat_range)
+        lat_ar = np.empty_like(lat_grid)
         lat_ar.fill(math.radians(centered_lat))
-        lng_0 = np.zeros_like(lng_range)
-        return utils.np_haversine(lng_0, lng_range, lat_ar, lat_range)
+        lng_0 = np.zeros_like(lng_grid)
+        return utils.np_haversine(lng_0, lng_grid, lat_ar, lat_grid)
 
     @gob.mapper(all_items=True)
-    def stranger_dists(mloc_tile):
+    def stranger_dists(self, mloc_tile):
         mlocs = [m['mloc'] for m in mloc_tile]
         lat = mlocs[0][1]
         assert all(_tile(m[1])==_tile(lat) for m in mlocs)
@@ -83,10 +91,10 @@ class StrangerDists(object):
             lngs[_tile(mloc[0])]+=1
 
         dists = self._dists_for_lat(lat)
-        for lng_tile, m_count in lngs:
-            for spot, c_count in self.contact_count:
-                c_lat,c_lng = spot
-                dist = dists[abs(lng_tile-c_lng),c_lat]
+        for lng_tile, m_count in lngs.iteritems():
+            for spot, c_count in self.contact_count.iteritems():
+                c_lng,c_lat = spot
+                dist = dists[abs(lng_tile-c_lng),c_lat+900]
                 yield dist,m_count*c_count
 
 

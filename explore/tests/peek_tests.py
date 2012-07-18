@@ -13,6 +13,21 @@ class TestPeek(SimpleGobTest):
         # FIXME: this is stupid boilerplate
         utils.use_mongo('fl_fixture')
 
+    def test_stranger_dists(self):
+        self.FS['mloc_uids.03'] = [3]
+        for contact in xrange(4):
+            self.FS['contact_split.%02d'%contact] = [contact]
+
+        self.gob.run_job('contact_count')
+        self.gob.run_job('mloc_tile')
+        self.gob.run_job('tile_split')
+        self.gob.run_job('stranger_dists')
+        results = self.FS['stranger_dists.300']
+        self.assertEqual(len(results),4)
+        for dist,count in results:
+            self.assertEqual(count,1)
+            self.assertTrue(26<dist<34)
+
     def test_contact_count(self):
         self.FS['contact_split.04'] = [4]
         self.FS['contact_split.05'] = [5,6]

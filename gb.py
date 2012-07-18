@@ -70,8 +70,15 @@ def create_jobs(g):
     g.add_job(graph.graph_edge_types_prot,'edge_dists')
     g.add_job(graph.graph_edge_types_norm,'edge_dists')
 
-    # the predictor
+    # fb predictor
     g.add_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
+    g.add_job(peek.mloc_tile,'mloc_uids',reducer=gob.join_reduce)
+    g.add_job(peek.nebr_dists, 'mloc_tile')
+    g.add_job(peek.tile_split, 'mloc_tile', saver='split_save')
+    g.add_job(peek.StrangerDists.stranger_dists, 'tile_split',
+              requires=['contact_count'])
+
+    # the predictor
     g.add_job(peek.geo_ats)
     g.add_job(prep.edge_d,'training_users')
     g.add_job(prep.nebrs_d,'training_users')
