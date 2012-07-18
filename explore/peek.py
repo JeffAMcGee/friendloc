@@ -32,7 +32,7 @@ def contact_count(uids):
     for group in groups:
         contacts = User.find(User._id.is_in(list(group)), fields=['gnp'])
         for contact in contacts:
-            if contact.geonames_place.mdist<1000:
+            if contact.geonames_place and contact.geonames_place.mdist<1000:
                 lat = _tile(contact.geonames_place.lat)
                 lng = _tile(contact.geonames_place.lng)
                 counts[lng,lat]+=1
