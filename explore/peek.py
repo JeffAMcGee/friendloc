@@ -94,7 +94,8 @@ class StrangerDists(object):
         for lng_tile, m_count in lngs.iteritems():
             for spot, c_count in self.contact_count.iteritems():
                 c_lng,c_lat = spot
-                dist = dists[abs(lng_tile-c_lng),c_lat+900]
+                delta = abs(lng_tile-c_lng)
+                dist = dists[delta if delta<1800 else 3600-delta,c_lat+900]
                 yield dist,m_count*c_count
 
 
