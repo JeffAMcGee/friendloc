@@ -73,7 +73,7 @@ class User(TwitterModel):
     mention_score = IntProperty('ats')
     local_prob = FloatProperty('prob')
     geonames_place = ModelProperty('gnp',GeonamesPlace)
-    median_loc = Property('mloc')
+    median_loc = Property('mloc') # longitude, latitude tuple
     rfriends = ListProperty('rfrds')
     just_friends = ListProperty('jfrds')
     just_followers = ListProperty('jfols')

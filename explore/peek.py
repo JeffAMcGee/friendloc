@@ -19,6 +19,9 @@ from base.utils import coord_in_miles, use_mongo, write_json
 from base import gob, utils
 
 
+def _tile(deg):
+    return int(math.floor(10*deg))
+
 @gob.mapper(all_items=True)
 def contact_count(uids):
     counts = collections.defaultdict(int)
@@ -28,10 +31,63 @@ def contact_count(uids):
         contacts = User.find(User._id.is_in(list(group)), fields=['gnp'])
         for contact in contacts:
             if contact.geonames_place.mdist<1000:
-                lat=int(math.floor(10*contact.geonames_place.lat))
-                lng=int(math.floor(10*contact.geonames_place.lng))
+                lat = _tile(contact.geonames_place.lat)
+                lng = _tile(contact.geonames_place.lng)
                 counts[lng,lat]+=1
     return counts.iteritems()
+
+
+@gob.mapper(all_items=True)
+def mloc_tile(mloc_uids):
+    users = User.find(User._id.is_in(tuple(mloc_uids)),fields=['mloc','nebrs'])
+    for user in users:
+        if not user.neighbors:
+            continue
+        lng,lat = user.median_loc
+        yield _tile(lat),user.to_d()
+
+
+# stick another stupid shuffle and collate step here...
+
+@gob.mapper()
+def nebr_dists(mloc_tile):
+    nebrs = User.find(User._id.is_in(mloc_tile['nebrs']),fields=['gnp'])
+    for nebr in nebrs:
+        yield coord_in_miles(edge_d['mloc'],nebr)
+
+
+class StrangerDists(object):
+    def __init__(self,env):
+        self.env = env
+        self.contact_count = dict(self.env.load('contact_count','mp'))
+
+    def _dists_for_lat(self,lat):
+        lat_range = np.radians(np.linspace(-89.95,89.95,1800))
+        lng_range = np.radians(np.linspace(.05,179.95,1800))
+        lng_grid,lat_grid = numpy.meshgrid(lng_range, lat_range)
+
+        centered_lat = .05 + .1*_tile(lat)
+        lat_ar = lat_np.empty_like(lat_range)
+        lat_ar.fill(math.radians(centered_lat))
+        lng_0 = np.zeros_like(lng_range)
+        return utils.np_haversine(lng_0, lng_range, lat_ar, lat_range)
+
+    @gob.mapper(all_items=True)
+    def stranger_dists(mloc_tile):
+        mlocs = [m['mloc'] for m in mloc_tile]
+        lat = mlocs[0][1]
+        assert all(_tile(m[1])==_tile(lat) for m in mlocs)
+
+        lngs = collections.defaultdict(int)
+        for mloc in mlocs:
+            lngs[_tile(mloc[0])]+=1
+
+        dists = self._dists_for_lat(lat)
+        for lng_tile, m_count in lngs:
+            for spot, c_count in self.contact_count:
+                c_lat,c_lng = spot
+                dist = dists[abs(lng_tile-c_lng),c_lat]
+                yield dist,m_count*c_count
 
 
 @gob.mapper()

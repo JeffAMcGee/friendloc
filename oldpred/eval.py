@@ -4,21 +4,14 @@ from operator import itemgetter
 from settings import settings
 from base.models import *
 from base.utils import *
-
-
-def _haversine(lng1, lng2, lat1, lat2):
-    dlng = lng2 - lng1
-    dlat = lat2 - lat1
-    a = numpy.sin(dlat/2)**2 + numpy.cos(lat1)*numpy.cos(lat2)*numpy.sin(dlng/2)**2
-    c = 2 * numpy.arctan2(numpy.sqrt(a), numpy.sqrt(1-a)) 
-    return 3959 * c
+from base import utils
 
 def _calc_dists(rels):
     lats = [math.radians(r['lat']) for r in rels]
     lngs = [math.radians(r['lng']) for r in rels]
     lat1,lat2 = numpy.meshgrid(lats,lats)
     lng1,lng2 = numpy.meshgrid(lngs,lngs)
-    return _haversine(lng1,lng2,lat1,lat2)
+    return utils.np_haversine(lng1,lng2,lat1,lat2)
 
 
 def eval_block(prefix, block):

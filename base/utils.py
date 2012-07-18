@@ -6,7 +6,7 @@ import math
 import functools
 from collections import defaultdict
 
-import numpy
+import numpy as np
 
 try:
     import simplejson as json
@@ -58,10 +58,10 @@ def read_gis_locs(path=None):
 
 
 def noisy(ray,scale):
-    return ray+numpy.random.normal(0.0,scale,len(ray))
+    return ray+np.random.normal(0.0,scale,len(ray))
 
 def median_2d(spots):
-    return [numpy.median(x) for x in zip(*spots)]
+    return [np.median(x) for x in zip(*spots)]
 
 def triangle_set(strict=True):
     Model.database = connect('houtx_user')
@@ -121,10 +121,10 @@ def _coord_delta(p1,p2):
 def coord_angle(p, p1, p2):
     "find the angle between rays from p to p1 and p2, return None if p in (p1,p2)"
     vs = [_coord_delta(p,x) for x in (p1,p2)]
-    mags = [numpy.linalg.norm(v) for v in vs]
+    mags = [np.linalg.norm(v) for v in vs]
     if any(m==0 for m in mags):
         return math.pi
-    cos = numpy.dot(*vs)/mags[0]/mags[1]
+    cos = np.dot(*vs)/mags[0]/mags[1]
     return math.acos(min(cos,1))*180/math.pi
 
 
@@ -143,6 +143,17 @@ def coord_in_miles(p1, p2):
     dlat = lat2 - lat1
     a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a)) 
+    return 3959 * c
+
+
+def np_haversine(lng1, lng2, lat1, lat2):
+    """
+    takes four numpy arrays and returns an array of the distances.
+    """
+    dlng = lng2 - lng1
+    dlat = lat2 - lat1
+    a = np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlng/2)**2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return 3959 * c
 
 
