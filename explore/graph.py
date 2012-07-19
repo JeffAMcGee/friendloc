@@ -23,7 +23,7 @@ import numpy
 from settings import settings
 import base.gisgraphy as gisgraphy
 #from base.models import *
-#from base.utils import *
+from base.utils import dist_bins
 from base import gob
 
 
@@ -447,10 +447,6 @@ def simplify_tris():
                 com_type = com_types[(iat,youat)],
                 ))
         logging.info("wrote %s",edge_type)
-
-
-def dist_bins(per_decade=10):
-    return numpy.insert(10**numpy.linspace(0,5,1+5*per_decade),0,0)
 
 
 def all_ratio_subplot(ax, edges, key, ated):

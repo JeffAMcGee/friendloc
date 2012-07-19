@@ -77,6 +77,10 @@ def create_jobs(g):
     g.add_job(peek.nebr_dists, 'tile_split')
     g.add_job(peek.StrangerDists.stranger_dists, 'tile_split',
               requires=['contact_count'])
+    g.add_job(peek.strange_nebr_bins, 'stranger_dists',
+              name='strange_bins',reducer=gob.sum_reduce)
+    g.add_job(peek.strange_nebr_bins, 'nebr_dists',
+              name='nebr_bins',reducer=gob.sum_reduce)
 
     # the predictor
     g.add_job(peek.geo_ats)

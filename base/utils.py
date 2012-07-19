@@ -157,6 +157,11 @@ def np_haversine(lng1, lng2, lat1, lat2):
     return 3959 * c
 
 
+def dist_bins(per_decade=10,start_exp=0,end_exp=5):
+    space = numpy.linspace(start_exp,end_exp,1+(end_exp-start_exp)*per_decade)
+    return numpy.insert(10**space,0,0)
+
+
 def read_json(path=None):
     file = open(path) if path else sys.stdin
     return (json.loads(l) for l in file)

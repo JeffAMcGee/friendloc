@@ -106,6 +106,16 @@ class StrangerDists(object):
                 yield dist,m_count*c_count
 
 
+@gob.mapper(all_items=True)
+def strange_nebr_bins(dist_counts):
+    counts = collections.defaultdict(int)
+    bins = utils.dist_bins(120)
+    for dist, count in dist_counts:
+        bin = bisect.bisect(bins,dist)
+        counts[bin]+=count
+    return counts.iteritems()
+
+
 @gob.mapper()
 def contact_blur(nebr_id):
     leafs = {}
