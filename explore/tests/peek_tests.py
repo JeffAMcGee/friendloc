@@ -23,10 +23,23 @@ class TestPeek(SimpleGobTest):
         self.gob.run_job('tile_split')
         self.gob.run_job('stranger_dists')
         results = self.FS['stranger_dists.300']
-        self.assertEqual(len(results),4)
-        for dist,count in results:
-            self.assertEqual(count,1)
-            self.assertTrue(26<dist<34)
+
+        dists_,counts = zip(*results)
+        dists = sorted(int(d) for d in dists_)
+        self.assertEqual(counts,(1,1,1,1))
+        self.assertEqual(dists,[23,24,27,31])
+
+    def test_nebr_dists(self):
+        self.FS['mloc_uids.03'] = [3]
+        self.gob.run_job('mloc_tile')
+        self.gob.run_job('tile_split')
+        self.gob.run_job('nebr_dists')
+        results = self.FS['nebr_dists.300']
+
+        dists_,counts = zip(*results)
+        dists = sorted(int(d) for d in dists_)
+        self.assertEqual(counts,(1,1,1,1))
+        self.assertEqual(dists,[21,24,45,65])
 
     def test_contact_count(self):
         self.FS['contact_split.04'] = [4]

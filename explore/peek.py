@@ -53,9 +53,10 @@ def mloc_tile(mloc_uids):
 def nebr_dists(mloc_tile):
     nebrs = User.find(User._id.is_in(mloc_tile['nebrs']),fields=['gnp'])
     for nebr in nebrs:
+        dist = coord_in_miles(mloc_tile['mloc'], nebr.geonames_place.to_d())
         # add a one at the end to make the output format identical to
         # stranger_dists.
-        yield coord_in_miles(edge_d['mloc'],nebr),1
+        yield dist,1
 
 
 @gob.mapper(all_items=True)

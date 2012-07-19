@@ -73,8 +73,8 @@ def create_jobs(g):
     # fb predictor
     g.add_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
     g.add_job(peek.mloc_tile,'mloc_uids',reducer=gob.join_reduce)
-    g.add_job(peek.nebr_dists, 'mloc_tile')
     g.add_job(peek.tile_split, 'mloc_tile', saver='split_save')
+    g.add_job(peek.nebr_dists, 'tile_split')
     g.add_job(peek.StrangerDists.stranger_dists, 'tile_split',
               requires=['contact_count'])
 
