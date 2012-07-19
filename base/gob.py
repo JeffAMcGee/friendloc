@@ -549,7 +549,9 @@ class FileStorage(Storage):
         pid = os.getpid()
         if not self._job_db or self._job_db_pid!=pid:
             self._job_db_pid = pid
-            self._job_db = sqlite3.connect(os.path.join(self.path,'job.db'))
+            self._job_db = sqlite3.connect(
+                                os.path.join(self.path,'job.db'),
+                                timeout=10)
         cursor = self._job_db.cursor()
         yield cursor
         if commit:
