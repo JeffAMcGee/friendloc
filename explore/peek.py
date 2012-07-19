@@ -1,5 +1,6 @@
 import itertools
 import calendar
+import bisect
 import os
 import sys
 import random
