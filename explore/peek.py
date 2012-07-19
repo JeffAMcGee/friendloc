@@ -71,13 +71,15 @@ class StrangerDists(object):
 
     def _dists_for_lat(self,lat):
         lat_range = np.radians(np.linspace(-89.95,89.95,1800))
-        lng_range = np.radians(np.linspace(.05,179.95,1800))
+        lng_range = np.radians(np.linspace(.05,180.05,1801))
         lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
         centered_lat = .05 + .1*_tile(lat)
         lat_ar = np.empty_like(lat_grid)
         lat_ar.fill(math.radians(centered_lat))
-        lng_0 = np.zeros_like(lng_grid)
+        lng_0 = np.empty_like(lat_grid)
+        lng_0.fill(math.radians(.05))
+
         return utils.np_haversine(lng_0, lng_grid, lat_ar, lat_grid)
 
     @gob.mapper(all_items=True)
@@ -94,6 +96,8 @@ class StrangerDists(object):
         for lng_tile, m_count in lngs.iteritems():
             for spot, c_count in self.contact_count.iteritems():
                 c_lng,c_lat = spot
+                if not ( -1800<=c_lng<1800 and -900<=c_lat<900):
+                    continue
                 delta = abs(lng_tile-c_lng)
                 dist = dists[delta if delta<1800 else 3600-delta,c_lat+900]
                 yield dist,m_count*c_count
