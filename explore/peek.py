@@ -14,6 +14,7 @@ from operator import itemgetter
 from multiprocessing import Pool
 
 import numpy as np
+from scipy import stats, optimize
 
 from settings import settings
 #from base.gisgraphy import GisgraphyResource
@@ -115,6 +116,39 @@ def strange_nebr_bins(dist_counts):
         bin = bisect.bisect(bins,dist)
         counts[bin]+=count
     return counts.iteritems()
+
+
+class ContactFit(object):
+    def __init__(self,env):
+        self.env = env
+
+    def _counts(self, tups):
+        # take tuples from nebr_bins or strange_bins and return np array of
+        # counts
+        bin_d = dict(tups)
+        counts = [bin_d.get(b,0) for b in xrange(2,482)]
+        return np.array(counts)
+
+    @gob.mapper()
+    def contact_fit(self):
+        nebrs = self._counts(self.env.load('nebr_bins'))
+        stgrs = self._counts(self.env.load('strange_bins'))
+
+        # find the geometric mean of the non-zero bins
+        bins = utils.dist_bins(120)
+        miles = np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+
+        # estimate the number of strangers at a distance from data >10 miles
+        sol = stats.linregress(np.log10(miles[120:]), np.log10(stgrs[120:]))
+        fit_stgrs = 10**(sol[0]*(np.log10(miles))+sol[1])
+        ratios = nebrs/fit_stgrs
+
+        # fit the porportion of strangers who are contacts to a curve.
+        def curve(lm, a, b):
+            return a/(lm+b)
+        popt,pcov = optimize.curve_fit(curve,miles,ratios,(.01,3))
+        print popt
+        yield tuple(popt)
 
 
 @gob.mapper()
