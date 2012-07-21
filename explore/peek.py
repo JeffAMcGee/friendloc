@@ -75,8 +75,8 @@ class StrangerDists(object):
         self.contact_count = dict(self.env.load('contact_count','mp'))
 
     def _dists_for_lat(self,lat):
-        lat_range = np.radians(np.linspace(-89.95,89.95,1800))
-        lng_range = np.radians(np.linspace(.05,180.05,1801))
+        lat_range = np.linspace(-89.95,89.95,1800)
+        lng_range = np.linspace(.05,180.05,1801)
         lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
         centered_lat = .05 + .1*_tile(lat)

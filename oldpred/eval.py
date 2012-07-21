@@ -7,8 +7,8 @@ from base.utils import *
 from base import utils
 
 def _calc_dists(rels):
-    lats = [math.radians(r['lat']) for r in rels]
-    lngs = [math.radians(r['lng']) for r in rels]
+    lats = [r['lat'] for r in rels]
+    lngs = [r['lng'] for r in rels]
     lat1,lat2 = numpy.meshgrid(lats,lats)
     lng1,lng2 = numpy.meshgrid(lngs,lngs)
     return utils.np_haversine(lng1,lng2,lat1,lat2)

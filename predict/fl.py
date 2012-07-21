@@ -54,7 +54,12 @@ def nebr_clf(vects):
     yield clf
 
 
-class Predictor():
+def contact_prob(miles):
+    # these numbers were determined by contact_fit
+    return .008/(miles+2.094)
+
+
+class Predictor(object):
     def predict(self,nebrs_d):
         "return the index of a neighbor or (eventually) a coordinate"
         raise NotImplementedError
