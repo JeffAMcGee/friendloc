@@ -2,9 +2,11 @@ import json
 import time
 import logging
 from datetime import datetime
+import httplib
 
 from oauth_hook import OAuthHook
 import requests
+import requests.models
 
 from settings import settings
 from models import Edges, User, Tweet
@@ -33,7 +35,9 @@ class TwitterResource(object):
         self.session = requests.session(
                         hooks={'pre_request': oauth_hook},
                         timeout=60,
-                        config=dict(max_retries=2,safe_mode=True),
+                        # FIXME: this is temporary - we only want
+                        # keep_alive=False for lookup_leafs
+                        config=dict(max_retries=2,safe_mode=True,keep_alive=False),
                         prefetch=True,
                         )
         self.remaining = 10000
@@ -47,8 +51,14 @@ class TwitterResource(object):
         """
         for delay in self.backoff_seconds:
             url = "http://api.twitter.com/1/%s.json"%path
-            resp = requests.get(url, params=kwargs, session=self.session)
-            self._parse_ratelimit(resp)
+            try:
+                resp = requests.get(url, params=kwargs, session=self.session)
+            except httplib.IncompleteRead:
+                resp = requests.models.Response()
+                resp.status_code = 0
+                resp.error = 'IncompleteRead'
+            else:
+                self._parse_ratelimit(resp)
 
             if resp.status_code == 200:
                 try:
