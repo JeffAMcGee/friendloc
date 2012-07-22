@@ -54,11 +54,6 @@ def nebr_clf(vects):
     yield clf
 
 
-def contact_prob(miles):
-    # these numbers were determined by contact_fit
-    return .008/(miles+2.094)
-
-
 class Predictor(object):
     def predict(self,nebrs_d):
         "return the index of a neighbor or (eventually) a coordinate"
@@ -67,23 +62,43 @@ class Predictor(object):
 
 class Omni(Predictor):
     def predict(self,nebrs_d):
-        values = (v[-1] for v in nebrs_d['vects'])
-        index, dist = min(enumerate(values), key=operator.itemgetter(1))
-        return index
+        values = [v[-1] for v in nebrs_d['vects']]
+        return values.index(min(values))
 
 
 class Nearest(Predictor):
     def predict(self,nebrs_d):
-        dists = nebrs_d['pred_dists']
-        index, dist = min(enumerate(dists), key=operator.itemgetter(1))
-        return index
+        return np.argmin(nebrs_d['pred_dists'])
 
 
 class FacebookMLE(Predictor):
     def predict(self,nebrs_d):
         probs = np.sum(np.log10(nebrs_d['contact_prob']),axis=0)
-        index, prob = max(enumerate(probs), key=operator.itemgetter(1))
-        return index
+        return np.argmax(probs)
+
+
+class NearestMLE(Predictor):
+    def __init__(self,count):
+        self.count = count
+
+    def predict(self,nebrs_d):
+        dists = sorted(
+                    enumerate(nebrs_d['pred_dists']),
+                    key=operator.itemgetter(1)
+                    )
+        best = [d[0] for d in dists[:self.count]]
+        probs_ =    (
+                    nebrs_d['contact_prob'][x][y]
+                    for x in xrange(len(dists))
+                    for y in xrange(len(dists))
+                    if x in best and y in best
+                    )
+        probs = np.fromiter(probs_,float)
+        probs.shape = len(best),len(best)
+
+        sums = np.sum(np.log10(probs),axis=0)
+        index, prob = max(enumerate(sums), key=operator.itemgetter(1))
+        return best[index]
 
 
 def _calc_dists(nebrs):
@@ -100,6 +115,8 @@ class Predictors(object):
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
+            nearest_3=NearestMLE(3),
+            nearest_5=NearestMLE(5),
             backstrom=FacebookMLE(),
         )
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
@@ -110,7 +127,7 @@ class Predictors(object):
         X, y = _transformed(nebrs_d['vects'])
         nebrs_d['pred_dists'] = self.nebr_clf.predict(X)
         nebrs_d['dist_mat'] = _calc_dists(nebrs_d['nebrs'])
-        nebrs_d['contact_prob'] = contact_prob(nebrs_d['dist_mat'])
+        nebrs_d['contact_prob'] = utils.contact_prob(nebrs_d['dist_mat'])
 
     @gob.mapper(all_items=True)
     def predictions(self, nebrs_ds):

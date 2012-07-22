@@ -164,6 +164,11 @@ def dist_bins(per_decade=10,start_exp=0,end_exp=5):
     return np.insert(10**space,0,0)
 
 
+def contact_prob(miles):
+    # these numbers were determined by contact_fit
+    return .008/(miles+2.094)
+
+
 def read_json(path=None):
     file = open(path) if path else sys.stdin
     return (json.loads(l) for l in file)
