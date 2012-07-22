@@ -6,7 +6,7 @@ from collections import defaultdict
 from sklearn import preprocessing, tree, cross_validation
 import numpy as np
 
-from base import gob
+from base import gob, utils
 from base.utils import coord_in_miles
 
 
@@ -73,31 +73,43 @@ class Omni(Predictor):
 
 
 class Nearest(Predictor):
-    def __init__(self,env):
-        self.env = env
-        self.clf = next(env.load('nebr_clf','pkl'))
-
     def predict(self,nebrs_d):
         X, y = _transformed(nebrs_d['vects'])
         dists = self.clf.predict(X)
         index, dist = min(enumerate(dists), key=operator.itemgetter(1))
         return index
+
 
 class FacebookMLE(Predictor):
-
     def predict(self,nebrs_d):
-        X, y = _transformed(nebrs_d['vects'])
-        dists = self.clf.predict(X)
+        dists = nebrs_d['pred_dists']
         index, dist = min(enumerate(dists), key=operator.itemgetter(1))
         return index
+
+
+def _calc_dists(rels):
+    lats = [r['lat'] for r in rels]
+    lngs = [r['lng'] for r in rels]
+    lat1,lat2 = np.meshgrid(lats,lats)
+    lng1,lng2 = np.meshgrid(lngs,lngs)
+    return utils.np_haversine(lng1,lng2,lat1,lat2)
+
 
 class Predictors(object):
     def __init__(self,env):
         self.env = env
         self.classifiers = dict(
             omni=Omni(),
-            nearest=Nearest(env),
+            nearest=Nearest(),
         )
+        self.nebr_clf = next(env.load('nebr_clf','pkl'))
+
+    def prep(self,nebrs_d):
+        # add fields to nebrs_d
+        nebrs_d['vects'] = list(nebr_vect(nebrs_d))
+        X, y = _transformed(nebrs_d['vects'])
+        nebrs_d['pred_dists'] = self.clf.predict(X)
+        nebrs_d['dist_mat'] = _calc_dists(nebrs_d)
 
     @gob.mapper(all_items=True)
     def predictions(self, nebrs_ds):
@@ -106,7 +118,7 @@ class Predictors(object):
         for nebrs_d in nebrs_ds:
             if not nebrs_d['nebrs']:
                 continue
-            nebrs_d['vects'] = list(nebr_vect(nebrs_d))
+            self.prep(nebrs_d)
             for key,classifier in self.classifiers.iteritems():
                 index = classifier.predict(nebrs_d)
                 dist = nebrs_d['vects'][index][-1]

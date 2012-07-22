@@ -81,9 +81,9 @@ class StrangerDists(object):
 
         centered_lat = .05 + .1*_tile(lat)
         lat_ar = np.empty_like(lat_grid)
-        lat_ar.fill(math.radians(centered_lat))
+        lat_ar.fill(centered_lat)
         lng_0 = np.empty_like(lat_grid)
-        lng_0.fill(math.radians(.05))
+        lng_0.fill(.05)
 
         return utils.np_haversine(lng_0, lng_grid, lat_ar, lat_grid)
 

@@ -151,9 +151,10 @@ def np_haversine(lng1, lng2, lat1, lat2):
     takes four numpy arrays in degrees and returns an array of the distances
     in miles.
     """
-    dlng = np.radians(lng2 - lng1)
-    dlat = np.radians(lat2 - lat1)
-    a = np.sin(dlat/2)**2 + np.cos(lat1)*np.cos(lat2)*np.sin(dlng/2)**2
+    lat1r, lat2r = np.radians(lat1), np.radians(lat2)
+    lng1r, lng2r = np.radians(lng1), np.radians(lng2)
+    dlng, dlat = (lng2r - lng1r), (lat2r - lat1r)
+    a = np.sin(dlat/2)**2 + np.cos(lat1r)*np.cos(lat2r)*np.sin(dlng/2)**2
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return 3959 * c
 
