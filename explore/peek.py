@@ -62,6 +62,7 @@ class StrangerDists(object):
     def __init__(self,env):
         self.env = env
         self.contact_count = dict(self.env.load('contact_count','mp'))
+        self.contact_mat = None
 
     def _dists_for_lat(self,lat):
         lat_range = np.linspace(-89.95,89.95,1800)
@@ -95,6 +96,38 @@ class StrangerDists(object):
                 delta = abs(lng_tile-c_lng)
                 dist = dists[delta if delta<1800 else 3600-delta,c_lat+900]
                 yield dist,m_count*c_count
+
+    def _contact_mat(self):
+        if self.contact_mat:
+            return self.contact_mat
+        mat = np.zeros((3600,1800))
+        for spot, c_count in self.contact_count.iteritems():
+            (lng_tile,lat_tile) = spot
+            mat[lng_tile+1800,lat_tile+900] = c_count
+        self.contact_mat = mat
+        return mat
+
+    @gob.mapper()
+    def stranger_prob(self,lat_tile):
+        lat_range = np.linspace(-89.95,89.95,1800)
+        lng_range = np.linspace(.05,360.05,3600)
+        lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
+
+        dists = utils.np_haversine(.05, lng_grid, .1*lat_tile+.05, lat_grid)
+        contact_mat = self._contact_mat()
+        dists[0,lat_tile+900] = 4
+
+        for lng_tile in xrange(-1800,1800):
+            probs = np.log10(1-utils.contact_prob(dists))
+            prob = np.sum(contact_mat*probs)
+            yield lng_tile,lat_tile,prob
+            np.roll(dists,1,1)
+
+
+@gob.mapper()
+def lat_tile():
+    for tile in xrange(-900,900):
+        yield abs(tile)//10,tile
 
 
 @gob.mapper(all_items=True)
