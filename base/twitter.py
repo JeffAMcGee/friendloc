@@ -37,7 +37,8 @@ class TwitterResource(object):
                         timeout=60,
                         # FIXME: this is temporary - we only want
                         # keep_alive=False for lookup_leafs
-                        config=dict(max_retries=2,safe_mode=True,keep_alive=False),
+                        #config=dict(max_retries=2,safe_mode=True,keep_alive=False),
+                        config=dict(max_retries=2,safe_mode=True),
                         prefetch=True,
                         )
         self.remaining = 10000
