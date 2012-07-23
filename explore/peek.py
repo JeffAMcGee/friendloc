@@ -103,7 +103,8 @@ class StrangerDists(object):
         mat = np.zeros((3600,1800))
         for spot, c_count in self.contact_count.iteritems():
             (lng_tile,lat_tile) = spot
-            mat[lng_tile+1800,lat_tile+900] = c_count
+            if -900<=lat_tile<900:
+                mat[(lng_tile+1800)%3600,lat_tile+900]+= c_count
         self.contact_mat = mat
         return mat
 
