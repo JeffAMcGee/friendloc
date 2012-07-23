@@ -98,7 +98,7 @@ class StrangerDists(object):
                 yield dist,m_count*c_count
 
     def _contact_mat(self):
-        if self.contact_mat:
+        if self.contact_mat is not None:
             return self.contact_mat
         mat = np.zeros((3600,1800))
         for spot, c_count in self.contact_count.iteritems():
@@ -110,18 +110,18 @@ class StrangerDists(object):
     @gob.mapper()
     def stranger_prob(self,lat_tile):
         lat_range = np.linspace(-89.95,89.95,1800)
-        lng_range = np.linspace(.05,360.05,3600)
+        lng_range = np.linspace(.05,359.95,3600)
         lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
         dists = utils.np_haversine(.05, lng_grid, .1*lat_tile+.05, lat_grid)
         contact_mat = self._contact_mat()
-        dists[0,lat_tile+900] = 4
+        dists[0,lat_tile+900] = 2
 
         for lng_tile in xrange(-1800,1800):
-            probs = np.log10(1-utils.contact_prob(dists))
+            probs = np.log(1-utils.contact_prob(dists))
             prob = np.sum(contact_mat*probs)
-            yield lng_tile,lat_tile,prob
-            np.roll(dists,1,1)
+            yield (lng_tile,lat_tile),prob
+            dists = np.roll(dists,1,0)
 
 
 @gob.mapper()

@@ -1,5 +1,4 @@
-from maroon import Model
-
+import math
 import mock
 
 from explore import peek
@@ -12,6 +11,24 @@ class TestPeek(SimpleGobTest):
         super(TestPeek,self).setUp()
         # FIXME: this is stupid boilerplate
         utils.use_mongo('fl_fixture')
+
+    def _assert_stranger_prob(self,iter,expected_spot,expected_dist):
+        spot,prob = next(iter)
+        self.assertEqual(spot,expected_spot)
+        dist = 1/(1-math.e**prob)
+        self.assertAlmostEqual(dist,expected_dist,places=2)
+
+    def test_stranger_probs(self):
+        self.FS['contact_count'] = [
+            ((-1799,600),1),
+            ]
+        stranger = peek.StrangerDists(self.env)
+        with mock.patch.object(utils,'contact_prob',lambda m:1.0/m):
+            row = stranger.stranger_prob(600)
+            self._assert_stranger_prob(row,(-1800,600),3.45)
+            self._assert_stranger_prob(row,(-1799,600),2)
+            above = stranger.stranger_prob(610)
+            self._assert_stranger_prob(above,(-1800,610),69.18)
 
     def test_stranger_dists(self):
         self.FS['mloc_uids.03'] = [3]
