@@ -137,7 +137,7 @@ class EdgeFinder(Sprawler):
 def mloc_uids(user_ds):
     retrieved = [u['id'] for u in itertools.islice(user_ds,2600)]
     users = User.find(User._id.is_in(retrieved))
-    good_ = { u._id for u in users if any(getattr(u,k) for k in NEBR_KEYS)}
+    good_ = set( u._id for u in users if any(getattr(u,k) for k in NEBR_KEYS))
     good = [uid for uid in retrieved if uid in good_]
     logging.info("found %d of %d",len(good),len(retrieved))
     # throw away accounts that didn't work to get down to the 2500 good users

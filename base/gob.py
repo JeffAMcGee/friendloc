@@ -98,7 +98,7 @@ def _call_opt_kwargs(func,*args,**kwargs):
     spec = inspect.getargspec(func)
     if spec.keywords:
         return func(*args,**kwargs)
-    safe_kws = {k:v for k,v in kwargs.iteritems() if k in spec.args}
+    safe_kws = dict((k,v) for k,v in kwargs.iteritems() if k in spec.args)
     return func(*args,**safe_kws)
 
 
