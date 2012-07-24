@@ -97,7 +97,8 @@ def create_jobs(g):
     g.add_job(fl.nebr_clf,'nebr_fit',encoding='pkl')
     g.add_job(fl.Predictors.predictions,'nebrs_pred')
     g.add_job(graph.gr_preds,'predictions')
-
+    g.add_job(peek.ContactFit.vect_fit, 'nebr_fit',
+              requires=['strange_bins','nebr_clf'] )
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

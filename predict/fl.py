@@ -33,7 +33,7 @@ def nebr_vect(user):
         yield flags + logged + others
 
 
-def _transformed(vects):
+def vects_as_mat(vects):
     # convert vects to a scaled numpy array
     vects_ = np.fromiter( chain.from_iterable(vects), np.float32 )
     vects_.shape = (len(vects_)//10),10
@@ -48,7 +48,7 @@ def _transformed(vects):
 
 @gob.mapper(all_items=True)
 def nebr_clf(vects):
-    X, y = _transformed(vects)
+    X, y = vects_as_mat(vects)
     clf = tree.DecisionTreeRegressor(max_depth=8)
     clf.fit(X,y)
     yield clf
@@ -124,7 +124,7 @@ class Predictors(object):
     def prep(self,nebrs_d):
         # add fields to nebrs_d
         nebrs_d['vects'] = list(nebr_vect(nebrs_d))
-        X, y = _transformed(nebrs_d['vects'])
+        X, y = vects_as_mat(nebrs_d['vects'])
         nebrs_d['pred_dists'] = self.nebr_clf.predict(X)
         nebrs_d['dist_mat'] = _calc_dists(nebrs_d['nebrs'])
         nebrs_d['contact_prob'] = utils.contact_prob(nebrs_d['dist_mat'])
