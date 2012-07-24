@@ -1,6 +1,7 @@
 import math
 from itertools import chain
 import operator
+import bisect
 from collections import defaultdict
 
 from sklearn import preprocessing, tree, cross_validation
@@ -8,6 +9,7 @@ import numpy as np
 
 from base import gob, utils
 from base.utils import coord_in_miles
+import explore.peek
 
 
 def logify(x,fudge=1):
@@ -73,7 +75,7 @@ class Nearest(Predictor):
 
 class FacebookMLE(Predictor):
     def predict(self,nebrs_d):
-        probs = np.sum(np.log10(nebrs_d['contact_prob']),axis=0)
+        probs = np.sum(np.log(nebrs_d['contact_prob']),axis=0)
         return np.argmax(probs)
 
 
@@ -101,6 +103,21 @@ class NearestMLE(Predictor):
         return best[index]
 
 
+class FriendLoc(Predictor):
+    def __init__(self,env):
+        self.env = env
+
+    def predict(self,nebrs_d):
+        cutoffs,curves = zip(*tuple(self.env.load('vect_fit')))
+        mat = nebrs_d['dist_mat']
+        probs = np.empty_like(mat)
+        for index,pred in enumerate(nebrs_d['pred_dists']):
+            curve = curves[bisect.bisect(cutoffs,pred)-1]
+            probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
+        total_probs = np.sum(np.log(probs),axis=0)
+        return np.argmax(total_probs)
+
+
 def _calc_dists(nebrs):
     lats = [r['lat'] for r in nebrs]
     lngs = [r['lng'] for r in nebrs]
@@ -108,16 +125,16 @@ def _calc_dists(nebrs):
     lng1,lng2 = np.meshgrid(lngs,lngs)
     return utils.np_haversine(lng1,lng2,lat1,lat2)
 
-
 class Predictors(object):
     def __init__(self,env):
         self.env = env
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
-            nearest_3=NearestMLE(3),
+            #nearest_3=NearestMLE(3),
             nearest_5=NearestMLE(5),
             backstrom=FacebookMLE(),
+            friendloc=FriendLoc(env),
         )
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
