@@ -5,7 +5,9 @@ Friendly Location:<br/>Location Estimation on Twitter
 The Problem
 -----------
 * Localized content and services are growing.
-* Social network users may provide location information, but it may not be high-quality. It might even by nonsense.
+* Social network users may provide location information, but it may not be
+  high-quality. It might even by nonsense.
+* Third party apps may not have access to IP-based geolocation.
 * A small percent provides precise location information in geolocated tweets.
 
 ---
@@ -30,19 +32,18 @@ Greater Houston Area
 ---
 Greater Houston Area Results
 ----------------------------
-![twitter users in Texas](texas.jpg)
+![edge types in Houston](hou_edges.png)
 
 ---
 Greater Houston Area Results
 ----------------------------
-![edge types in Houston](hou_edges.png)
+![twitter users in Texas](texas.jpg)
 
 ---
 Greater Houston Area Problems
 ------------------------------
-* BFS starting from seed users
-* Not enough geolocated users to evaluate
 * Biased sample - we already know the location
+* Not enough geolocated users to evaluate
 * Social triangles correlated with follower count
 
 ---
@@ -73,9 +74,8 @@ The USA - Social Triangles
 The USA Problems
 ----------------
 * I wanted to go one step further out on the social graph
-* US Geography is unique
-* bimodal distribution doesn't exist
-* predictor was convoluted
+* US Geography is unique - the bimodal distribution doesn't exist
+* I made a predictor, but it was convoluted
 
 ---
 The World
@@ -119,7 +119,7 @@ Location Prediction With Maximum Likelihood Estimation
 ------------------------------------------------------
 
 <br />
-We can calculate the probablility of frindship as a function of distance:
+We can calculate the probability of friendship as a function of distance:
 ![formula for probability](prob.png)
 
 These probabilities can be combined using maximum likelihood estimation:
