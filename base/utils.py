@@ -138,11 +138,11 @@ def coord_in_miles(p1, p2):
             (p['lng'],p['lat']) if isinstance(p, dict) else p
             for p in (p1,p2))
     lon1, lat1, lon2, lat2 = map(math.radians, points)
-    # haversine formula 
+    # haversine formula
     dlon = lon2 - lon1
     dlat = lat2 - lat1
     a = math.sin(dlat/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin(dlon/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a)) 
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return 3959 * c
 
 
@@ -154,7 +154,10 @@ def np_haversine(lng1, lng2, lat1, lat2):
     lat1r, lat2r = np.radians(lat1), np.radians(lat2)
     lng1r, lng2r = np.radians(lng1), np.radians(lng2)
     dlng, dlat = (lng2r - lng1r), (lat2r - lat1r)
-    a = np.sin(dlat/2)**2 + np.cos(lat1r)*np.cos(lat2r)*np.sin(dlng/2)**2
+    a_ = np.sin(dlat/2)**2 + np.cos(lat1r)*np.cos(lat2r)*np.sin(dlng/2)**2
+    # rounding errors can cause values in a_ to be slightly larger than 1.0,
+    # this causes the sqrt to return NaN.
+    a = np.minimum(1,a_)
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1-a))
     return 3959 * c
 

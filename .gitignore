@@ -25,3 +25,4 @@ gobstop.*
 settings_dev.py
 settings_prod.py
 settings_local.py
+slides/presentation.html

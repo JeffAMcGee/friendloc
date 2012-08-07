@@ -1,6 +1,7 @@
 import bisect
 import math
 import logging
+import operator
 import collections
 
 import numpy as np
@@ -10,6 +11,7 @@ from scipy import stats, optimize
 from base.models import User, Tweets
 from base.utils import coord_in_miles
 from base import gob, utils
+from predict import fl
 
 
 def _tile(deg):
@@ -125,6 +127,14 @@ class StrangerDists(object):
             dists = np.roll(dists,1,0)
 
 
+@gob.mapper(all_items=True)
+def stranger_mat(spots):
+    mat = np.zeros((3600,1800))
+    for lng_lat,val in spots:
+        mat[lng_lat[0]+1800,lng_lat[1]+900] = val
+    yield mat
+
+
 @gob.mapper()
 def lat_tile():
     for tile in xrange(-900,900):
@@ -141,6 +151,10 @@ def strange_nebr_bins(dist_counts):
     return counts.iteritems()
 
 
+def contact_curve(lm, a, b, c):
+    return a*np.power(lm+b,c)
+
+
 class ContactFit(object):
     def __init__(self,env):
         self.env = env
@@ -152,18 +166,25 @@ class ContactFit(object):
         counts = [bin_d.get(b,0) for b in xrange(2,482)]
         return np.array(counts)
 
+    def _bins(self):
+        return utils.dist_bins(120)
+
+    def _miles(self):
+        bins = self._bins()
+        # find the geometric mean of the non-zero bins
+        return np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+
+    def _fit_stgrs(self, miles):
+        # estimate the number of strangers at a distance from data >10 miles
+        stgrs = self._counts(self.env.load('strange_bins'))
+        sol = stats.linregress(np.log10(miles[120:]), np.log10(stgrs[120:]))
+        return 10**(sol[0]*(np.log10(miles))+sol[1])
+
     @gob.mapper()
     def contact_fit(self):
         nebrs = self._counts(self.env.load('nebr_bins'))
-        stgrs = self._counts(self.env.load('strange_bins'))
-
-        # find the geometric mean of the non-zero bins
-        bins = utils.dist_bins(120)
-        miles = np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
-
-        # estimate the number of strangers at a distance from data >10 miles
-        sol = stats.linregress(np.log10(miles[120:]), np.log10(stgrs[120:]))
-        fit_stgrs = 10**(sol[0]*(np.log10(miles))+sol[1])
+        miles = self._miles()
+        fit_stgrs = self._fit_stgrs(miles)
         ratios = nebrs/fit_stgrs
 
         # fit the porportion of strangers who are contacts to a curve.
@@ -172,6 +193,46 @@ class ContactFit(object):
         popt,pcov = optimize.curve_fit(curve,miles,ratios,(.01,3))
         print popt
         yield tuple(popt)
+
+    @gob.mapper(all_items=True)
+    def vect_fit(self,vects):
+        CHUNKS = 10
+        bins = self._bins()
+        miles = self._miles()
+        fit_stgrs_ = self._fit_stgrs(miles)
+        # FIXME: strange_bins was created from the whole dataset, but vects is
+        # only currently based on 5 of the 100 files. This is fragile.
+        fit_stgrs = .05*fit_stgrs_
+
+        #load and classify the vects
+        X, y = fl.vects_as_mat(vects)
+        nebr_clf = next(self.env.load('nebr_clf','pkl'))
+        preds = nebr_clf.predict(X)
+
+        # sort (predicted, actual) tuples by predicted value
+        tups = zip(preds,y)
+        tups.sort(key=operator.itemgetter(0))
+
+        # unlogify the data from vects and break into chunks
+        dists = np.power(2,[tup[1] for tup in tups])-.01
+        splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
+
+        cutoff = 0
+        for index,chunk in enumerate(np.split(dists,splits)):
+            hist,b = np.histogram(chunk,bins)
+            ratio = hist[1:481]/fit_stgrs
+
+            popt,pcov = optimize.curve_fit(
+                            contact_curve,
+                            miles,
+                            ratio,
+                            (.001,2,-1),
+                            1/miles,
+                            ftol=.000001,
+                            )
+            print (cutoff,tuple(popt))
+            yield (cutoff,tuple(popt))
+            cutoff = tups[len(tups)*index//CHUNKS][0]
 
 
 @gob.mapper()

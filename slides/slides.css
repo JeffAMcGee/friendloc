@@ -1,0 +1,20 @@
+body {
+  font-size: 21px;
+}
+
+div.slide p {
+  font-size: 30px;
+}
+
+pre {
+  font-size: 24px;
+}
+
+li {
+  font-size: 30px;
+}
+
+img {
+  max-width: 100%;
+  max-height: 80%;
+}

@@ -18,6 +18,11 @@ import functools
 
 import msgpack
 
+try:
+    import numpy
+except ImportError:
+    pass
+
 
 class StatefulIter(object):
     "wrap an iterator and keep the most recent value in self.current"
@@ -491,9 +496,13 @@ class FileStorage(Storage):
 
     def save(self, name, items, encoding='mp'):
         with self._open(name,encoding,'wb') as f:
-            encoder,ending = self._encoder_ending(encoding)
-            for item in items:
-                print(encoder(item),end=ending,file=f)
+            if encoding=='npz':
+                # this obviously fails if numpy is missing
+                numpy.savez(f,*list(items))
+            else:
+                encoder,ending = self._encoder_ending(encoding)
+                for item in items:
+                    print(encoder(item),end=ending,file=f)
 
     def load(self, name, encoding='mp'):
         # Can we just return the iterator or is close a problem?
@@ -504,6 +513,11 @@ class FileStorage(Storage):
             elif encoding =='json':
                 for line in f:
                     yield json.loads(line)
+            elif encoding =='npz':
+                # this obviously fails if numpy is missing
+                npzfile = numpy.load(f)
+                for key,item in npzfile.iteritems():
+                    yield item
             elif encoding =='pkl':
                 uper = pickle.Unpickler(f)
                 try:
