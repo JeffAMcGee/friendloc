@@ -86,6 +86,8 @@ def create_jobs(g):
     g.add_job(peek.lat_tile, saver='split_save')
     g.add_job(peek.StrangerDists.stranger_prob, 'lat_tile',
               requires=['contact_count'])
+    g.add_cat('stranger_prob_cat','stranger_prob')
+    g.add_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
 
     # the predictor
     g.add_job(peek.geo_ats)

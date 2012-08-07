@@ -127,6 +127,14 @@ class StrangerDists(object):
             dists = np.roll(dists,1,0)
 
 
+@gob.mapper(all_items=True)
+def stranger_mat(spots):
+    mat = np.zeros((3600,1800))
+    for lng_lat,val in spots:
+        mat[lng_lat[0]+1800,lng_lat[1]+900] = val
+    yield mat
+
+
 @gob.mapper()
 def lat_tile():
     for tile in xrange(-900,900):
