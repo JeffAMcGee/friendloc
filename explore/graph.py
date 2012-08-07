@@ -282,6 +282,8 @@ CONTACT_GROUPS = dict(
 @gob.mapper(all_items=True)
 def gr_preds(preds):
     data = dict(preds)
+    for key,vals in data.iteritems():
+        print key,sum(1 for v in vals if v<25)
 
     ugly_graph_hist(data,
             "gr_preds.png",

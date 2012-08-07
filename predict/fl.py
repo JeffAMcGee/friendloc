@@ -67,7 +67,6 @@ class Omni(Predictor):
         values = [v[-1] for v in nebrs_d['vects']]
         return values.index(min(values))
 
-
 class Nearest(Predictor):
     def predict(self,nebrs_d):
         return np.argmin(nebrs_d['pred_dists'])
@@ -76,7 +75,7 @@ class Nearest(Predictor):
 class FacebookMLE(Predictor):
     def predict(self,nebrs_d):
         probs = np.sum(np.log(nebrs_d['contact_prob']),axis=0)
-        return np.argmax(probs)
+        return np.argmax(probs+nebrs_d['strange_prob'])
 
 
 class NearestMLE(Predictor):
@@ -115,7 +114,7 @@ class FriendLoc(Predictor):
             curve = curves[bisect.bisect(cutoffs,pred)-1]
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
         total_probs = np.sum(np.log(probs),axis=0)
-        return np.argmax(total_probs)
+        return np.argmax(total_probs+nebrs_d['strange_prob'])
 
 
 def _calc_dists(nebrs):
@@ -131,12 +130,21 @@ class Predictors(object):
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
-            #nearest_3=NearestMLE(3),
             nearest_5=NearestMLE(5),
             backstrom=FacebookMLE(),
             friendloc=FriendLoc(env),
         )
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
+
+    def _stranger_mat(self):
+        mat = next(self.env.load('stranger_mat','npz'))
+        # make nans go away
+        for lat in range(1800):
+            if np.isnan(mat[:,lat][0]):
+                mat[:,lat] = mat[:,lat-1]
+        # strangers is based on contacts, but prediction is based on nebrs, so
+        # we scale down the values in stranger_mat
+        return np.maximum(-50,mat)*.25
 
     def prep(self,nebrs_d):
         # add fields to nebrs_d
@@ -146,9 +154,18 @@ class Predictors(object):
         nebrs_d['dist_mat'] = _calc_dists(nebrs_d['nebrs'])
         nebrs_d['contact_prob'] = utils.contact_prob(nebrs_d['dist_mat'])
 
+        probs = []
+        for nebr in nebrs_d['nebrs']:
+            lng_t = explore.peek._tile(nebr['lng'])
+            lat_t_ = explore.peek._tile(nebr['lat'])
+            lat_t = max(-900,min(lat_t_,899))
+            probs.append(self.stranger_mat[(lng_t+1800)%3600,lat_t+900])
+        nebrs_d['strange_prob'] = np.array(probs)
+
     @gob.mapper(all_items=True)
     def predictions(self, nebrs_ds):
         results = defaultdict(list)
+        self.stranger_mat = self._stranger_mat()
 
         for nebrs_d in nebrs_ds:
             if not nebrs_d['nebrs']:
