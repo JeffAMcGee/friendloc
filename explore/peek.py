@@ -131,8 +131,8 @@ class StrangerDists(object):
 def stranger_mat(spots):
     mat = np.zeros((3600,1800),np.float32)
     for lng_lat,val in spots:
-        #if not np.isnan(val):
-        mat[lng_lat[0]+1800,lng_lat[1]+900] = val
+        if not np.isnan(val):
+            mat[lng_lat[0]+1800,lng_lat[1]+900] = val
     yield mat
 
 
