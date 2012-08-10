@@ -3,6 +3,7 @@ import math
 import logging
 import operator
 import collections
+from itertools import chain
 
 import numpy as np
 from scipy import stats, optimize
@@ -17,19 +18,31 @@ from predict import fl
 def _tile(deg):
     return int(math.floor(10*deg))
 
+
+def _paged_users(uids, **find_kwargs):
+    # save some round trips by asking for 100 at a time
+    groups = utils.grouper(100, uids, dontfill=True)
+    return chain.from_iterable(
+        User.find(User._id.is_in(list(group)), **find_kwargs)
+        for group in groups
+    )
+
+
 @gob.mapper(all_items=True)
 def contact_count(uids):
     counts = collections.defaultdict(int)
-    # save some round trips by asking for 100 at a time
-    groups = utils.grouper(100, uids, dontfill=True)
-    for group in groups:
-        contacts = User.find(User._id.is_in(list(group)), fields=['gnp'])
-        for contact in contacts:
-            if contact.geonames_place and contact.geonames_place.mdist<1000:
-                lat = _tile(contact.geonames_place.lat)
-                lng = _tile(contact.geonames_place.lng)
-                counts[lng,lat]+=1
+    for contact in _paged_users(uids,fields=['gnp']):
+        if contact.geonames_place and contact.geonames_place.mdist<1000:
+            lat = _tile(contact.geonames_place.lat)
+            lng = _tile(contact.geonames_place.lng)
+            counts[lng,lat]+=1
     return counts.iteritems()
+
+
+@gob.mapper(all_items=True)
+def contact_mdist(uids):
+    for contact in _paged_users(uids,fields=['gnp']):
+        yield contact.geonames_place.mdist if contact.geonames_place else None
 
 
 @gob.mapper(all_items=True)
