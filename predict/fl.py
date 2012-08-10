@@ -102,16 +102,45 @@ class NearestMLE(Predictor):
         return best[index]
 
 
-class FriendLoc(Predictor):
+class FriendLocChop(Predictor):
     def __init__(self,env):
         self.env = env
+        self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
 
     def predict(self,nebrs_d):
-        cutoffs,curves = zip(*tuple(self.env.load('vect_fit')))
         mat = nebrs_d['dist_mat']
         probs = np.empty_like(mat)
         for index,pred in enumerate(nebrs_d['pred_dists']):
-            curve = curves[bisect.bisect(cutoffs,pred)-1]
+            curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
+            probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
+
+        NEAR_CUTOFF = 100
+        total_probs = []
+        for col in xrange(mat.shape[1]):
+            # if there are more than four people within 100 miles of here, cut
+            # the people with the lowest chance out of the calculation.
+            dist_probs = zip(mat[:,col],probs[:,col])
+            near = filter(lambda dp: dp[0]<NEAR_CUTOFF, dist_probs)
+            #if len(near)>5:
+            #    import ipdb; ipdb.set_trace()
+            far = filter(lambda dp: dp[0]>=NEAR_CUTOFF, dist_probs)
+            near = sorted(near,key=operator.itemgetter(1))[-4:]
+            col_probs = zip(*(near+far))[1]
+            avg = sum(np.log(col_probs))/len(col_probs)*mat.shape[1]
+            total_probs.append( avg + nebrs_d['strange_prob'][col])
+        #print np.array(total_probs)
+        return np.argmax(total_probs)
+
+class FriendLoc(Predictor):
+    def __init__(self,env):
+        self.env = env
+        self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
+
+    def predict(self,nebrs_d):
+        mat = nebrs_d['dist_mat']
+        probs = np.empty_like(mat)
+        for index,pred in enumerate(nebrs_d['pred_dists']):
+            curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
         total_probs = np.sum(np.log(probs),axis=0)
         return np.argmax(total_probs+nebrs_d['strange_prob'])
@@ -133,6 +162,7 @@ class Predictors(object):
             nearest_5=NearestMLE(5),
             backstrom=FacebookMLE(),
             friendloc=FriendLoc(env),
+            chop=FriendLocChop(env),
         )
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
