@@ -1,4 +1,5 @@
 import random
+import bisect
 
 from base.utils import grouper
 from base import gob
@@ -20,25 +21,21 @@ def training_users(uids):
             for u in User.find(User._id.is_in(ids_group)):
                 yield u.to_d()
 
-@gob.mapper()
-def nebrs_d(user_d):
-    nebrs_ = User.find(User._id.is_in(user_d['nebrs']))
-    tweets = Tweets.get_id(user_d['_id'],fields=['ats'])
-    rfrds = set(user_d['rfrds'])
 
-    contacts = dict(
-        ated = set(tweets.ats or []),
-        frds = rfrds.union(user_d['jfrds']),
-        fols = rfrds.union(user_d['jfols']),
-    )
+class NeighborsDict(object):
+    def __init__(self,env):
+        self.env = env
+        mloc_blur = env.load('mloc_blur','mp')
+        self.mb_omit = next(mloc_blur)
+        self.mb_buckets = next(mloc_blur)
+        self.mb_ratios = next(mloc_blur)
 
-    nebrs = []
-    for nebr in nebrs_:
+    def _prep_nebr(self,nebr):
         kind = sum(
-                bit if nebr._id in contacts[key] else 0
+                bit if nebr._id in self.contacts[key] else 0
                 for key,bit in NEBR_FLAGS.iteritems()
                 )
-        nebrs.append(dict(
+        return dict(
             folc=nebr.friends_count,
             frdc=nebr.followers_count,
             lofrd=nebr.local_friends,
@@ -49,15 +46,41 @@ def nebrs_d(user_d):
             kind=kind,
             prot=nebr.protected,
             _id=nebr._id,
-            ))
-    res = dict(
-        _id = user_d['_id'],
-        mloc = user_d['mloc'],
-        nebrs = nebrs,
+            )
+
+    def _blur_gnp(self, user_d):
+        gnp = user_d.get('gnp')
+        if not gnp or gnp['mdist']>1000:
+            return None
+        if random.random()>self.mb_omit:
+            return None
+        index = bisect.bisect(self.mb_buckets,gnp['mdist'])
+        ratio = self.mb_ratios[index]
+        # exaggerate the error that is already there according to the ratio
+        for key,real in zip(('lng','lat'),user_d['mloc']):
+            delta = real-gnp[key]
+            gnp[key] = real+ratio*delta
+        return gnp
+
+    @gob.mapper()
+    def nebrs_d(self,user_d):
+        nebrs = User.find(User._id.is_in(user_d['nebrs']))
+        tweets = Tweets.get_id(user_d['_id'],fields=['ats'])
+        rfrds = set(user_d['rfrds'])
+
+        self.contacts = dict(
+            ated = set(tweets.ats or []),
+            frds = rfrds.union(user_d['jfrds']),
+            fols = rfrds.union(user_d['jfols']),
         )
-    if user_d.get('gnp'):
-        res['gnp'] = user_d['gnp']
-    yield res
+
+        res = dict(
+            _id = user_d['_id'],
+            mloc = user_d['mloc'],
+            nebrs = map(self._prep_nebr,nebrs),
+            gnp = self._blur_gnp(user_d),
+            )
+        yield res
 
 
 @gob.mapper()

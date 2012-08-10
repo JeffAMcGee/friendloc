@@ -12,6 +12,7 @@ class TestFriendLoc(SimpleGobTest):
         # integration test
         self.FS['mloc_uids.03'] = [3]
         self.FS['mloc_uids.06'] = [6]
+        self.FS['mloc_blur'] = [1,[10],[2,4]]
         self.gob.run_job('training_users')
         self.gob.run_job('nebrs_d')
         self.gob.run_job('nebr_vect')

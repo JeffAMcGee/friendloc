@@ -18,6 +18,7 @@ class TestPrep(SimpleGobTest):
 
     def test_nebrs_d(self):
         self.FS['mloc_uids.03'] = [3]
+        self.FS['mloc_blur'] = [1,[10],[2,4]]
         self.gob.run_job('training_users')
         self.gob.run_job('nebrs_d')
         edge03 = self.FS['nebrs_d.03']

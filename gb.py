@@ -98,7 +98,7 @@ def create_jobs(g):
     # the predictor
     g.add_job(peek.geo_ats)
     g.add_job(prep.edge_d,'training_users')
-    g.add_job(prep.nebrs_d,'training_users',requires=['mloc_blur'])
+    g.add_job(prep.NeighborsDict.nebrs_d,'training_users',requires=['mloc_blur'])
     g.add_job(fl.nebr_vect,'nebrs_d')
     g.add_cat('nebr_fit','nebr_vect',pattern='nebr_vect.2[0-4]')
     g.add_cat('nebrs_pred','nebrs_d',pattern='nebrs_d.2[5-9]')
