@@ -58,8 +58,8 @@ def create_jobs(g):
               name='lookup_leafs',requires=['saved_users'])
 
     # FIXME: nebr_split_2 is temporary!
-    g.add_job(None,name='nebr_split_0134',saver='split_save')
-    g.add_job(peek.contact_blur,'nebr_split_0134',reducer=gob.avg_reduce)
+    g.add_job(None,name='nebr_split_59',saver='split_save')
+    g.add_job(peek.contact_blur,'nebr_split_59',reducer=gob.avg_reduce)
 
     # the graphs
     g.add_job(prep.training_users,'mloc_uids')
@@ -72,6 +72,7 @@ def create_jobs(g):
 
     # fb predictor
     g.add_job(peek.contact_mdist,'contact_split')
+    g.add_job(peek.contact_mdist,'mloc_uids',name='mloc_mdist')
     g.add_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
     g.add_job(peek.mloc_tile,'mloc_uids',reducer=gob.join_reduce)
     g.add_job(peek.tile_split, 'mloc_tile', saver='split_save')
