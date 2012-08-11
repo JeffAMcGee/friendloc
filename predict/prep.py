@@ -1,5 +1,7 @@
 import random
 import bisect
+import itertools
+from itertools import chain
 
 from base.utils import grouper
 from base import gob
@@ -60,6 +62,7 @@ class NeighborsDict(object):
         for key,real in zip(('lng','lat'),user_d['mloc']):
             delta = real-gnp[key]
             gnp[key] = real+ratio*delta
+        gnp['mdist'] = ratio*gnp['mdist']
         return gnp
 
     @gob.mapper()
@@ -85,6 +88,7 @@ class NeighborsDict(object):
 
 @gob.mapper()
 def edge_d(user):
+    # FIXME: I think this function is no longer useful.
     tweets = Tweets.get_id(user['_id'],fields=['ats'])
     edges = Edges.get_id(user['_id'])
     ats = set(tweets.ats or [])
@@ -133,3 +137,32 @@ def _rel_d(user, kind):
         kind=kind,
         _id=user._id,
         )
+
+
+
+class MlocBlur(object):
+    def __init__(self,env):
+        self.env = env
+
+    @gob.mapper()
+    def mloc_blur(self):
+        cutoff = 250000
+        mdists = {}
+        for key in ('mloc','contact'):
+            files = self.env.split_files(key+'_mdist')
+            items_ = chain.from_iterable(self.env.load(f,'mp') for f in files)
+            mdists[key] = filter(None,itertools.islice(items_,cutoff))
+        yield 1.0*len(mdists['contact'])/len(mdists['mloc'])
+
+        count = len(mdists['contact'])
+        step = count//100
+        mdists['mloc'] = mdists['mloc'][:count]
+        for key,items in mdists.iteritems():
+            mdists[key] = sorted(items)
+        # the boundaries of the 100 buckets
+        yield mdists['mloc'][step:step*100:step]
+
+        ml_pts = np.array(mdists['mloc'][step/2::step])
+        ct_pts = np.array(mdists['contact'][step/2::step])
+        # the ratio at the middle of the buckets
+        yield list(ct_pts/ml_pts)

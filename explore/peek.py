@@ -3,7 +3,6 @@ import math
 import logging
 import operator
 import collections
-import itertools
 from itertools import chain
 
 import numpy as np
@@ -349,32 +348,3 @@ def edge_leaf_dists(edge_d):
         ]
     if dists:
         yield edge_dist,dists
-
-
-
-class MlocBlur(object):
-    def __init__(self,env):
-        self.env = env
-
-    @gob.mapper()
-    def mloc_blur(self):
-        cutoff = 250000
-        mdists = {}
-        for key in ('mloc','contact'):
-            files = self.env.split_files(key+'_mdist')
-            items_ = chain.from_iterable(self.env.load(f,'mp') for f in files)
-            mdists[key] = filter(None,itertools.islice(items_,cutoff))
-        yield 1.0*len(mdists['contact'])/len(mdists['mloc'])
-
-        count = len(mdists['contact'])
-        step = count//100
-        mdists['mloc'] = mdists['mloc'][:count]
-        for key,items in mdists.iteritems():
-            mdists[key] = sorted(items)
-        # the boundaries of the 100 buckets
-        yield mdists['mloc'][step:step*100:step]
-
-        ml_pts = np.array(mdists['mloc'][step/2::step])
-        ct_pts = np.array(mdists['contact'][step/2::step])
-        # the ratio at the middle of the buckets
-        yield list(ct_pts/ml_pts)

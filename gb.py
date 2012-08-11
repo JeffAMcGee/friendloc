@@ -73,7 +73,7 @@ def create_jobs(g):
     # add noise to location field of geolocated users
     g.add_job(peek.contact_mdist,'contact_split')
     g.add_job(peek.contact_mdist,'mloc_uids',name='mloc_mdist')
-    g.add_job(peek.MlocBlur.mloc_blur,
+    g.add_job(prep.MlocBlur.mloc_blur,
               requires=['mloc_mdist','contact_mdist'])
 
     # fb predictor
