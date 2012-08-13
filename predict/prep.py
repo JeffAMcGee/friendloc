@@ -1,10 +1,12 @@
 import random
 import bisect
 import itertools
+import collections
 from itertools import chain
 
-from base.utils import grouper
-from base import gob
+import numpy as np
+
+from base import utils, gob
 from base.models import User, Tweets, Edges
 
 
@@ -17,7 +19,7 @@ NEBR_FLAGS = {
 
 @gob.mapper(all_items=True)
 def training_users(uids):
-    for g in grouper(100,uids,dontfill=True):
+    for g in utils.grouper(100,uids,dontfill=True):
         ids_group = tuple(g)
         if ids_group[0]%100<50:
             for u in User.find(User._id.is_in(ids_group)):
@@ -166,3 +168,26 @@ class MlocBlur(object):
         ct_pts = np.array(mdists['contact'][step/2::step])
         # the ratio at the middle of the buckets
         yield list(ct_pts/ml_pts)
+
+
+@gob.mapper(all_items=True)
+def mdist_real(nebrs_d):
+    data = collections.defaultdict(list)
+    for nebr_d in nebrs_d:
+        if not nebr_d['gnp']:
+            continue
+        data['glat'].append(nebr_d['gnp']['lat'])
+        data['glng'].append(nebr_d['gnp']['lng'])
+        data['mlng'].append(nebr_d['mloc'][0])
+        data['mlat'].append(nebr_d['mloc'][1])
+        data['mdist'].append(nebr_d['gnp']['mdist'])
+
+    dists = utils.np_haversine(
+                data['mlng'], data['glng'],
+                data['mlat'], data['glat'])
+    return itertools.izip(data['mdist'],dists)
+
+
+@gob.mapper(all_items=True)
+def mdist_curves(nebrs_d):
+    return []
