@@ -246,6 +246,7 @@ class ContactFit(object):
                             )
             print (cutoff,tuple(popt))
             yield (cutoff,tuple(popt))
+            # FIXME: I think this is wrong -- should we use index+1 ?
             cutoff = tups[len(tups)*index//CHUNKS][0]
 
 

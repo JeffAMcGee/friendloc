@@ -189,5 +189,34 @@ def mdist_real(nebrs_d):
 
 
 @gob.mapper(all_items=True)
-def mdist_curves(nebrs_d):
-    return []
+def mdist_curves(mdist_real):
+    CHUNKS = 10
+    dists_ = np.array(list(mdist_real))
+    dists = dists_[dists_[:,0].argsort()]
+
+    dist_count = dists.shape[0]
+    # cut off the start to make even chunks
+    chunks = np.split(dists[(dist_count%CHUNKS):,:],CHUNKS)
+    bins = utils.dist_bins(30)
+
+    for index,chunk in enumerate(chunks):
+        row = chunk[:,1]
+        hist,b = np.histogram(row,bins)
+
+        bin_mids = (b[:-1]+b[1:])/2
+        bin_areas = np.pi*(b[1:]**2 - b[:-1]**2)
+        scaled_hist = hist/(bin_areas*len(row))
+        window = np.bartlett(5)
+        smooth_hist=np.convolve(scaled_hist,window,mode='same')/sum(window)
+        coeffs = np.polyfit(
+                    np.log(bin_mids[1:121]),
+                    np.log(smooth_hist[1:121]),
+                    3)
+
+        yield dict(
+                coeffs = list(coeffs),
+                cutoff = 0 if index==0 else chunk[0,0],
+                local = scaled_hist[0],
+                )
+
+
