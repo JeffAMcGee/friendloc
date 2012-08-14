@@ -71,6 +71,9 @@ class Nearest(Predictor):
     def predict(self,nebrs_d):
         return np.argmin(nebrs_d['pred_dists'])
 
+class Last(Predictor):
+    def predict(self,nebrs_d):
+        return len(nebrs_d['strange_prob'])-1
 
 class FacebookMLE(Predictor):
     def predict(self,nebrs_d):
@@ -101,43 +104,16 @@ class NearestMLE(Predictor):
         index, prob = max(enumerate(sums), key=operator.itemgetter(1))
         return best[index]
 
-
-class FriendLocChop(Predictor):
-    def __init__(self,env):
-        self.env = env
-        self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
-
-    def predict(self,nebrs_d):
-        mat = nebrs_d['dist_mat']
-        probs = np.empty_like(mat)
-        for index,pred in enumerate(nebrs_d['pred_dists']):
-            curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
-            probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
-
-        NEAR_CUTOFF = 100
-        total_probs = []
-        for col in xrange(mat.shape[1]):
-            # if there are more than four people within 100 miles of here, cut
-            # the people with the lowest chance out of the calculation.
-            dist_probs = zip(mat[:,col],probs[:,col])
-            near = filter(lambda dp: dp[0]<NEAR_CUTOFF, dist_probs)
-            #if len(near)>5:
-            #    import ipdb; ipdb.set_trace()
-            far = filter(lambda dp: dp[0]>=NEAR_CUTOFF, dist_probs)
-            near = sorted(near,key=operator.itemgetter(1))[-4:]
-            col_probs = zip(*(near+far))[1]
-            avg = sum(np.log(col_probs))/len(col_probs)*mat.shape[1]
-            total_probs.append( avg + nebrs_d['strange_prob'][col])
-        #print np.array(total_probs)
-        return np.argmax(total_probs)
-
 class FriendLoc(Predictor):
-    def __init__(self,env,loc_factor):
+    def __init__(self,env,loc_factor,force_loc=False):
         self.env = env
         self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
         self.loc_factor = loc_factor
+        self.force_loc = force_loc
 
     def predict(self,nebrs_d):
+        if self.force_loc and nebrs_d['gnp'] and nebrs_d['gnp']['mdist']<25:
+            return len(nebrs_d['vects'])
         mat = nebrs_d['dist_mat']
         probs = np.empty_like(mat)
         for index,pred in enumerate(nebrs_d['pred_dists']):
@@ -151,11 +127,14 @@ class FriendLoc(Predictor):
         return np.argmax(total_probs)
 
 
-def _calc_dists(nebrs):
-    lats = [r['lat'] for r in nebrs]
-    lngs = [r['lng'] for r in nebrs]
-    lat1,lat2 = np.meshgrid(lats,lats)
-    lng1,lng2 = np.meshgrid(lngs,lngs)
+def _calc_dists(nebrs_d):
+    gnp = nebrs_d['gnp']
+    lats = [r['lat'] for r in nebrs_d['nebrs']]
+    lngs = [r['lng'] for r in nebrs_d['nebrs']]
+    all_lats = lats+[gnp['lat']] if gnp else lats
+    all_lngs = lngs+[gnp['lng']] if gnp else lngs
+    lat1,lat2 = np.meshgrid(all_lats,lats)
+    lng1,lng2 = np.meshgrid(all_lngs,lngs)
     return utils.np_haversine(lng1,lng2,lat1,lat2)
 
 
@@ -165,11 +144,11 @@ class Predictors(object):
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
-            nearest_5=NearestMLE(5),
+            last=Last(),
             backstrom=FacebookMLE(),
-            friendloc0=FriendLoc(env,0),
-            friendloc1=FriendLoc(env,1),
-            #chop=FriendLocChop(env),
+            friendloc_plain=FriendLoc(env,0),
+            friendloc_field=FriendLoc(env,1),
+            friendloc_cut=FriendLoc(env,0,True),
         )
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
@@ -197,34 +176,35 @@ class Predictors(object):
             nebrs_d['location_prob'] = np.zeros_like(nebrs_d['strange_prob'])
             return
 
-        lats = [r['lat'] for r in nebrs_d['nebrs']]
-        lngs = [r['lng'] for r in nebrs_d['nebrs']]
-        dists = utils.np_haversine(lngs,gnp['lng'],lats,gnp['lat'])
-
+        # append 0 to include the distance to the gnp point
+        dists = np.append(nebrs_d['dist_mat'][:,-1],[0])
         mdist = nebrs_d['gnp']['mdist']
         index = bisect.bisect(self.mdist_curves['cutoff'],mdist)-1
         curve = self.mdist_curves['curve_fn'][index]
-        local = self.mdist_curves['local'][index]
+        local = np.log(self.mdist_curves['local'][index])
         probs = [
             (local if dist<1 else curve(np.log(dist)))
             for dist in dists
         ]
         nebrs_d['location_prob'] = np.array(probs)
 
+    def _stranger_prob(self,nebr):
+        lng_t = explore.peek._tile(nebr['lng'])
+        lat_t_ = explore.peek._tile(nebr['lat'])
+        lat_t = max(-900,min(lat_t_,899))
+        return self.stranger_mat[(lng_t+1800)%3600,lat_t+900]
+
     def prep(self,nebrs_d):
         # add fields to nebrs_d
         nebrs_d['vects'] = list(nebr_vect(nebrs_d))
         X, y = vects_as_mat(nebrs_d['vects'])
         nebrs_d['pred_dists'] = self.nebr_clf.predict(X)
-        nebrs_d['dist_mat'] = _calc_dists(nebrs_d['nebrs'])
+        nebrs_d['dist_mat'] = _calc_dists(nebrs_d)
         nebrs_d['contact_prob'] = utils.contact_prob(nebrs_d['dist_mat'])
 
-        probs = []
-        for nebr in nebrs_d['nebrs']:
-            lng_t = explore.peek._tile(nebr['lng'])
-            lat_t_ = explore.peek._tile(nebr['lat'])
-            lat_t = max(-900,min(lat_t_,899))
-            probs.append(self.stranger_mat[(lng_t+1800)%3600,lat_t+900])
+        probs = [self._stranger_prob(nebr) for nebr in nebrs_d['nebrs']]
+        if nebrs_d['gnp']:
+            probs.append(self._stranger_prob(nebrs_d['gnp']))
         nebrs_d['strange_prob'] = np.array(probs)
 
         self._add_location_prob(nebrs_d)
@@ -241,6 +221,10 @@ class Predictors(object):
             self.prep(nebrs_d)
             for key,classifier in self.classifiers.iteritems():
                 index = classifier.predict(nebrs_d)
-                dist = nebrs_d['vects'][index][-1]
-                results[key].append(unlogify(dist,.01))
+                if index==len(nebrs_d['vects']):
+                    # the last one is the gnp one
+                    dist = utils.coord_in_miles(nebrs_d['gnp'],nebrs_d['mloc'])
+                else:
+                    dist = unlogify(nebrs_d['vects'][index][-1],.01)
+                results[key].append(dist)
         return results.iteritems()

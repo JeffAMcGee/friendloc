@@ -292,7 +292,7 @@ def gr_preds(preds):
             label_len=True,
             kind="cumulog",
             ylabel = "fraction of users",
-            xlabel = "distance to contact in miles",
+            xlabel = "error in prediction (miles)",
             bins = dist_bins(120),
             )
 
