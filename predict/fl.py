@@ -132,9 +132,10 @@ class FriendLocChop(Predictor):
         return np.argmax(total_probs)
 
 class FriendLoc(Predictor):
-    def __init__(self,env):
+    def __init__(self,env,loc_factor):
         self.env = env
         self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
+        self.loc_factor = loc_factor
 
     def predict(self,nebrs_d):
         mat = nebrs_d['dist_mat']
@@ -142,8 +143,12 @@ class FriendLoc(Predictor):
         for index,pred in enumerate(nebrs_d['pred_dists']):
             curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
-        total_probs = np.sum(np.log(probs),axis=0)
-        return np.argmax(total_probs+nebrs_d['strange_prob'])
+        total_probs = (
+            np.sum(np.log(probs),axis=0) +
+            nebrs_d['strange_prob'] +
+            self.loc_factor*nebrs_d['location_prob']
+            )
+        return np.argmax(total_probs)
 
 
 def _calc_dists(nebrs):
@@ -153,6 +158,7 @@ def _calc_dists(nebrs):
     lng1,lng2 = np.meshgrid(lngs,lngs)
     return utils.np_haversine(lng1,lng2,lat1,lat2)
 
+
 class Predictors(object):
     def __init__(self,env):
         self.env = env
@@ -161,10 +167,19 @@ class Predictors(object):
             nearest=Nearest(),
             nearest_5=NearestMLE(5),
             backstrom=FacebookMLE(),
-            friendloc=FriendLoc(env),
-            chop=FriendLocChop(env),
+            friendloc0=FriendLoc(env,0),
+            friendloc1=FriendLoc(env,1),
+            #chop=FriendLocChop(env),
         )
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
+
+    def _mdist_curves(self):
+        data = list(self.env.load('mdist_curves','mp'))
+        return dict(
+            curve_fn = [np.poly1d(d['coeffs']) for d in data],
+            cutoff = [d['cutoff'] for d in data],
+            local = [d['local'] for d in data],
+        )
 
     def _stranger_mat(self):
         mat = next(self.env.load('stranger_mat','npz'))
@@ -175,6 +190,26 @@ class Predictors(object):
         # strangers is based on contacts, but prediction is based on nebrs, so
         # we scale down the values in stranger_mat
         return np.maximum(-50,mat)*.25
+
+    def _add_location_prob(self,nebrs_d):
+        gnp = nebrs_d['gnp']
+        if not gnp:
+            nebrs_d['location_prob'] = np.zeros_like(nebrs_d['strange_prob'])
+            return
+
+        lats = [r['lat'] for r in nebrs_d['nebrs']]
+        lngs = [r['lng'] for r in nebrs_d['nebrs']]
+        dists = utils.np_haversine(lngs,gnp['lng'],lats,gnp['lat'])
+
+        mdist = nebrs_d['gnp']['mdist']
+        index = bisect.bisect(self.mdist_curves['cutoff'],mdist)-1
+        curve = self.mdist_curves['curve_fn'][index]
+        local = self.mdist_curves['local'][index]
+        probs = [
+            (local if dist<1 else curve(np.log(dist)))
+            for dist in dists
+        ]
+        nebrs_d['location_prob'] = np.array(probs)
 
     def prep(self,nebrs_d):
         # add fields to nebrs_d
@@ -192,10 +227,13 @@ class Predictors(object):
             probs.append(self.stranger_mat[(lng_t+1800)%3600,lat_t+900])
         nebrs_d['strange_prob'] = np.array(probs)
 
+        self._add_location_prob(nebrs_d)
+
     @gob.mapper(all_items=True)
     def predictions(self, nebrs_ds):
         results = defaultdict(list)
         self.stranger_mat = self._stranger_mat()
+        self.mdist_curves = self._mdist_curves()
 
         for nebrs_d in nebrs_ds:
             if not nebrs_d['nebrs']:
