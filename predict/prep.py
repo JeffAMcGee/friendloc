@@ -85,6 +85,8 @@ class NeighborsDict(object):
             nebrs = map(self._prep_nebr,nebrs),
             gnp = self._blur_gnp(user_d),
             )
+        if 'utco' in user_d:
+            res['utco'] = user_d['utco']
         yield res
 
 
