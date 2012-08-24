@@ -172,6 +172,29 @@ class MlocBlur(object):
         yield list(ct_pts/ml_pts)
 
 
+class UtcOffset(object):
+    def __init__(self,env):
+        self.env = env
+
+    @gob.mapper()
+    def utc_offset(self):
+        files = self.env.split_files('nebrs_d')
+        users = chain.from_iterable(self.env.load(f,'mp') for f in files)
+
+        lngs = []
+        utcos = []
+        for u in users:
+            if 'utco' in u:
+                utcos.append(u['utco'])
+                lngs.append(u['mloc'][0])
+
+        offsets = lngs-np.array(utcos)/240
+        wrapped = np.mod(offsets+180,360)-180
+
+        counts,bins = np.histogram(wrapped,range(-180,181,15))
+        yield list(1.0*counts/sum(counts))
+
+
 @gob.mapper(all_items=True)
 def mdist_real(nebrs_d):
     data = collections.defaultdict(list)

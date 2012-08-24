@@ -100,10 +100,11 @@ def create_jobs(g):
     g.add_job(prep.edge_d,'training_users')
     g.add_job(prep.NeighborsDict.nebrs_d,'training_users',requires=['mloc_blur'])
 
-    # mdist_curves
+    # mdist_curves and utc_offset
     g.add_job(prep.mdist_real,'nebrs_d')
     g.add_cat('mdist_real_cat','mdist_real')
     g.add_job(prep.mdist_curves,'mdist_real_cat')
+    g.add_job(prep.UtcOffset.utc_offset, requires=['nebrs_d'])
 
     # the predictor
     g.add_job(fl.nebr_vect,'nebrs_d')
