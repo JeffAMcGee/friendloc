@@ -2,6 +2,7 @@ import math
 from itertools import chain
 import operator
 import bisect
+import itertools
 from collections import defaultdict
 
 from sklearn import preprocessing, tree, cross_validation
@@ -129,6 +130,31 @@ class FriendLoc(Predictor):
         return np.argmax(total_probs)
 
 
+class FriendLocWeights(Predictor):
+    def __init__(self,env,weights):
+        self.env = env
+        self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
+        self.weights = weights
+
+    def predict(self,nebrs_d):
+
+        mat = nebrs_d['dist_mat']
+        probs = np.empty_like(mat)
+        for index,pred in enumerate(nebrs_d['pred_dists']):
+            curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
+            probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
+        prob_sum = np.sum(np.log(probs),axis=0)
+        w = self.weights
+        total_probs = (
+            w[0]*prob_sum +
+            w[1]*prob_sum/len(nebrs_d['nebrs']) +
+            w[2]*nebrs_d['strange_prob'] +
+            w[3]*nebrs_d['tz_prob'] +
+            w[4]*nebrs_d['location_prob']
+            )
+        return np.argmax(total_probs)
+
+
 def _calc_dists(nebrs_d):
     gnp = nebrs_d['gnp']
     lats = [r['lat'] for r in nebrs_d['nebrs']]
@@ -143,6 +169,7 @@ def _calc_dists(nebrs_d):
 class Predictors(object):
     def __init__(self,env):
         self.env = env
+        '''
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
@@ -153,6 +180,12 @@ class Predictors(object):
             friendloc_tz=FriendLoc(env,1,1),
             friendloc_cut=FriendLoc(env,0,force_loc=True),
         )
+        '''
+        steps = [0,.5,1,2,25]
+        self.classifiers = {
+            vect:FriendLocWeights(env,vect)
+            for vect in itertools.product(steps,repeat=5)
+        }
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
     def _mdist_curves(self):
