@@ -169,7 +169,6 @@ def _calc_dists(nebrs_d):
 class Predictors(object):
     def __init__(self,env):
         self.env = env
-        '''
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
@@ -186,6 +185,7 @@ class Predictors(object):
             vect:FriendLocWeights(env,vect)
             for vect in itertools.product(steps,repeat=5)
         }
+        '''
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
     def _mdist_curves(self):
