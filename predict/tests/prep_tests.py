@@ -7,15 +7,6 @@ class TestPrep(SimpleGobTest):
         super(TestPrep,self).setUp()
         use_mongo('fl_fixture')
 
-    def test_edge_d(self):
-        self.FS['mloc_uids.03'] = [3]
-        self.gob.run_job('training_users')
-        self.gob.run_job('edge_d')
-        edge03 = self.FS['edge_d.03']
-        self.assertEqual(len(edge03),1)
-        rels = edge03[0]['rels']
-        self.assertEqual( [d['_id'] for d in rels], [1,6,9,2] )
-
     def test_nebrs_d(self):
         self.FS['mloc_uids.03'] = [3]
         self.FS['mloc_blur'] = [1,[10],[2,4]]
