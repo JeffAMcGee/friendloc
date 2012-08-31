@@ -3,7 +3,7 @@
 import logging
 import argparse
 import os.path
-import numpy
+import itertools
 
 from maroon import Model
 
@@ -13,6 +13,15 @@ from predict import prep, fl
 from base import gob
 from base import utils
 
+try:
+    import networkx as nx
+except ImportError:
+    pass
+
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Run gob jobs.')
@@ -24,6 +33,7 @@ def parse_args(argv):
     group.add_argument('-i','--input')
     group.add_argument('--rm',action="store_true")
     group.add_argument('--force',action="store_true")
+    group.add_argument('--dot',action="store_true")
     return parser.parse_args(argv)
 
 
@@ -131,7 +141,8 @@ def make_gob(args):
 def setup(args):
     Model.database = utils.mongo(args.mongo or settings.region)
     logging.basicConfig(level=logging.INFO)
-    numpy.set_printoptions(precision=3, linewidth=160)
+    if numpy:
+        numpy.set_printoptions(precision=3, linewidth=160)
 
 
 def inspect(job_name, source_set):
@@ -145,8 +156,22 @@ def inspect(job_name, source_set):
     funcs = job.runnable_funcs(my_gob.env)
     return my_gob.env.map_reduce_save(job, source_set, funcs)
 
+def print_graph_dot(my_gob):
+    srcs = ( (source.name,job)
+             for job in my_gob.jobs
+             for source in my_gob.jobs[job].sources
+            )
+    reqs = ( (req,job)
+             for job in my_gob.jobs
+             for req in my_gob.jobs[job].requires
+            )
+    dg = nx.DiGraph(itertools.chain(srcs,reqs))
+    nx.write_dot(dg,'gob_deps.dot')
+
 
 def run(my_gob,args):
+    if args.dot:
+        print_graph_dot(my_gob)
     if args.input:
         # just run the function for one input
         job = my_gob.jobs[args.job[0]]

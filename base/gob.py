@@ -108,11 +108,12 @@ def _call_opt_kwargs(func,*args,**kwargs):
 
 
 class Job(object):
-    def __init__(self, mapper=None, sources=(), saver='save', reducer=None,
+    def __init__(self, mapper=None, sources=(), requires=(), saver='save', reducer=None,
                  name=None, split_data=False, procs=6, encoding='mp'):
         self.mapper = mapper
         self.saver = saver
         self.sources = sources
+        self.requires = requires
         self.reducer = reducer
         self.name = name
         self.procs = procs
@@ -714,7 +715,8 @@ class Gob(object):
                      sources=source_jobs,
                      name=name,
                      split_data=split,
-                      **kwargs)
+                     requires=requires,
+                     **kwargs)
 
         self.jobs[name] = job
         return job
