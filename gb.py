@@ -101,14 +101,14 @@ def create_jobs(g):
               requires=['strange_bins','nebr_bins'] )
     g.add_job(peek.lat_tile, saver='split_save')
     g.add_job(peek.StrangerDists.stranger_prob, 'lat_tile',
-              requires=['contact_count'])
+              requires=['contact_count','contact_fit'])
     g.add_cat('stranger_prob_cat','stranger_prob')
     g.add_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
 
     # prep
     g.add_job(peek.geo_ats)
-    g.add_job(prep.edge_d,'training_users')
-    g.add_job(prep.NeighborsDict.nebrs_d,'training_users',requires=['mloc_blur'])
+    g.add_job(prep.NeighborsDict.nebrs_d,'training_users',
+              requires=['mloc_blur','lookup_leafs'])
 
     # mdist_curves and utc_offset
     g.add_job(prep.mdist_real,'nebrs_d')
@@ -124,7 +124,7 @@ def create_jobs(g):
     g.add_job(peek.ContactFit.vect_fit, 'nebr_fit',
               requires=['strange_bins','nebr_clf'] )
     g.add_job(fl.Predictors.predictions,'nebrs_pred',
-              requires=['stranger_mat','mdist_curves','vect_fit','utc_offset'])
+              requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
     g.add_job(graph.gr_preds,'predictions')
 
 def make_gob(args):
