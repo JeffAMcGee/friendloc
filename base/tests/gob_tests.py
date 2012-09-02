@@ -44,6 +44,10 @@ class SecondHalf(object):
         # the class so we can run tests on it
         self.__class__.result_data = dict(items)
 
+@gob.mapper()
+def combine_inputs(count, expanded):
+    yield count, expanded['num']
+
 
 def create_jobs(gob):
     gob.add_source(source)
@@ -51,6 +55,7 @@ def create_jobs(gob):
     gob.add_job(expand,'counter')
     gob.add_job(SecondHalf.take,'expand',reducer=join_reduce)
     gob.add_job(SecondHalf.results,'take',saver=None)
+    gob.add_job(combine_inputs,('counter','expand'))
 
 
 class BaseGobTests(object):
@@ -96,6 +101,17 @@ class TestSimpleEnv(unittest.TestCase, BaseGobTests):
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
         SimpleEnv.JOB_DB = {}
+
+    def test_multi_source(self):
+        twos = range(2,100,10)
+        threes = range(3,100,10)
+        SimpleEnv.THE_FS['counter.2'] = twos
+        SimpleEnv.THE_FS['counter.3'] = threes
+        self.gob.run_job('expand')
+        self.gob.run_job('combine_inputs')
+
+        comb3 = SimpleEnv.THE_FS['combine_inputs.3']
+        self.assertEqual(comb3, zip(threes,threes))
 
     def test_split_saver(self):
         self.gob.run_job('counter')

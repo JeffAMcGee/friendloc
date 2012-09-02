@@ -128,12 +128,20 @@ class Job(object):
 
     def output_name(self, in_paths):
         "the output name for a set of inputs"
-        def suffix(path):
+        # FIXME: how do we want to handle split and unsplit inputs?
+        # FIXME: this is ugly.
+        suffix = ''
+        for path in in_paths:
             name = os.path.basename(path)
             pos = name.find('.')
-            return name[pos:] if pos!=-1 else ''
+            if pos==-1:
+                continue
+            if suffix:
+                assert suffix==name[pos:]
+            else:
+                suffix = name[pos:]
 
-        return self.name + ''.join(suffix(sp) for sp in in_paths)
+        return self.name + suffix
 
     def load_output(self, path, env):
         "load the results of a previous run of this job"
@@ -367,10 +375,16 @@ class Storage(object):
         raise NotImplementedError
 
     def input_paths(self, source_jobs):
-        inputs = [job.output_files(self) for job in source_jobs]
+        inputs = [sorted(job.output_files(self)) for job in source_jobs]
         if not all(inputs):
             raise ValueError("missing dependencies for job")
-        return itertools.product(*inputs)
+        if len(inputs)>=2:
+            first_len = len(inputs[0])
+            # FIXME: check that the files actually match?
+            if not all(len(inp)==first_len for inp in inputs[1:]):
+                raise ValueError("job with multiple sources and uneven files")
+
+        return zip(*inputs)
 
     def job_status(self, name):
         "return the status field for an input"
