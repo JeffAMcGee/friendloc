@@ -108,22 +108,45 @@ def _call_opt_kwargs(func,*args,**kwargs):
 
 
 class Job(object):
-    def __init__(self, mapper=None, sources=(), requires=(), saver='save', reducer=None,
-                 name=None, split_data=False, procs=6, encoding='mp'):
-        self.mapper = mapper
-        self.saver = saver
-        self.sources = sources
-        self.requires = requires
-        self.reducer = reducer
+    def __init__(self, source_names=(), requires=(), saver='save', name=None,
+                 split_data="UNKNOWN"):
+        self.source_names = source_names
+        self.requires = tuple(source_names)+tuple(requires)
         self.name = name
-        self.procs = procs
         self.split_data = split_data
-        self.encoding = encoding
+        self.sources = None # this will be set when it is added to a gob
+
+    def added(self, gob):
+        """This is called when a Job is added to a gob."""
+        pass
 
     def output_files(self, env):
         if self.split_data:
             return env.split_files(self.name)
         return [self.name,]
+
+
+class MapJob(Job):
+    def __init__(self, mapper=None, saver='save', reducer=None,
+                 procs=6, encoding='mp', **kwargs):
+
+        super(MapJob,self).__init__(**kwargs)
+        self.mapper = mapper
+        self.saver = saver
+        self.reducer = reducer
+        self.procs = procs
+        self.encoding = encoding
+
+    def added(self, gob):
+        # set split_data
+        if self.saver == 'split_save':
+            self.split_data = True
+        elif self.reducer:
+            self.split_data = False
+        elif self.sources:
+            self.split_data = any(j.split_data for j in self.sources)
+        else:
+            self.split_data = False
 
     def output_name(self, in_paths):
         "the output name for a set of inputs"
@@ -176,7 +199,7 @@ class Job(object):
 
 class Cat(Job):
     def __init__(self, pattern=None, **kwargs):
-        super(Cat,self).__init__(**kwargs)
+        super(Cat,self).__init__(split_data=False, **kwargs)
         if isinstance(pattern,basestring):
             self.pattern = re.compile(pattern)
         else:
@@ -193,11 +216,19 @@ class Cat(Job):
 
 class Source(Job):
     def __init__(self, source_func=None, **kwargs):
-        super(Source,self).__init__(**kwargs)
+        super(Source,self).__init__(split_data=False, **kwargs)
         self.source_func = source_func
 
     def load_output(self,path,env):
         return self.source_func()
+
+
+class Clump(Job):
+    def __init__(self, source_func=None, **kwargs):
+        super(Clump,self).__init__(split_data=True, **kwargs)
+
+    def load_output(self,path,env):
+        pass
 
 
 class Executor(object):
@@ -677,14 +708,25 @@ class Gob(object):
         input_paths = self.env.input_paths(job.sources)
         return self.env.run(job,input_paths=input_paths)
 
+    def add(self, job):
+        """ add a job to this gob """
+        if job.name in self.jobs:
+            raise ValueError('attempt to insert second proc with same name')
+
+        for req in job.requires:
+            if req not in self.jobs:
+                raise LookupError('dependencies must be added first')
+
+        self.jobs[job.name] = job
+        job.sources = [self.jobs[s] for s in job.source_names]
+        job.added(self)
+        if job.split_data=="UNKNOWN":
+            raise ValueError('split_data must be set in __init__ or added')
+        return job
+
     def add_cat(self, name, source, pattern=None):
         """ concatenate a split source into one source """
-        return self.add_job(
-                        sources=(source,),
-                        name=name,
-                        job_cls=Cat,
-                        pattern=pattern
-                        )
+        return self.add(Cat(source_names=(source,), name=name, pattern=pattern))
 
     def add_source(self, source, name=None):
         """
@@ -693,44 +735,22 @@ class Gob(object):
         """
         if not name:
             name = source.__name__.lower()
-        return self.add_job(source_func=source, name=name, job_cls=Source)
+        return self.add(Source(source_func=source, name=name))
 
-    def add_job(self, mapper=None, sources=(), requires=(), name=None,
-            job_cls=Job, **kwargs):
+    def add_map_job(self, mapper=None, source_names=(), name=None, **kwargs):
         """
         add a job to the gob
         sources are files that will be passed as input to the mapper.
-        requires are names of jobs that must run before the mapper.
         """
-        if isinstance(sources,basestring):
-            sources = (sources,)
+        if isinstance(source_names,basestring):
+            source_names = (source_names,)
         if not name:
             name = mapper.__name__.lower()
 
-        if name in self.jobs:
-            raise ValueError('attempt to insert second job with same name')
+        job = MapJob(
+                mapper=mapper,
+                source_names=source_names,
+                name=name,
+                **kwargs)
 
-        source_jobs = [self.jobs[s] for s in sources]
-        for req in requires:
-            if req not in self.jobs:
-                raise LookupError('dependencies must be added first')
-
-        # FIXME: this is UGLY.
-        if kwargs.get('saver') == 'split_save':
-            split = True
-        elif kwargs.get('reducer') or job_cls==Cat:
-            split = False
-        elif source_jobs:
-            split = any(j.split_data for j in source_jobs)
-        else:
-            split = False
-
-        job = job_cls(mapper=mapper,
-                     sources=source_jobs,
-                     name=name,
-                     split_data=split,
-                     requires=requires,
-                     **kwargs)
-
-        self.jobs[name] = job
-        return job
+        return self.add(job)

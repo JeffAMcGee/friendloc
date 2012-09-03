@@ -51,11 +51,11 @@ def combine_inputs(count, expanded):
 
 def create_jobs(gob):
     gob.add_source(source)
-    gob.add_job(counter,'source',saver='split_save')
-    gob.add_job(expand,'counter')
-    gob.add_job(SecondHalf.take,'expand',reducer=join_reduce)
-    gob.add_job(SecondHalf.results,'take',saver=None)
-    gob.add_job(combine_inputs,('counter','expand'))
+    gob.add_map_job(counter,'source',saver='split_save')
+    gob.add_map_job(expand,'counter')
+    gob.add_map_job(SecondHalf.take,'expand',reducer=join_reduce)
+    gob.add_map_job(SecondHalf.results,'take',saver=None)
+    gob.add_map_job(combine_inputs,('counter','expand'))
 
 
 class BaseGobTests(object):
