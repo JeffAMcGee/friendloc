@@ -125,7 +125,6 @@ class Job(object):
             return env.split_files(self.name)
         return [self.name,]
 
-
     def output_name(self, in_paths):
         "the output name for a set of inputs"
         # FIXME: how do we want to handle split and unsplit inputs?
@@ -570,6 +569,7 @@ class FileStorage(Storage):
         for dirpath, dirs, files in os.walk(os.path.join(self.path,name)):
             _dir = dirpath.replace(self.path,'').lstrip('/').replace('/','.')
             for file in files:
+                # FIXME: this is broken for non-mp files!
                 if file.endswith(".mp"):
                     yield "%s.%s"%(_dir,file[:-3])
 

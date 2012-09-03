@@ -90,18 +90,6 @@ class NeighborsDict(object):
         yield res
 
 
-def _rel_d(user, kind):
-    gnp = user.geonames_place.to_d()
-    return dict(
-        folc=user.followers_count,
-        lat=gnp['lat'],
-        lng=gnp['lng'],
-        mdist=gnp['mdist'],
-        kind=kind,
-        _id=user._id,
-        )
-
-
 class MlocBlur(object):
     def __init__(self,env):
         self.env = env
