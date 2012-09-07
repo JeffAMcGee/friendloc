@@ -105,31 +105,31 @@ def create_jobs(g):
     g.add_cat('stranger_prob_cat','stranger_prob')
     g.add_map_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
 
-    # prep
-    g.add_map_job(peek.geo_ats)
-    g.add_map_job(prep.NeighborsDict.nebrs_d,'training_users',
-              requires=['mloc_blur','lookup_leafs'])
-
-    # mdist_curves and utc_offset
-    g.add_map_job(prep.mdist_real,'nebrs_d')
-    g.add_cat('mdist_real_cat','mdist_real')
-    g.add_map_job(prep.mdist_curves,'mdist_real_cat')
-    g.add_map_job(prep.UtcOffset.utc_offset, requires=['nebrs_d'])
-
     def train_set(key, clump):
         return int(key)//20!=int(clump)
     def eval_set(key, clump):
         return int(key)//20==int(clump)
 
-    # the predictor
+    # prep
+    g.add_map_job(peek.geo_ats)
+    g.add_map_job(prep.NeighborsDict.nebrs_d,'training_users',
+              requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
     g.add_clump(eval_set, 'nebrs_d', name='nebrs_eval')
 
+    # mdist_curves and utc_offset
+    g.add_map_job(prep.mdist_real,'nebrs_d')
+    g.add_cat('mdist_real_cat','mdist_real')
+    g.add_map_job(prep.mdist_curves,'mdist_real_cat')
+    g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
+
+    # the predictor
     g.add_map_job(fl.nebr_vect,'nebrs_d')
     g.add_clump(train_set, 'nebr_vect', name='nvect_train')
     g.add_clump(eval_set, 'nebr_vect', name='nvect_eval')
 
     g.add_map_job(fl.nebr_clf,'nvect_train',encoding='pkl')
+    # FIXME : why don't we need vectors for nvect_eval?
     g.add_map_job(peek.ContactFit.vect_fit, 'nvect_train',
               requires=['strange_bins','nebr_clf'] )
     g.add_map_job(fl.Predictors.predictions,'nebrs_eval',

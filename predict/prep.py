@@ -122,14 +122,11 @@ class UtcOffset(object):
     def __init__(self,env):
         self.env = env
 
-    @gob.mapper()
-    def utc_offset(self):
-        files = self.env.split_files('nebrs_d')
-        users = chain.from_iterable(self.env.load(f,'mp') for f in files)
-
+    @gob.mapper(all_items=True)
+    def utc_offset(self, nebrs_d):
         lngs = []
         utcos = []
-        for u in users:
+        for u in nebrs_d:
             if 'utco' in u:
                 utcos.append(u['utco'])
                 lngs.append(u['mloc'][0])
