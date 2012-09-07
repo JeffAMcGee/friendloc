@@ -116,14 +116,23 @@ def create_jobs(g):
     g.add_map_job(prep.mdist_curves,'mdist_real_cat')
     g.add_map_job(prep.UtcOffset.utc_offset, requires=['nebrs_d'])
 
+    def train_set(key, clump):
+        return int(key)//20!=int(clump)
+    def eval_set(key, clump):
+        return int(key)//20==int(clump)
+
     # the predictor
+    g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
+    g.add_clump(eval_set, 'nebrs_d', name='nebrs_eval')
+
     g.add_map_job(fl.nebr_vect,'nebrs_d')
-    g.add_cat('nebr_fit','nebr_vect',pattern='nebr_vect.2[0-4]')
-    g.add_cat('nebrs_pred','nebrs_d',pattern='nebrs_d.2[5-9]')
-    g.add_map_job(fl.nebr_clf,'nebr_fit',encoding='pkl')
-    g.add_map_job(peek.ContactFit.vect_fit, 'nebr_fit',
+    g.add_clump(train_set, 'nebr_vect', name='nvect_train')
+    g.add_clump(eval_set, 'nebr_vect', name='nvect_eval')
+
+    g.add_map_job(fl.nebr_clf,'nvect_train',encoding='pkl')
+    g.add_map_job(peek.ContactFit.vect_fit, 'nvect_train',
               requires=['strange_bins','nebr_clf'] )
-    g.add_map_job(fl.Predictors.predictions,'nebrs_pred',
+    g.add_map_job(fl.Predictors.predictions,'nebrs_eval',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
     g.add_map_job(graph.gr_preds,'predictions')
 

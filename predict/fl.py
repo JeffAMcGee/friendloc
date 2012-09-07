@@ -58,26 +58,26 @@ def nebr_clf(vects):
 
 
 class Predictor(object):
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
         "return the index of a neighbor or (eventually) a coordinate"
         raise NotImplementedError
 
 
 class Omni(Predictor):
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
         values = [v[-1] for v in nebrs_d['vects']]
         return values.index(min(values))
 
 class Nearest(Predictor):
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
         return np.argmin(nebrs_d['pred_dists'])
 
 class Last(Predictor):
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
         return len(nebrs_d['strange_prob'])-1
 
 class FacebookMLE(Predictor):
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
         probs = np.sum(np.log(nebrs_d['contact_prob']),axis=0)
         return np.argmax(probs+nebrs_d['strange_prob'])
 
@@ -86,7 +86,7 @@ class NearestMLE(Predictor):
     def __init__(self,count):
         self.count = count
 
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
         dists = sorted(
                     enumerate(nebrs_d['pred_dists']),
                     key=operator.itemgetter(1)
@@ -108,12 +108,12 @@ class NearestMLE(Predictor):
 class FriendLoc(Predictor):
     def __init__(self,env,loc_factor,tz_factor=0,force_loc=False):
         self.env = env
-        self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
         self.loc_factor = loc_factor
         self.tz_factor = tz_factor
         self.force_loc = force_loc
 
-    def predict(self,nebrs_d):
+    def predict(self,nebrs_d,vect_fit):
+        self.cutoffs,self.curves = zip(*vect_fit)
         if self.force_loc and nebrs_d['gnp'] and nebrs_d['gnp']['mdist']<25:
             return len(nebrs_d['vects'])
         mat = nebrs_d['dist_mat']
@@ -131,13 +131,12 @@ class FriendLoc(Predictor):
 
 
 class FriendLocWeights(Predictor):
-    def __init__(self,env,weights):
+    def __init__(self,env,weights,vect_fit):
         self.env = env
-        self.cutoffs,self.curves = zip(*tuple(self.env.load('vect_fit')))
         self.weights = weights
 
-    def predict(self,nebrs_d):
-
+    def predict(self,nebrs_d,vect_fit):
+        self.cutoffs,self.curves = zip(*vect_fit)
         mat = nebrs_d['dist_mat']
         probs = np.empty_like(mat)
         for index,pred in enumerate(nebrs_d['pred_dists']):
@@ -186,7 +185,6 @@ class Predictors(object):
             for vect in itertools.product(steps,repeat=5)
         }
         '''
-        self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
     def _mdist_curves(self):
         data = list(self.env.load('mdist_curves','mp'))
@@ -254,18 +252,21 @@ class Predictors(object):
         self._add_location_prob(nebrs_d)
 
     @gob.mapper(all_items=True)
-    def predictions(self, nebrs_ds):
+    def predictions(self, nebrs_ds, in_paths):
         results = defaultdict(list)
         self.stranger_mat = self._stranger_mat()
         self.utc_offset = next(self.env.load('utc_offset','mp'))
         self.mdist_curves = self._mdist_curves()
+        clump = in_paths[0][-1]
+        self.nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
+        vect_fit = tuple(self.env.load('vect_fit.'+clump))
 
         for nebrs_d in nebrs_ds:
             if not nebrs_d['nebrs']:
                 continue
             self.prep(nebrs_d)
             for key,classifier in self.classifiers.iteritems():
-                index = classifier.predict(nebrs_d)
+                index = classifier.predict(nebrs_d,vect_fit)
                 if index==len(nebrs_d['vects']):
                     # the last one is the gnp one
                     dist = utils.coord_in_miles(nebrs_d['gnp'],nebrs_d['mloc'])

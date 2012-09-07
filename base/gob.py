@@ -224,11 +224,25 @@ class Source(Job):
 
 
 class Clump(Job):
-    def __init__(self, source_func=None, **kwargs):
+    def __init__(self, clump_func, **kwargs):
         super(Clump,self).__init__(split_data=True, **kwargs)
+        self.clump_func = clump_func
+
+    def output_files(self, env):
+        # FIXME: make this dynamic!
+        return ["%s.%d"%(self.name,x) for x in xrange(5)]
 
     def load_output(self,path,env):
-        pass
+        parent_job = self.sources[0]
+        clump = path.rsplit('.',1)[1]
+        parent_files = parent_job.output_files(env)
+        files = [ f
+                for f in parent_files
+                if self.clump_func(f.rsplit('.',1)[1],clump)
+                ]
+
+        loads = (parent_job.load_output(p,env) for p in files)
+        return itertools.chain.from_iterable(loads)
 
 
 class Executor(object):
@@ -293,14 +307,14 @@ class Executor(object):
                 src.load_output(path, self)
                 for src, path in zip(job.sources,in_paths)
                 ]
-        results = self.map_single(funcs['map'],inputs)
+        results = self.map_single(funcs['map'],inputs,in_paths)
         if funcs['reduce']:
             results = self.reduce_single(funcs['reduce'],results)
 
         self.save_single(job, in_paths, results)
         self.set_job_status(output,'done')
 
-    def map_single(self, mapper, inputs):
+    def map_single(self, mapper, inputs, in_paths):
         "run mapper for one set of inputs and return an iterator of results"
         all_items = mapper.all_items or not inputs
         if all_items:
@@ -311,7 +325,7 @@ class Executor(object):
 
         for args in item_iters:
             try:
-                results = mapper(*args)
+                results = _call_opt_kwargs(mapper,*args,in_paths=in_paths)
                 if results:
                     for res in results:
                         yield res
@@ -727,6 +741,16 @@ class Gob(object):
     def add_cat(self, name, source, pattern=None):
         """ concatenate a split source into one source """
         return self.add(Cat(source_names=(source,), name=name, pattern=pattern))
+
+    def add_clump(self, clump_func, source, name=None):
+        """
+        Adds a clump that takes several split sources and combines them into a
+        different set of split sources.
+        """
+        if not name:
+            name = clump_func.__name__.lower()
+        clump = Clump(clump_func=clump_func, source_names=(source,), name=name)
+        return self.add(clump)
 
     def add_source(self, source, name=None):
         """
