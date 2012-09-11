@@ -116,6 +116,7 @@ def create_jobs(g):
     g.add_job(fl.Predictors.predictions,'nebrs_pred',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset'])
     g.add_job(graph.gr_preds,'predictions')
+    g.add_job(fl.eval_preds,'predictions')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

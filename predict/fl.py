@@ -147,10 +147,9 @@ class FriendLocWeights(Predictor):
         w = self.weights
         total_probs = (
             w[0]*prob_sum +
-            w[1]*prob_sum/len(nebrs_d['nebrs']) +
-            w[2]*nebrs_d['strange_prob'] +
-            w[3]*nebrs_d['tz_prob'] +
-            w[4]*nebrs_d['location_prob']
+            w[1]*nebrs_d['location_prob'] +
+            w[2]*nebrs_d['strange_prob']/2 +
+            w[3]*nebrs_d['tz_prob']/2
             )
         return np.argmax(total_probs)
 
@@ -181,10 +180,11 @@ class Predictors(object):
             friendloc_cut=FriendLoc(env,0,force_loc=True),
         )
         '''
-        steps = [0,.5,1,2,25]
+        steps = [0,.333,1,3]
         self.classifiers = {
             vect:FriendLocWeights(env,vect)
-            for vect in itertools.product(steps,repeat=5)
+            for vect in itertools.product(steps[1:],steps[1:],steps,steps)
+            if any(vect)
         }
         self.nebr_clf = next(env.load('nebr_clf','pkl'))
 
@@ -273,3 +273,8 @@ class Predictors(object):
                     dist = unlogify(nebrs_d['vects'][index][-1],.01)
                 results[key].append(dist)
         return results.iteritems()
+
+@gob.mapper(all_items=True)
+def eval_preds(preds):
+    for key,vals in preds:
+        yield key,sum(1 for v in vals if v<25)
