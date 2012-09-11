@@ -52,7 +52,8 @@ def vects_as_mat(vects):
 @gob.mapper(all_items=True)
 def nebr_clf(vects):
     X, y = vects_as_mat(vects)
-    clf = tree.DecisionTreeRegressor(max_depth=8)
+    # FIXME: I made up the number for min_samples_leaf
+    clf = tree.DecisionTreeRegressor(min_samples_leaf=500)
     clf.fit(X,y)
     yield clf
 
