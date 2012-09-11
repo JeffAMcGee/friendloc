@@ -7,12 +7,12 @@ mock==0.8.0
 msgpack-python==0.1.13
 networkx==1.6
 nose==1.1.2
-numpy==1.6.1
+numpy==1.6.2
 pyflakes==0.5.0
 pymongo==2.1.1
 restkit==3.3.2
 requests==0.13.2
 requests-oauth==0.4.1
-scikit-learn==0.10
+scikit-learn==0.12
 scipy==0.10.1
 ujson==1.18

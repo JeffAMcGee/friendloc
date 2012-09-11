@@ -108,16 +108,17 @@ def _call_opt_kwargs(func,*args,**kwargs):
 
 
 class Job(object):
-    def __init__(self, mapper=None, sources=(), saver='save', reducer=None,
-                 name=None, split_data=False, procs=6, encoding='mp'):
-        self.mapper = mapper
-        self.saver = saver
-        self.sources = sources
-        self.reducer = reducer
+    def __init__(self, source_names=(), requires=(), saver='save', name=None,
+                 split_data="UNKNOWN"):
+        self.source_names = source_names
+        self.requires = tuple(source_names)+tuple(requires)
         self.name = name
-        self.procs = procs
         self.split_data = split_data
-        self.encoding = encoding
+        self.sources = None # this will be set when it is added to a gob
+
+    def added(self, gob):
+        """This is called when a Job is added to a gob."""
+        pass
 
     def output_files(self, env):
         if self.split_data:
@@ -125,14 +126,44 @@ class Job(object):
         return [self.name,]
 
 
+class MapJob(Job):
+    def __init__(self, mapper=None, saver='save', reducer=None,
+                 procs=6, encoding='mp', **kwargs):
+
+        super(MapJob,self).__init__(**kwargs)
+        self.mapper = mapper
+        self.saver = saver
+        self.reducer = reducer
+        self.procs = procs
+        self.encoding = encoding
+
+    def added(self, gob):
+        # set split_data
+        if self.saver == 'split_save':
+            self.split_data = True
+        elif self.reducer:
+            self.split_data = False
+        elif self.sources:
+            self.split_data = any(j.split_data for j in self.sources)
+        else:
+            self.split_data = False
+
     def output_name(self, in_paths):
         "the output name for a set of inputs"
-        def suffix(path):
+        # FIXME: how do we want to handle split and unsplit inputs?
+        # FIXME: this is ugly.
+        suffix = ''
+        for path in in_paths:
             name = os.path.basename(path)
             pos = name.find('.')
-            return name[pos:] if pos!=-1 else ''
+            if pos==-1:
+                continue
+            if suffix:
+                assert suffix==name[pos:]
+            else:
+                suffix = name[pos:]
 
-        return self.name + ''.join(suffix(sp) for sp in in_paths)
+        return self.name + suffix
 
     def load_output(self, path, env):
         "load the results of a previous run of this job"
@@ -168,7 +199,7 @@ class Job(object):
 
 class Cat(Job):
     def __init__(self, pattern=None, **kwargs):
-        super(Cat,self).__init__(**kwargs)
+        super(Cat,self).__init__(split_data=False, **kwargs)
         if isinstance(pattern,basestring):
             self.pattern = re.compile(pattern)
         else:
@@ -185,11 +216,33 @@ class Cat(Job):
 
 class Source(Job):
     def __init__(self, source_func=None, **kwargs):
-        super(Source,self).__init__(**kwargs)
+        super(Source,self).__init__(split_data=False, **kwargs)
         self.source_func = source_func
 
     def load_output(self,path,env):
         return self.source_func()
+
+
+class Clump(Job):
+    def __init__(self, clump_func, **kwargs):
+        super(Clump,self).__init__(split_data=True, **kwargs)
+        self.clump_func = clump_func
+
+    def output_files(self, env):
+        # FIXME: make this dynamic!
+        return ["%s.%d"%(self.name,x) for x in xrange(5)]
+
+    def load_output(self,path,env):
+        parent_job = self.sources[0]
+        clump = path.rsplit('.',1)[1]
+        parent_files = parent_job.output_files(env)
+        files = [ f
+                for f in parent_files
+                if self.clump_func(f.rsplit('.',1)[1],clump)
+                ]
+
+        loads = (parent_job.load_output(p,env) for p in files)
+        return itertools.chain.from_iterable(loads)
 
 
 class Executor(object):
@@ -254,14 +307,14 @@ class Executor(object):
                 src.load_output(path, self)
                 for src, path in zip(job.sources,in_paths)
                 ]
-        results = self.map_single(funcs['map'],inputs)
+        results = self.map_single(funcs['map'],inputs,in_paths)
         if funcs['reduce']:
             results = self.reduce_single(funcs['reduce'],results)
 
         self.save_single(job, in_paths, results)
         self.set_job_status(output,'done')
 
-    def map_single(self, mapper, inputs):
+    def map_single(self, mapper, inputs, in_paths):
         "run mapper for one set of inputs and return an iterator of results"
         all_items = mapper.all_items or not inputs
         if all_items:
@@ -272,7 +325,7 @@ class Executor(object):
 
         for args in item_iters:
             try:
-                results = mapper(*args)
+                results = _call_opt_kwargs(mapper,*args,in_paths=in_paths)
                 if results:
                     for res in results:
                         yield res
@@ -366,10 +419,16 @@ class Storage(object):
         raise NotImplementedError
 
     def input_paths(self, source_jobs):
-        inputs = [job.output_files(self) for job in source_jobs]
+        inputs = [sorted(job.output_files(self)) for job in source_jobs]
         if not all(inputs):
             raise ValueError("missing dependencies for job")
-        return itertools.product(*inputs)
+        if len(inputs)>=2:
+            first_len = len(inputs[0])
+            # FIXME: check that the files actually match?
+            if not all(len(inp)==first_len for inp in inputs[1:]):
+                raise ValueError("job with multiple sources and uneven files")
+
+        return zip(*inputs)
 
     def job_status(self, name):
         "return the status field for an input"
@@ -555,6 +614,7 @@ class FileStorage(Storage):
         for dirpath, dirs, files in os.walk(os.path.join(self.path,name)):
             _dir = dirpath.replace(self.path,'').lstrip('/').replace('/','.')
             for file in files:
+                # FIXME: this is broken for non-mp files!
                 if file.endswith(".mp"):
                     yield "%s.%s"%(_dir,file[:-3])
 
@@ -662,14 +722,35 @@ class Gob(object):
         input_paths = self.env.input_paths(job.sources)
         return self.env.run(job,input_paths=input_paths)
 
+    def add(self, job):
+        """ add a job to this gob """
+        if job.name in self.jobs:
+            raise ValueError('attempt to insert second proc with same name')
+
+        for req in job.requires:
+            if req not in self.jobs:
+                raise LookupError('dependencies must be added first')
+
+        self.jobs[job.name] = job
+        job.sources = [self.jobs[s] for s in job.source_names]
+        job.added(self)
+        if job.split_data=="UNKNOWN":
+            raise ValueError('split_data must be set in __init__ or added')
+        return job
+
     def add_cat(self, name, source, pattern=None):
         """ concatenate a split source into one source """
-        return self.add_job(
-                        sources=(source,),
-                        name=name,
-                        job_cls=Cat,
-                        pattern=pattern
-                        )
+        return self.add(Cat(source_names=(source,), name=name, pattern=pattern))
+
+    def add_clump(self, clump_func, source, name=None):
+        """
+        Adds a clump that takes several split sources and combines them into a
+        different set of split sources.
+        """
+        if not name:
+            name = clump_func.__name__.lower()
+        clump = Clump(clump_func=clump_func, source_names=(source,), name=name)
+        return self.add(clump)
 
     def add_source(self, source, name=None):
         """
@@ -678,43 +759,22 @@ class Gob(object):
         """
         if not name:
             name = source.__name__.lower()
-        return self.add_job(source_func=source, name=name, job_cls=Source)
+        return self.add(Source(source_func=source, name=name))
 
-    def add_job(self, mapper=None, sources=(), requires=(), name=None,
-            job_cls=Job, **kwargs):
+    def add_map_job(self, mapper=None, source_names=(), name=None, **kwargs):
         """
         add a job to the gob
         sources are files that will be passed as input to the mapper.
-        requires are names of jobs that must run before the mapper.
         """
-        if isinstance(sources,basestring):
-            sources = (sources,)
+        if isinstance(source_names,basestring):
+            source_names = (source_names,)
         if not name:
             name = mapper.__name__.lower()
 
-        if name in self.jobs:
-            raise ValueError('attempt to insert second job with same name')
+        job = MapJob(
+                mapper=mapper,
+                source_names=source_names,
+                name=name,
+                **kwargs)
 
-        source_jobs = [self.jobs[s] for s in sources]
-        for req in requires:
-            if req not in self.jobs:
-                raise LookupError('dependencies must be added first')
-
-        # FIXME: this is UGLY.
-        if kwargs.get('saver') == 'split_save':
-            split = True
-        elif kwargs.get('reducer') or job_cls==Cat:
-            split = False
-        elif source_jobs:
-            split = any(j.split_data for j in source_jobs)
-        else:
-            split = False
-
-        job = job_cls(mapper=mapper,
-                     sources=source_jobs,
-                     name=name,
-                     split_data=split,
-                      **kwargs)
-
-        self.jobs[name] = job
-        return job
+        return self.add(job)

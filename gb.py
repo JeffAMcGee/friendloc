@@ -3,7 +3,7 @@
 import logging
 import argparse
 import os.path
-import numpy
+import itertools
 
 from maroon import Model
 
@@ -13,6 +13,15 @@ from predict import prep, fl
 from base import gob
 from base import utils
 
+try:
+    import networkx as nx
+except ImportError:
+    pass
+
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description='Run gob jobs.')
@@ -24,99 +33,109 @@ def parse_args(argv):
     group.add_argument('-i','--input')
     group.add_argument('--rm',action="store_true")
     group.add_argument('--force',action="store_true")
+    group.add_argument('--dot',action="store_true")
     return parser.parse_args(argv)
 
 
 def create_jobs(g):
     # the crawler
     g.add_source(utils.read_json, name='geotweets')
-    g.add_job(sprawl.parse_geotweets,'geotweets',saver='split_save')
-    g.add_job(sprawl.mloc_users,'parse_geotweets')
-    g.add_job(sprawl.EdgeFinder.find_contacts,'mloc_users',
+    g.add_map_job(sprawl.parse_geotweets,'geotweets',saver='split_save')
+    g.add_map_job(sprawl.mloc_users,'parse_geotweets')
+    g.add_map_job(sprawl.EdgeFinder.find_contacts,'mloc_users',
               reducer=gob.set_reduce)
-    g.add_job(sprawl.contact_split,'find_contacts',saver='split_save')
+    g.add_map_job(sprawl.contact_split,'find_contacts',saver='split_save')
 
-    g.add_job(fixgis.gnp_gps,'mloc_users')
+    g.add_map_job(fixgis.gnp_gps,'mloc_users')
     g.add_cat('cat_gnp_gps','gnp_gps')
-    g.add_job(fixgis.mdists,'cat_gnp_gps')
-    g.add_job(sprawl.ContactLookup.lookup_contacts,'contact_split',procs=15)
-    g.add_job(sprawl.mloc_uids,'mloc_users')
-    g.add_job(sprawl.trash_extra_mloc,'mloc_uids')
-    g.add_job(sprawl.MDistFixer.fix_mloc_mdists,'mloc_uids',requires=['mdists'])
+    g.add_map_job(fixgis.mdists,'cat_gnp_gps')
+    g.add_map_job(sprawl.ContactLookup.lookup_contacts,'contact_split',procs=15)
+    g.add_map_job(sprawl.mloc_uids,'mloc_users')
+    g.add_map_job(sprawl.trash_extra_mloc,'mloc_uids')
+    g.add_map_job(sprawl.MDistFixer.fix_mloc_mdists,'mloc_uids',requires=['mdists'])
 
-    g.add_job(sprawl.pick_nebrs,'mloc_uids',
+    g.add_map_job(sprawl.pick_nebrs,'mloc_uids',
               requires=['lookup_contacts','mdists','trash_extra_mloc',
                         'fix_mloc_mdists'],
               reducer=gob.set_reduce,
               )
-    g.add_job(sprawl.nebr_split, 'pick_nebrs', saver='split_save')
-    g.add_job(sprawl.EdgeFinder.find_leafs,'nebr_split',reducer=gob.set_reduce)
-    g.add_job(sprawl.contact_split,'find_leafs',
+    g.add_map_job(sprawl.nebr_split, 'pick_nebrs', saver='split_save')
+    g.add_map_job(sprawl.EdgeFinder.find_leafs,'nebr_split',reducer=gob.set_reduce)
+    g.add_map_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
-    g.add_job(sprawl.saved_users,saver='split_save')
-    g.add_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
+    g.add_map_job(sprawl.saved_users,saver='split_save')
+    g.add_map_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
     # FIXME: nebr_split_2 is temporary!
-    g.add_job(None,name='nebr_split_59',saver='split_save')
-    g.add_job(peek.contact_blur,'nebr_split_59',reducer=gob.avg_reduce)
+    g.add_map_job(None,name='nebr_split_59',saver='split_save')
+    g.add_map_job(peek.contact_blur,'nebr_split_59',reducer=gob.avg_reduce)
 
     # the graphs
-    g.add_job(prep.training_users,'mloc_uids')
-    g.add_job(peek.edges_d,'training_users')
-    g.add_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
-    g.add_job(peek.edge_leaf_dists,'edges_d')
-    g.add_job(graph.graph_edge_types_cuml,'edge_dists')
-    g.add_job(graph.graph_edge_types_prot,'edge_dists')
-    g.add_job(graph.graph_edge_types_norm,'edge_dists')
+    g.add_map_job(prep.training_users,'mloc_uids')
+    g.add_map_job(peek.edges_d,'training_users')
+    g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
+    g.add_map_job(peek.edge_leaf_dists,'edges_d')
+    g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
+    g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
+    g.add_map_job(graph.graph_edge_types_norm,'edge_dists')
 
     # add noise to location field of geolocated users
-    g.add_job(peek.contact_mdist,'contact_split')
-    g.add_job(peek.contact_mdist,'mloc_uids',name='mloc_mdist')
-    g.add_job(prep.MlocBlur.mloc_blur,
+    g.add_map_job(peek.contact_mdist,'contact_split')
+    g.add_map_job(peek.contact_mdist,'mloc_uids',name='mloc_mdist')
+    g.add_map_job(prep.MlocBlur.mloc_blur,
               requires=['mloc_mdist','contact_mdist'])
 
     # fb predictor
-    g.add_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
-    g.add_job(peek.mloc_tile,'mloc_uids',reducer=gob.join_reduce)
-    g.add_job(peek.tile_split, 'mloc_tile', saver='split_save')
-    g.add_job(peek.nebr_dists, 'tile_split')
-    g.add_job(peek.StrangerDists.stranger_dists, 'tile_split',
+    g.add_map_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
+    g.add_map_job(peek.mloc_tile,'mloc_uids',reducer=gob.join_reduce)
+    g.add_map_job(peek.tile_split, 'mloc_tile', saver='split_save')
+    g.add_map_job(peek.nebr_dists, 'tile_split')
+    g.add_map_job(peek.StrangerDists.stranger_dists, 'tile_split',
               requires=['contact_count'])
-    g.add_job(peek.strange_nebr_bins, 'stranger_dists',
+    g.add_map_job(peek.strange_nebr_bins, 'stranger_dists',
               name='strange_bins',reducer=gob.sum_reduce)
-    g.add_job(peek.strange_nebr_bins, 'nebr_dists',
+    g.add_map_job(peek.strange_nebr_bins, 'nebr_dists',
               name='nebr_bins',reducer=gob.sum_reduce)
-    g.add_job( peek.ContactFit.contact_fit, (),
+    g.add_map_job( peek.ContactFit.contact_fit, (),
               requires=['strange_bins','nebr_bins'] )
-    g.add_job(peek.lat_tile, saver='split_save')
-    g.add_job(peek.StrangerDists.stranger_prob, 'lat_tile',
-              requires=['contact_count'])
+    g.add_map_job(peek.lat_tile, saver='split_save')
+    g.add_map_job(peek.StrangerDists.stranger_prob, 'lat_tile',
+              requires=['contact_count','contact_fit'])
     g.add_cat('stranger_prob_cat','stranger_prob')
-    g.add_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
+    g.add_map_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
+
+    def train_set(key, clump):
+        return int(key)//20!=int(clump)
+    def eval_set(key, clump):
+        return int(key)//20==int(clump)
 
     # prep
-    g.add_job(peek.geo_ats)
-    g.add_job(prep.edge_d,'training_users')
-    g.add_job(prep.NeighborsDict.nebrs_d,'training_users',requires=['mloc_blur'])
+    g.add_map_job(peek.geo_ats)
+    g.add_map_job(prep.NeighborsDict.nebrs_d,'training_users',
+              requires=['mloc_blur','lookup_leafs'])
+    g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
+    g.add_clump(eval_set, 'nebrs_d', name='nebrs_eval')
 
     # mdist_curves and utc_offset
-    g.add_job(prep.mdist_real,'nebrs_d')
-    g.add_cat('mdist_real_cat','mdist_real')
-    g.add_job(prep.mdist_curves,'mdist_real_cat')
-    g.add_job(prep.UtcOffset.utc_offset, requires=['nebrs_d'])
+    g.add_map_job(prep.mdist_real,'nebrs_d')
+    g.add_clump(train_set, 'mdist_real', name='mdist_train')
+    g.add_map_job(prep.mdist_curves,'mdist_train')
+    g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
 
     # the predictor
-    g.add_job(fl.nebr_vect,'nebrs_d')
-    g.add_cat('nebr_fit','nebr_vect',pattern='nebr_vect.2[0-4]')
-    g.add_cat('nebrs_pred','nebrs_d',pattern='nebrs_d.2[5-9]')
-    g.add_job(fl.nebr_clf,'nebr_fit',encoding='pkl')
-    g.add_job(peek.ContactFit.vect_fit, 'nebr_fit',
+    g.add_map_job(fl.nebr_vect,'nebrs_d')
+    g.add_clump(train_set, 'nebr_vect', name='nvect_train')
+    g.add_clump(eval_set, 'nebr_vect', name='nvect_eval')
+
+    g.add_map_job(fl.nebr_clf,'nvect_train',encoding='pkl')
+    # FIXME : why don't we need vectors for nvect_eval?
+    g.add_map_job(peek.ContactFit.vect_fit, 'nvect_train',
               requires=['strange_bins','nebr_clf'] )
-    g.add_job(fl.Predictors.predictions,'nebrs_pred',
-              requires=['stranger_mat','mdist_curves','vect_fit','utc_offset'])
-    g.add_job(graph.gr_preds,'predictions')
-    g.add_job(fl.eval_preds,'predictions')
+    g.add_map_job(fl.Predictors.predictions,'nebrs_eval',
+              requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
+    g.add_map_job(graph.gr_preds,'predictions')
+    g.add_map_job(fl.eval_preds,'predictions')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
@@ -132,7 +151,8 @@ def make_gob(args):
 def setup(args):
     Model.database = utils.mongo(args.mongo or settings.region)
     logging.basicConfig(level=logging.INFO)
-    numpy.set_printoptions(precision=3, linewidth=160)
+    if numpy:
+        numpy.set_printoptions(precision=3, linewidth=160)
 
 
 def inspect(job_name, source_set):
@@ -146,8 +166,22 @@ def inspect(job_name, source_set):
     funcs = job.runnable_funcs(my_gob.env)
     return my_gob.env.map_reduce_save(job, source_set, funcs)
 
+def print_graph_dot(my_gob):
+    srcs = ( (source.name,job)
+             for job in my_gob.jobs
+             for source in my_gob.jobs[job].sources
+            )
+    reqs = ( (req,job)
+             for job in my_gob.jobs
+             for req in my_gob.jobs[job].requires
+            )
+    dg = nx.DiGraph(itertools.chain(srcs,reqs))
+    nx.write_dot(dg,'gob_deps.dot')
+
 
 def run(my_gob,args):
+    if args.dot:
+        print_graph_dot(my_gob)
     if args.input:
         # just run the function for one input
         job = my_gob.jobs[args.job[0]]

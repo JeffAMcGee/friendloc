@@ -209,7 +209,7 @@ class ContactFit(object):
         yield tuple(popt)
 
     @gob.mapper(all_items=True)
-    def vect_fit(self,vects):
+    def vect_fit(self,vects,in_paths):
         CHUNKS = 10
         bins = self._bins()
         miles = self._miles()
@@ -220,7 +220,8 @@ class ContactFit(object):
 
         #load and classify the vects
         X, y = fl.vects_as_mat(vects)
-        nebr_clf = next(self.env.load('nebr_clf','pkl'))
+        clump = in_paths[0][-1]
+        nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
         preds = nebr_clf.predict(X)
 
         # sort (predicted, actual) tuples by predicted value
