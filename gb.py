@@ -72,8 +72,8 @@ def create_jobs(g):
     g.add_map_job(peek.contact_blur,'nebr_split_59',reducer=gob.avg_reduce)
 
     # the graphs
-    g.add_map_job(prep.training_users,'mloc_uids')
-    g.add_map_job(peek.edges_d,'training_users')
+    g.add_map_job(prep.pred_users,'mloc_uids')
+    g.add_map_job(peek.edges_d,'pred_users')
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.edge_leaf_dists,'edges_d')
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
@@ -112,7 +112,7 @@ def create_jobs(g):
 
     # prep
     g.add_map_job(peek.geo_ats)
-    g.add_map_job(prep.NeighborsDict.nebrs_d,'training_users',
+    g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
               requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
     g.add_clump(eval_set, 'nebrs_d', name='nebrs_eval')
