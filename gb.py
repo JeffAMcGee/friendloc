@@ -119,8 +119,8 @@ def create_jobs(g):
 
     # mdist_curves and utc_offset
     g.add_map_job(prep.mdist_real,'nebrs_d')
-    g.add_cat('mdist_real_cat','mdist_real')
-    g.add_map_job(prep.mdist_curves,'mdist_real_cat')
+    g.add_clump(train_set, 'mdist_real', name='mdist_train')
+    g.add_map_job(prep.mdist_curves,'mdist_train')
     g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
 
     # the predictor
