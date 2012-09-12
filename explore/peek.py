@@ -215,8 +215,8 @@ class ContactFit(object):
         miles = self._miles()
         fit_stgrs_ = self._fit_stgrs(miles)
         # FIXME: strange_bins was created from the whole dataset, but vects is
-        # only currently based on 5 of the 100 files. This is fragile.
-        fit_stgrs = .05*fit_stgrs_
+        # only based on the training set. This is fragile.
+        fit_stgrs = .8*fit_stgrs_
 
         #load and classify the vects
         X, y = fl.vects_as_mat(vects)
@@ -243,7 +243,7 @@ class ContactFit(object):
                             ratio,
                             (.001,2,-1),
                             1/miles,
-                            ftol=.000001,
+                            ftol=.0001,
                             )
             print (cutoff,tuple(popt))
             yield (cutoff,tuple(popt))
