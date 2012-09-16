@@ -111,7 +111,7 @@ def create_jobs(g):
         return int(key)//20==int(clump)
 
     # prep
-    g.add_map_job(peek.geo_ats)
+    g.add_map_job(peek.geo_ats,saver='split_save')
     g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
               requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, 'nebrs_d', name='nebrs_train')

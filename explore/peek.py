@@ -284,7 +284,8 @@ def contact_blur(nebr_id):
 def geo_ats():
     for tweets in Tweets.find({},fields=['ats']):
         if tweets.ats:
-            yield dict(uid=tweets._id,ats=tweets.ats)
+            uid = tweets._id
+            yield User.mod_id(uid), (uid,tweets.ats)
 
 
 @gob.mapper()
