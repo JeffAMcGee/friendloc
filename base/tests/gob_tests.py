@@ -16,6 +16,12 @@ def source():
 
 
 @gob.mapper()
+def sourceless_counter():
+    for x in xrange(100):
+        yield x%10,x
+
+
+@gob.mapper()
 def counter(x):
     yield x%10,x
 
@@ -52,6 +58,7 @@ def combine_inputs(count, expanded):
 def create_jobs(gob):
     gob.add_source(source)
     gob.add_map_job(counter,'source',saver='split_save')
+    gob.add_map_job(sourceless_counter,saver='split_save')
     gob.add_map_job(expand,'counter')
     gob.add_map_job(SecondHalf.take,'expand',reducer=join_reduce)
     gob.add_map_job(SecondHalf.results,'take',saver=None)
@@ -101,6 +108,13 @@ class TestSimpleEnv(unittest.TestCase, BaseGobTests):
         create_jobs(self.gob)
         SimpleEnv.THE_FS = {}
         SimpleEnv.JOB_DB = {}
+
+    def test_sourceless(self):
+        self.gob.run_job('sourceless_counter')
+        twos = range(2,100,10)
+        threes = range(3,100,10)
+        self.assertEqual(SimpleEnv.THE_FS['sourceless_counter.2'], twos)
+        self.assertEqual(SimpleEnv.THE_FS['sourceless_counter.3'], threes)
 
     def test_multi_source(self):
         twos = range(2,100,10)
