@@ -112,6 +112,10 @@ def create_jobs(g):
 
     # prep
     g.add_map_job(peek.geo_ats,saver='split_save')
+    g.add_cat('cat_geo_ats','geo_ats')
+    g.add_map_job(peek.at_tuples,'cat_geo_ats',saver='split_save')
+    g.add_map_job(peek.geo_ated,'at_tuples')
+
     g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
               requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, 'nebrs_d', name='nebrs_train')

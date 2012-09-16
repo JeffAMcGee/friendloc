@@ -289,6 +289,21 @@ def geo_ats():
 
 
 @gob.mapper()
+def at_tuples(geo_at):
+    uid,ats = geo_at
+    for at in ats:
+        yield User.mod_id(at), (at,uid)
+
+
+@gob.mapper(all_items=True)
+def geo_ated(at_tuples):
+    ated = collections.defaultdict(list)
+    for to, frm in at_tuples:
+        ated[to].append(frm)
+    return ated.iteritems()
+
+
+@gob.mapper()
 def edges_d(user_d):
     me = User(user_d)
     if not me.neighbors:
