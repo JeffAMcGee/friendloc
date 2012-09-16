@@ -422,6 +422,8 @@ class Storage(object):
         inputs = [sorted(job.output_files(self)) for job in source_jobs]
         if not all(inputs):
             raise ValueError("missing dependencies for job")
+        if not inputs:
+            return [[]]
         if len(inputs)>=2:
             first_len = len(inputs[0])
             # FIXME: check that the files actually match?
