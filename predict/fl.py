@@ -188,7 +188,7 @@ class Predictors(object):
         '''
 
     def _mdist_curves(self,clump):
-        data = list(self.env.load('mdist_curves'+clump,'mp'))
+        data = list(self.env.load('mdist_curves.'+clump,'mp'))
         return dict(
             curve_fn = [np.poly1d(d['coeffs']) for d in data],
             cutoff = [d['cutoff'] for d in data],
@@ -256,8 +256,8 @@ class Predictors(object):
     def predictions(self, nebrs_ds, in_paths):
         results = defaultdict(list)
         self.stranger_mat = self._stranger_mat()
-        self.utc_offset = next(self.env.load('utc_offset','mp'))
         clump = in_paths[0][-1]
+        self.utc_offset = next(self.env.load('utc_offset.'+clump,'mp'))
         self.mdist_curves = self._mdist_curves(clump)
         self.nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
         vect_fit = tuple(self.env.load('vect_fit.'+clump))

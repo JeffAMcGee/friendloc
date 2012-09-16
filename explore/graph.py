@@ -280,13 +280,14 @@ CONTACT_GROUPS = dict(
 )
 
 @gob.mapper(all_items=True)
-def gr_preds(preds):
+def gr_preds(preds, in_paths):
     data = dict(preds)
+    clump = in_paths[0][-1]
     for key,vals in data.iteritems():
         print key,sum(1 for v in vals if v<25)
 
     ugly_graph_hist(data,
-            "gr_preds.png",
+            "gr_preds%s.png"%clump,
             xlim= (1,30000),
             normed=True,
             label_len=True,
