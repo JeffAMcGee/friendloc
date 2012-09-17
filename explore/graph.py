@@ -23,7 +23,7 @@ import numpy
 from settings import settings
 import base.gisgraphy as gisgraphy
 #from base.models import *
-from base.utils import dist_bins
+from base.utils import dist_bins, coord_in_miles
 from base import gob
 
 
@@ -578,6 +578,31 @@ def diff_gnp_gps():
             )
 
 
+@gob.mapper(all_items=True)
+def near_triads(rfr_triads):
+    labels = ["",'0-10','10-100','100-1000','1000+']
+    data = defaultdict(list)
+
+    for quad in rfr_triads:
+        for key,color in (('my','r'),('our','b')):
+            edist = coord_in_miles(quad[key]['loc'],quad['you']['loc'])
+            bin = min(4,len(str(int(edist))))
+            label = '%s %s'%(key,labels[bin])
+            dist = coord_in_miles(quad[key]['loc'],quad['me']['loc'])
+            # 1.6**(bin-1) is the line width calculation
+            data[label,color,'solid',1.6**(bin-1)].append(dist)
+    ugly_graph_hist(data,
+            "near_triads.pdf",
+            bins=dist_bins(120),
+            xlim=(1,30000),
+            label_len=True,
+            kind="cumulog",
+            normed=True,
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )
+
+
 def mine_ours_img():
     bins = dist_bins(40)
     data = numpy.zeros((len(bins),len(bins)))
@@ -668,3 +693,4 @@ def draw_net_map():
         if counter ==size*size:
             break
     fig.savefig('../www/net_map.png')
+
