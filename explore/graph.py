@@ -309,7 +309,7 @@ def graph_edge_types_cuml(edge_dists):
     for k,v in data.iteritems():
         print k,sum(1.0 for x in v if x<25)/len(v)
     ugly_graph_hist(data,
-            "edge_types_cuml.png",
+            "edge_types_cuml.pdf",
             xlim= (1,30000),
             normed=True,
             label_len=True,
@@ -329,7 +329,7 @@ def graph_edge_types_prot(edge_dists):
         data[(conf['label'],conf['color'],fill)].extend(dists)
 
     ugly_graph_hist(data,
-            "edge_types_prot.png",
+            "edge_types_prot.pdf",
             xlim = (1,30000),
             normed=True,
             label_len=True,
@@ -349,7 +349,7 @@ def graph_edge_types_norm(edge_dists):
         data[key] = [d+1 for d in dists]
 
     ugly_graph_hist(data,
-            "edge_types_norm.png",
+            "edge_types_norm.pdf",
             xlim = (1,30000),
             normed=True,
             label_len=True,
@@ -519,7 +519,7 @@ def graph_com_types(edge_dists):
                 ylabel = "number of users",
                 )
         ax.set_title(titles[edge_type])
-    fig.savefig("../www/com_types.png",bbox_inches='tight')
+    fig.savefig("../www/com_types.pdf",bbox_inches='tight')
 
 
 def triad_types():
@@ -592,7 +592,7 @@ def near_triads(rfr_triads):
             # 1.6**(bin-1) is the line width calculation
             data[label,color,'solid',1.6**(bin-1)].append(dist)
     ugly_graph_hist(data,
-            "near_triads.png",
+            "near_triads.pdf",
             bins=dist_bins(120),
             xlim=(1,30000),
             label_len=True,
