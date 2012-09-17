@@ -356,11 +356,12 @@ def edge_dists(edge_d):
         if amigo:
             assert amigo['mdist']<1000
             dist = coord_in_miles(edge_d['mloc'],amigo)
-            yield (key,amigo['ated'],amigo['prot']),dist
+            yield (key,amigo['i_at'],amigo['u_at'],amigo['prot']),dist
 
 
 @gob.mapper()
 def edge_leaf_dists(edge_d):
+    #FIXME: why does this exist?
     #FIXME: limit to contacts in 20..29 for now
     if not edge_d.get('rfrd') or str(edge_d['rfrd'])[-2]!='2':
         return

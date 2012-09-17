@@ -297,6 +297,7 @@ def gr_preds(preds, in_paths):
             bins = dist_bins(120),
             )
 
+
 @gob.mapper(all_items=True)
 def graph_edge_types_cuml(edge_dists):
     data = defaultdict(list)
@@ -324,7 +325,7 @@ def graph_edge_types_prot(edge_dists):
 
     for key,dists in edge_dists:
         conf = CONTACT_GROUPS[key[0]]
-        fill = 'solid' if key[2] else 'dotted'
+        fill = 'solid' if key[-1] else 'dotted'
         data[(conf['label'],conf['color'],fill)].extend(dists)
 
     ugly_graph_hist(data,
@@ -475,18 +476,39 @@ def gr_ratio_all():
     fig.savefig('../www/local_all.pdf',bbox_inches='tight')
 
 
-def com_types():
+@gob.mapper(all_items=True)
+def graph_com_types(edge_dists):
+    data = defaultdict(lambda: defaultdict(list))
+
+    for key,dists in edge_dists:
+        edge_type,i_at,u_at,prot = key
+        # ignore protected
+        data[edge_type][i_at,u_at].extend(dists)
+
+
+    titles = dict(
+        fol="Just Follower",
+        rfrd="Reciprical Friend",
+        frd="Just Friend",
+        jat="Just Mentiened")
+    labels = {
+        (False,False):"We ignore",
+        (True,False):"I talk",
+        (False,True):"You talk",
+        (True,True):"We talk",
+        }
     fig = plt.figure(figsize=(24,12))
-    titles = dict(fol="Just Follower", rfrd="Reciprical Friend", frd="Just Friend", jat="Just Mentiened")
+
     for spot,edge_type in enumerate(['rfrd','frd','fol','jat']):
         ax = fig.add_subplot(2,2,1+spot)
-        simp = read_json('geo_%s_simp'%edge_type)
-        data = defaultdict(list)
-        for d in simp:
-            data[d['com_type']].append(d['dist'])
-        for k,v in data.iteritems():
-            print edge_type,k,sum(1.0 for x in v if x<25)/len(v) 
-        ugly_graph_hist(data, "", ax=ax,
+
+        # UGLY
+        picked = {
+            labels[key]:dists
+            for key,edge_dists in data[edge_type].iteritems()
+        }
+
+        ugly_graph_hist(picked, "", ax=ax,
                 legend_loc=2,
                 bins=dist_bins(80),
                 kind="cumulog",
@@ -497,7 +519,7 @@ def com_types():
                 ylabel = "number of users",
                 )
         ax.set_title(titles[edge_type])
-    fig.savefig("../www/com_types.pdf",bbox_inches='tight')
+    fig.savefig("../www/com_types.png",bbox_inches='tight')
 
 
 def triad_types():
