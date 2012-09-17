@@ -303,41 +303,49 @@ def geo_ated(at_tuples):
     return ated.iteritems()
 
 
-@gob.mapper()
-def edges_d(user_d):
-    me = User(user_d)
-    if not me.neighbors:
-        return []
-    nebrs = set(me.neighbors)
-    tweets = Tweets.get_id(me._id,fields=['ats'])
-    ats = set(tweets.ats or [])
+class Edges(object):
+    def __init__(self,env):
+        self.env = env
+        self.ats = dict(chain.from_iterable(
+            self.env.load('geo_ats.%02d'%x) for x in xrange(100)
+        ))
+        logging.info('done loading geo_ats')
+    def _ated(self,from_id,to_id):
+        return from_id in self.ats and to_id in self.ats[from_id]
 
-    #store neighbors users
-    keys = {'just_followers':'jfol',
-            'just_friends':'jfrd',
-            'rfriends':'rfrd',
-            'just_mentioned':'jat'}
-    rels = dict(_id = me._id, mloc = me.median_loc)
-    for long,short in keys.iteritems():
-        amigos = [a for a in getattr(me,long) if a in nebrs]
-        if amigos:
-            rels[short] = _rel_d(User.get_id(amigos[0]),ats)
+    @gob.mapper()
+    def edges_d(self, user_d):
+        me = User(user_d)
+        if not me.neighbors:
+            return []
+        nebrs = set(me.neighbors)
 
-    return [rels]
+        keys = {'just_followers':'jfol',
+                'just_friends':'jfrd',
+                'rfriends':'rfrd',
+                'just_mentioned':'jat'}
+        rels = dict(_id = me._id, mloc = me.median_loc)
+        for long,short in keys.iteritems():
+            amigos = [a for a in getattr(me,long) if a in nebrs]
+            if not amigos:
+                continue
+            amigo = User.get_id(amigos[0])
+            gnp = amigo.geonames_place.to_d()
+            if gnp['mdist']>1000:
+                continue
+            rels[short] = dict(
+                    folc=amigo.followers_count,
+                    frdc=amigo.friends_count,
+                    prot=amigo.protected,
+                    lat=gnp['lat'],
+                    lng=gnp['lng'],
+                    mdist=gnp['mdist'],
+                    _id=amigo._id,
+                    i_at=self._ated(me._id,amigo._id),
+                    u_at=self._ated(amigo._id,me._id),
+                    )
 
-
-def _rel_d(user,ats):
-    gnp = user.geonames_place.to_d()
-    return dict(
-        folc=user.followers_count,
-        frdc=user.friends_count,
-        prot=user.protected,
-        lat=gnp['lat'],
-        lng=gnp['lng'],
-        mdist=gnp['mdist'],
-        ated=user._id in ats,
-        _id=user._id,
-        )
+        return [rels]
 
 
 @gob.mapper()

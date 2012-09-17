@@ -72,13 +72,19 @@ def create_jobs(g):
     g.add_map_job(peek.contact_blur,'nebr_split_59',reducer=gob.avg_reduce)
 
     # the graphs
+    g.add_map_job(peek.geo_ats,saver='split_save')
+    g.add_cat('cat_geo_ats','geo_ats')
+    g.add_map_job(peek.at_tuples,'cat_geo_ats',saver='split_save')
+    g.add_map_job(peek.geo_ated,'at_tuples')
+
     g.add_map_job(prep.pred_users,'mloc_uids')
-    g.add_map_job(peek.edges_d,'pred_users')
+    g.add_map_job(peek.Edges.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.edge_leaf_dists,'edges_d')
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
     g.add_map_job(graph.graph_edge_types_norm,'edge_dists')
+
 
     # add noise to location field of geolocated users
     g.add_map_job(peek.contact_mdist,'contact_split')
@@ -111,11 +117,6 @@ def create_jobs(g):
         return int(key)//20==int(clump)
 
     # prep
-    g.add_map_job(peek.geo_ats,saver='split_save')
-    g.add_cat('cat_geo_ats','geo_ats')
-    g.add_map_job(peek.at_tuples,'cat_geo_ats',saver='split_save')
-    g.add_map_job(peek.geo_ated,'at_tuples')
-
     g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
               requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
