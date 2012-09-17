@@ -386,6 +386,8 @@ def rfr_triads(user_d):
         return []
     for you_id in me_rfr:
         you_ed = Edges.get_id(you_id)
+        if not you_ed:
+            continue #There are no edges for this neighbor.
         ours = me_rfr.intersection(you_ed.friends,you_ed.followers)
         mine = me_rfr.difference(you_ed.friends,you_ed.followers)
         if ours and mine:

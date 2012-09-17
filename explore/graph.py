@@ -592,7 +592,7 @@ def near_triads(rfr_triads):
             # 1.6**(bin-1) is the line width calculation
             data[label,color,'solid',1.6**(bin-1)].append(dist)
     ugly_graph_hist(data,
-            "near_triads.pdf",
+            "near_triads.png",
             bins=dist_bins(120),
             xlim=(1,30000),
             label_len=True,

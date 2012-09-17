@@ -87,6 +87,8 @@ def create_jobs(g):
     g.add_map_job(graph.graph_com_types,'edge_dists')
 
     g.add_map_job(peek.rfr_triads,'pred_users')
+    g.add_cat('cat_rfr_triads','rfr_triads')
+    g.add_map_job(graph.near_triads,'cat_rfr_triads')
 
 
     # add noise to location field of geolocated users
