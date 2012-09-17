@@ -487,9 +487,9 @@ def graph_com_types(edge_dists):
 
 
     titles = dict(
-        fol="Just Follower",
+        jfol="Just Follower",
         rfrd="Reciprical Friend",
-        frd="Just Friend",
+        jfrd="Just Friend",
         jat="Just Mentiened")
     labels = {
         (False,False):"We ignore",
@@ -499,13 +499,13 @@ def graph_com_types(edge_dists):
         }
     fig = plt.figure(figsize=(24,12))
 
-    for spot,edge_type in enumerate(['rfrd','frd','fol','jat']):
+    for spot,edge_type in enumerate(['rfrd','jfrd','jfol','jat']):
         ax = fig.add_subplot(2,2,1+spot)
 
         # UGLY
         picked = {
             labels[key]:dists
-            for key,edge_dists in data[edge_type].iteritems()
+            for key,dists in data[edge_type].iteritems()
         }
 
         ugly_graph_hist(picked, "", ax=ax,
