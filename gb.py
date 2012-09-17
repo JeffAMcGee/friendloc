@@ -78,7 +78,7 @@ def create_jobs(g):
     g.add_map_job(peek.geo_ated,'at_tuples')
 
     g.add_map_job(prep.pred_users,'mloc_uids')
-    g.add_map_job(peek.Edges.edges_d,'pred_users',requires=['geo_ats'],procs=4)
+    g.add_map_job(peek.EdgesDict.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.edge_leaf_dists,'edges_d')
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')

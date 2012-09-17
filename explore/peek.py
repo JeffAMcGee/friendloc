@@ -10,7 +10,7 @@ import numpy as np
 from scipy import stats, optimize
 
 #from base.gisgraphy import GisgraphyResource
-from base.models import User, Tweets
+from base.models import User, Tweets, Edges
 from base.utils import coord_in_miles
 from base import gob, utils
 from predict import fl
@@ -304,7 +304,7 @@ def geo_ated(at_tuples):
     return ated.iteritems()
 
 
-class Edges(object):
+class EdgesDict(object):
     def __init__(self,env):
         self.env = env
         self.ats = dict(chain.from_iterable(
