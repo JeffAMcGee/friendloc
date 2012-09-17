@@ -86,6 +86,8 @@ def create_jobs(g):
     g.add_map_job(graph.graph_edge_types_norm,'edge_dists')
     g.add_map_job(graph.graph_com_types,'edge_dists')
 
+    g.add_map_job(peek.rfr_triads,'pred_users')
+
 
     # add noise to location field of geolocated users
     g.add_map_job(peek.contact_mdist,'contact_split')

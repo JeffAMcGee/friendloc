@@ -3,6 +3,7 @@ import math
 import logging
 import operator
 import collections
+import random
 from itertools import chain
 
 import numpy as np
@@ -375,3 +376,32 @@ def edge_leaf_dists(edge_d):
         ]
     if dists:
         yield edge_dist,dists
+
+
+@gob.mapper()
+def rfr_triads(user_d):
+    me = User(user_d)
+    me_rfr = set(me.rfriends or []).intersection(me.neighbors or [])
+    if len(me_rfr)<3:
+        return []
+    for you_id in me_rfr:
+        you_ed = Edges.get_id(you_id)
+        ours = me_rfr.intersection(you_ed.friends,you_ed.followers)
+        mine = me_rfr.difference(you_ed.friends,you_ed.followers)
+        if ours and mine:
+            d = dict(
+                me = dict(_id=me._id,loc=me.median_loc),
+                you = dict(_id=you_id),
+                my = dict(_id=random.choice(list(mine))),
+                our = dict(_id=random.choice(list(ours))),
+                )
+            for k,v in d.iteritems():
+                if k=='me': continue
+                gnp = User.get_id(v['_id'],fields=['gnp']).geonames_place.to_d()
+                gnp.pop('zipcode',None)
+                v['loc'] = gnp
+            return [d]
+    return []
+
+
+
