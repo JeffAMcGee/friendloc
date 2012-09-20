@@ -9,7 +9,7 @@ networkx==1.6
 nose==1.1.2
 numpy==1.6.2
 pyflakes==0.5.0
-pymongo==2.1.1
+pymongo==2.3
 restkit==3.3.2
 requests==0.13.2
 requests-oauth==0.4.1

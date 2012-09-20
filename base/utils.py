@@ -16,6 +16,7 @@ except:
 from settings import settings
 from models import *
 from maroon import MongoDB, Model
+from pymongo.read_preferences import ReadPreference
 
 
 def all_users():
@@ -40,7 +41,10 @@ def use_mongo(name):
 
 
 def mongo(name):
-    return MongoDB(name=name,host=settings.db_host,slave_okay=True)
+    return MongoDB(name=name,
+            host=settings.db_host,
+            read_preference=ReadPreference.NEAREST
+            )
 
 
 def in_local_box(place):
