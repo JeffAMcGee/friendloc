@@ -337,6 +337,8 @@ class EdgesDict(object):
             rels[short] = dict(
                     folc=amigo.followers_count,
                     frdc=amigo.friends_count,
+                    lofrd=amigo.local_friends,
+                    lofol=amigo.local_followers,
                     prot=amigo.protected,
                     lat=gnp['lat'],
                     lng=gnp['lng'],
