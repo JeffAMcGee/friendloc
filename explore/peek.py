@@ -363,6 +363,14 @@ def edge_dists(edge_d):
 
 
 @gob.mapper()
+def rfrd_dists(edge_d):
+    amigo = edge_d.get('rfrd')
+    if amigo:
+        amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
+        yield amigo
+
+
+@gob.mapper()
 def edge_leaf_dists(edge_d):
     #FIXME: why does this exist?
     #FIXME: limit to contacts in 20..29 for now
