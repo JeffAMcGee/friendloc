@@ -477,6 +477,99 @@ def gr_ratio_all():
 
 
 @gob.mapper(all_items=True)
+def graph_edge_count(rfr_dists):
+    frd_data = defaultdict(list)
+    fol_data = defaultdict(list)
+    labels = ["",'1-10','10-100','100-1000','1000-10000','10000+']
+
+    for amigo in rfr_dists:
+        for color,key,data in (('r','folc',fol_data),('b','frdc',frd_data)):
+            bin = min(5,len(str(int(amigo[key]))))
+            label = '%s %s'%(key,labels[bin])
+            # 1.6**(bin-1) is the line width calculation
+            data[label,color,'solid',1.6**(bin-1)].append(amigo['dist'])
+
+    for k in ('folc','frdc'):
+        ugly_graph_hist(data,
+            k+".pdf",
+            bins=dist_bins(120),
+            xlim=(1,10000),
+            label_len=True,
+            kind="cumulog",
+            normed=True,
+            xlabel = "distance between edges in miles",
+            ylabel = "fraction of users",
+            )
+
+
+@gob.mapper(all_items=True)
+def graph_local_groups(edges):
+    data=defaultdict(list)
+    for edge in edges:
+        for key,conf in CONTACT_GROUPS.iteritems():
+            if key not in edge:
+                continue
+            amigo = edge.get(key)
+            if amigo['lofol'] is None or amigo['lofol']<.5:
+                continue
+            dist = coord_in_miles(edge['mloc'],amigo)
+            data[(conf['label'],conf['color'],'solid')].append(dist)
+
+    ugly_graph_hist(data,
+            "local_groups.pdf",
+            xlim= (1,30000),
+            normed=True,
+            label_len=True,
+            kind="cumulog",
+            ylabel = "fraction of users",
+            xlabel = "distance to contact in miles",
+            bins = dist_bins(120),
+            )
+
+
+
+@gob.mapper(all_items=True)
+def graph_locals(rfr_dists):
+    def _bucket(ratio):
+        if ratio is None:
+            return None
+        elif 0<=ratio<.25:
+            return "0.0<=ratio<.25"
+        elif ratio<.5:
+            return "0.25<=ratio<.5"
+        elif ratio<.75:
+            return "0.5<=ratio<.75"
+        assert ratio<=1
+        return "0.75<=ratio<=1"
+
+    data=dict(
+        lofrd = defaultdict(list),
+        lofol = defaultdict(list),
+    )
+
+    for amigo in rfr_dists:
+        for color,key in (('r','lofrd'),('b','lofol')):
+            label = _bucket(amigo[key])
+            if label is None:
+                data[key][('No leafs','k','dotted')].append(amigo['dist'])
+            else:
+                data[key][label].append(amigo['dist'])
+
+    for key in data:
+        ugly_graph_hist(data[key],
+            key+".pdf",
+            bins=dist_bins(120),
+            xlim=(1,30000),
+            label_len=True,
+            kind="cumulog",
+            normed=True,
+            xlabel = "distance between edges in miles",
+            ylabel = "fraction of users",
+            )
+
+
+
+@gob.mapper(all_items=True)
 def graph_com_types(edge_dists):
     data = defaultdict(lambda: defaultdict(list))
 
