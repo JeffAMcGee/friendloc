@@ -67,12 +67,11 @@ def create_jobs(g):
     g.add_map_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
-    # FIXME: nebr_split_2 is temporary!
-    g.add_map_job(None,name='nebr_split_59',saver='split_save')
-    g.add_map_job(peek.contact_blur,'nebr_split_59',reducer=gob.avg_reduce)
+    g.add_map_job(peek.contact_blur,'nebr_split',
+                  requires=['lookup_leafs'],reducer=gob.avg_reduce)
 
     # the graphs
-    g.add_map_job(peek.geo_ats,saver='split_save')
+    g.add_map_job(peek.geo_ats,saver='split_save',requires=['find_leafs'])
     g.add_cat('cat_geo_ats','geo_ats')
     g.add_map_job(peek.at_tuples,'cat_geo_ats',saver='split_save')
     g.add_map_job(peek.geo_ated,'at_tuples')
@@ -80,7 +79,7 @@ def create_jobs(g):
     g.add_map_job(prep.pred_users,'mloc_uids')
     g.add_map_job(peek.EdgesDict.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
-    g.add_map_job(peek.rfrd_dists,'edges_d')
+    g.add_map_job(peek.rfrd_dists,'edges_d',requires=['contact_blur'])
     g.add_cat('cat_rfrd_dists','rfrd_dists')
     g.add_map_job(peek.edge_leaf_dists,'edges_d')
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
@@ -129,7 +128,7 @@ def create_jobs(g):
 
     # prep
     g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
-              requires=['mloc_blur','lookup_leafs'])
+              requires=['mloc_blur','lookup_leafs','contact_blur'])
     g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
     g.add_clump(eval_set, 'nebrs_d', name='nebrs_eval')
 
