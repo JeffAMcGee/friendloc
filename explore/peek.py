@@ -252,6 +252,39 @@ class ContactFit(object):
             cutoff = tups[len(tups)*index//CHUNKS][0]
 
 
+class CheapLocals(object):
+    def __init__(self,env):
+        self.env = env
+        self.mloc_uids = set(chain.from_iterable(
+            self.env.load('mloc_uids.%02d'%x) for x in xrange(100)
+        ))
+
+    @gob.mapper()
+    def cheap_locals(self,nebr_id):
+        user = User.get_id(nebr_id)
+        user_loc = user.geonames_place.to_d()
+
+        cids = [
+            cid
+            for key in User.NEBR_KEYS
+            for cid in (getattr(user,key) or [])
+            if cid not in self.mloc_uids
+            ]
+        if not cids:
+            return
+        random.shuffle(cids)
+        leafs = User.find(User._id.is_in(cids[:10]), fields=['gnp'])
+
+        dists = [
+            coord_in_miles(user_loc,leaf.geonames_place.to_d())
+            for leaf in leafs
+            if leaf.has_place()
+        ]
+        if dists:
+            blur = sum(1.0 for d in dists if d<25)/len(dists)
+            yield user._id,blur
+
+
 @gob.mapper()
 def contact_blur(nebr_id):
     leafs = {}

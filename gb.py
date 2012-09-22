@@ -69,6 +69,9 @@ def create_jobs(g):
 
     g.add_map_job(peek.contact_blur,'nebr_split',
                   requires=['lookup_leafs'],reducer=gob.avg_reduce)
+    g.add_map_job(peek.CheapLocals.cheap_locals,'nebr_split',
+              requires=['lookup_leafs'],
+              )
 
     # the graphs
     g.add_map_job(peek.geo_ats,saver='split_save',requires=['find_leafs'])
