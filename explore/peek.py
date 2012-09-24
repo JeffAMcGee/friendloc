@@ -263,6 +263,7 @@ class CheapLocals(object):
     def cheap_locals(self,nebr_id):
         user = User.get_id(nebr_id)
         user_loc = user.geonames_place.to_d()
+        import pdb; pdb.set_trace()
 
         cids = [
             cid
@@ -273,7 +274,7 @@ class CheapLocals(object):
         if not cids:
             return
         random.shuffle(cids)
-        leafs = User.find(User._id.is_in(cids[:10]), fields=['gnp'])
+        leafs = User.find(User._id.is_in(cids[:20]), fields=['gnp'])
 
         dists = [
             coord_in_miles(user_loc,leaf.geonames_place.to_d())

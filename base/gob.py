@@ -224,13 +224,13 @@ class Source(Job):
 
 
 class Clump(Job):
-    def __init__(self, clump_func, **kwargs):
+    def __init__(self, clump_func, clumps, **kwargs):
         super(Clump,self).__init__(split_data=True, **kwargs)
         self.clump_func = clump_func
+        self.clumps = clumps
 
     def output_files(self, env):
-        # FIXME: make this dynamic!
-        return ["%s.%d"%(self.name,x) for x in xrange(5)]
+        return ["%s.%s"%(self.name,clump) for clump in self.clumps]
 
     def load_output(self,path,env):
         parent_job = self.sources[0]
@@ -238,7 +238,7 @@ class Clump(Job):
         parent_files = parent_job.output_files(env)
         files = [ f
                 for f in parent_files
-                if self.clump_func(f.rsplit('.',1)[1],clump)
+                if self.clump_func(f.split('.')[1:],clump)
                 ]
 
         loads = (parent_job.load_output(p,env) for p in files)
@@ -744,14 +744,17 @@ class Gob(object):
         """ concatenate a split source into one source """
         return self.add(Cat(source_names=(source,), name=name, pattern=pattern))
 
-    def add_clump(self, clump_func, source, name=None):
+    def add_clump(self, clump_func, clumps, source, name=None):
         """
         Adds a clump that takes several split sources and combines them into a
         different set of split sources.
         """
         if not name:
             name = clump_func.__name__.lower()
-        clump = Clump(clump_func=clump_func, source_names=(source,), name=name)
+        clump = Clump(clump_func=clump_func,
+                      clumps=clumps,
+                      source_names=(source,),
+                      name=name)
         return self.add(clump)
 
     def add_source(self, source, name=None):

@@ -69,7 +69,13 @@ def create_jobs(g):
 
     g.add_map_job(peek.contact_blur,'nebr_split',
                   requires=['lookup_leafs'],reducer=gob.avg_reduce)
-    g.add_map_job(peek.CheapLocals.cheap_locals,'nebr_split',
+    def nebr_clump(keys, clump):
+        return keys[1]==clump
+
+    g.add_clump(nebr_clump, clumps=["%02d"%x for x in xrange(100)],
+                source='nebr_split', name='nebr_ids')
+
+    g.add_map_job(peek.CheapLocals.cheap_locals,'nebr_ids',
               requires=['lookup_leafs'],
               )
 
@@ -124,27 +130,28 @@ def create_jobs(g):
     g.add_cat('stranger_prob_cat','stranger_prob')
     g.add_map_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
 
-    def train_set(key, clump):
-        return int(key)//20!=int(clump)
-    def eval_set(key, clump):
-        return int(key)//20==int(clump)
+    def train_set(keys, clump):
+        return int(keys[0])//20!=int(clump)
+    def eval_set(keys, clump):
+        return int(keys[0])//20==int(clump)
+    folds = [str(x) for x in xrange(5)]
 
     # prep
     g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
               requires=['mloc_blur','lookup_leafs','contact_blur'])
-    g.add_clump(train_set, 'nebrs_d', name='nebrs_train')
-    g.add_clump(eval_set, 'nebrs_d', name='nebrs_eval')
+    g.add_clump(train_set, folds, 'nebrs_d', name='nebrs_train')
+    g.add_clump(eval_set, folds, 'nebrs_d', name='nebrs_eval')
 
     # mdist_curves and utc_offset
     g.add_map_job(prep.mdist_real,'nebrs_d')
-    g.add_clump(train_set, 'mdist_real', name='mdist_train')
+    g.add_clump(train_set, folds, 'mdist_real', name='mdist_train')
     g.add_map_job(prep.mdist_curves,'mdist_train')
     g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
 
     # the predictor
     g.add_map_job(fl.nebr_vect,'nebrs_d')
-    g.add_clump(train_set, 'nebr_vect', name='nvect_train')
-    g.add_clump(eval_set, 'nebr_vect', name='nvect_eval')
+    g.add_clump(train_set, folds, 'nebr_vect', name='nvect_train')
+    g.add_clump(eval_set, folds, 'nebr_vect', name='nvect_eval')
 
     g.add_map_job(fl.nebr_clf,'nvect_train',encoding='pkl')
     # FIXME : why don't we need vectors for nvect_eval?
