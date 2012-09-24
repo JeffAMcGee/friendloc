@@ -308,6 +308,7 @@ def graph_edge_types_cuml(edge_dists):
 
     for k,v in data.iteritems():
         print k,sum(1.0 for x in v if x<25)/len(v)
+
     ugly_graph_hist(data,
             "edge_types_cuml.pdf",
             xlim= (1,30000),
@@ -574,6 +575,8 @@ def graph_com_types(edge_dists):
     data = defaultdict(lambda: defaultdict(list))
 
     for key,dists in edge_dists:
+        if key[0]=='rand':
+            continue
         edge_type,i_at,u_at,prot = key
         # ignore protected
         data[edge_type][i_at,u_at].extend(dists)
@@ -591,6 +594,10 @@ def graph_com_types(edge_dists):
         (True,True):"We talk",
         }
     fig = plt.figure(figsize=(24,12))
+
+    for edge_type,sub_d in data.iteritems():
+        for mentions,dists in sub_d.iteritems():
+            print edge_type, mentions, 1.0*sum(1 for d in dists if d<25)/len(dists)
 
     for spot,edge_type in enumerate(['rfrd','jfrd','jfol','jat']):
         ax = fig.add_subplot(2,2,1+spot)
