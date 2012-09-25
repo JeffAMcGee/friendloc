@@ -75,8 +75,8 @@ def create_jobs(g):
     g.add_clump(nebr_clump, clumps=["%02d"%x for x in xrange(100)],
                 source='nebr_split', name='nebr_ids')
 
-    g.add_map_job(peek.CheapLocals.cheap_locals,'nebr_ids',
-              requires=['lookup_leafs'],
+    g.add_map_job(peek.CheapLocals.cheap_locals, 'nebr_ids',
+              requires=['lookup_leafs'], procs=4,
               )
 
     # the graphs
