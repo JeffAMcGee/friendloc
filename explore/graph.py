@@ -303,6 +303,8 @@ def graph_edge_types_cuml(edge_dists):
     data = defaultdict(list)
 
     for key,dists in edge_dists:
+        if key[0]=='rand':
+            continue
         conf = CONTACT_GROUPS[key[0]]
         data[(conf['label'],conf['color'],'solid')].extend(dists)
 
@@ -344,6 +346,8 @@ def graph_edge_types_prot(edge_dists):
 def graph_edge_types_norm(edge_dists):
     data = defaultdict(list)
     for key,dists in edge_dists:
+        if key[0]=='rand':
+            continue
         conf = CONTACT_GROUPS[key[0]]
         data[(conf['label'],conf['color'],'solid')].extend(dists)
     for key,dists in data.iteritems():
@@ -359,7 +363,6 @@ def graph_edge_types_norm(edge_dists):
             xlabel = "distance to contact in miles",
             bins = dist_bins(40),
             ylim = .6,
-            window = numpy.bartlett(7),
             )
 
 
@@ -481,18 +484,22 @@ def gr_ratio_all():
 def graph_edge_count(rfr_dists):
     frd_data = defaultdict(list)
     fol_data = defaultdict(list)
-    labels = ["",'1-10','10-100','100-1000','1000-10000','10000+']
+    labels = ["",'1-9','10-99','100-999','1000-9999','10000+']
+    key_labels = dict(frdc='Friends',folc='Followers')
 
     for amigo in rfr_dists:
         for color,key,data in (('r','folc',fol_data),('b','frdc',frd_data)):
             bin = min(5,len(str(int(amigo[key]))))
-            label = '%s %s'%(key,labels[bin])
+            label = '%s %s'%(labels[bin],key_labels[key])
             # 1.6**(bin-1) is the line width calculation
-            data[label,color,'solid',1.6**(bin-1)].append(amigo['dist'])
+            data[label,color,'solid',1.6**(bin-2)].append(amigo['dist'])
 
-    for k in ('folc','frdc'):
+    fig = plt.figure(figsize=(18,6))
+    for spot,data in enumerate((fol_data,frd_data)):
+        ax = fig.add_subplot(1,2,1+spot)
         ugly_graph_hist(data,
-            k+".pdf",
+            'ignored',
+            ax=ax,
             bins=dist_bins(120),
             xlim=(1,10000),
             label_len=True,
@@ -501,6 +508,7 @@ def graph_edge_count(rfr_dists):
             xlabel = "distance between edges in miles",
             ylabel = "fraction of users",
             )
+    fig.savefig("../www/edge_counts.pdf",bbox_inches='tight')
 
 
 @gob.mapper(all_items=True)
@@ -556,9 +564,19 @@ def graph_locals(rfr_dists):
             else:
                 data[key][label].append(amigo['dist'])
 
-    for key in data:
+    titles = dict(
+                lofrd="Contacts with Local Friends",
+                lofol="Contacts with Local Followers")
+    fig = plt.figure(figsize=(18,6))
+    for spot,key in enumerate(('lofol','lofrd')):
+        ax = fig.add_subplot(1,2,1+spot,title=titles[key])
+
+        for subkey,dists in data[key].iteritems():
+            print key, subkey, 1.0*sum(1 for d in dists if d<25)/len(dists)
+
         ugly_graph_hist(data[key],
-            key+".pdf",
+            'ignored',
+            ax=ax,
             bins=dist_bins(120),
             xlim=(1,30000),
             label_len=True,
@@ -567,6 +585,8 @@ def graph_locals(rfr_dists):
             xlabel = "distance between edges in miles",
             ylabel = "fraction of users",
             )
+
+    fig.savefig("../flt/figures/local_ratio.pdf",bbox_inches='tight')
 
 
 
@@ -593,7 +613,7 @@ def graph_com_types(edge_dists):
         (False,True):"You talk",
         (True,True):"We talk",
         }
-    fig = plt.figure(figsize=(24,12))
+    fig = plt.figure(figsize=(18,12))
 
     for edge_type,sub_d in data.iteritems():
         for mentions,dists in sub_d.iteritems():
