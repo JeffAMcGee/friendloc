@@ -187,7 +187,7 @@ def graph_results(path="results"):
     ugly_graph_hist(data,
             "top_results.pdf",
             bins=dist_bins(120),
-            xlim=(1,30000),
+            xlim=(1,15000),
             kind="cumulog",
             normed=True,
             ordered_label=True,
@@ -212,8 +212,8 @@ def diff_mode_fl():
             alpha='.05',
             markersize=5,
             )
-    ax.set_xlim(1,30000)
-    ax.set_ylim(1,30000)
+    ax.set_xlim(1,15000)
+    ax.set_ylim(1,15000)
     ax.set_xlabel("mode")
     ax.set_ylabel("fl")
     fig.savefig('../www/mode_fl.png')
@@ -288,7 +288,7 @@ def gr_preds(preds, in_paths):
 
     ugly_graph_hist(data,
             "gr_preds%s.png"%clump,
-            xlim= (1,30000),
+            xlim= (1,15000),
             normed=True,
             label_len=True,
             kind="cumulog",
@@ -313,7 +313,7 @@ def graph_edge_types_cuml(edge_dists):
 
     ugly_graph_hist(data,
             "edge_types_cuml.pdf",
-            xlim= (1,30000),
+            xlim= (1,15000),
             normed=True,
             label_len=True,
             kind="cumulog",
@@ -327,13 +327,15 @@ def graph_edge_types_prot(edge_dists):
     data = defaultdict(list)
 
     for key,dists in edge_dists:
+        if key[0]=='rand':
+            continue
         conf = CONTACT_GROUPS[key[0]]
         fill = 'solid' if key[-1] else 'dotted'
         data[(conf['label'],conf['color'],fill)].extend(dists)
 
     ugly_graph_hist(data,
             "edge_types_prot.pdf",
-            xlim = (1,30000),
+            xlim = (1,15000),
             normed=True,
             label_len=True,
             kind="cumulog",
@@ -355,7 +357,7 @@ def graph_edge_types_norm(edge_dists):
 
     ugly_graph_hist(data,
             "edge_types_norm.pdf",
-            xlim = (1,30000),
+            xlim = (1,15000),
             normed=True,
             label_len=True,
             kind="logline",
@@ -501,7 +503,7 @@ def graph_edge_count(rfr_dists):
             'ignored',
             ax=ax,
             bins=dist_bins(120),
-            xlim=(1,10000),
+            xlim=(1,15000),
             label_len=True,
             kind="cumulog",
             normed=True,
@@ -526,7 +528,7 @@ def graph_local_groups(edges):
 
     ugly_graph_hist(data,
             "local_groups.pdf",
-            xlim= (1,30000),
+            xlim= (1,15000),
             normed=True,
             label_len=True,
             kind="cumulog",
@@ -578,7 +580,7 @@ def graph_locals(rfr_dists):
             'ignored',
             ax=ax,
             bins=dist_bins(120),
-            xlim=(1,30000),
+            xlim=(1,15000),
             label_len=True,
             kind="cumulog",
             normed=True,
@@ -632,7 +634,7 @@ def graph_com_types(edge_dists):
                 legend_loc=2,
                 bins=dist_bins(80),
                 kind="cumulog",
-                xlim=(1,30000),
+                xlim=(1,15000),
                 normed=True,
                 label_len=True,
                 xlabel = "distance between edges in miles",
@@ -663,7 +665,7 @@ def triad_types():
         ugly_graph_hist(data, "", ax=ax,
                 bins=dist_bins(80),
                 kind="cumulog",
-                xlim=(1,30000),
+                xlim=(1,15000),
                 label_len=True,
                 normed=True,
                 xlabel = "distance between edges in miles",
@@ -692,7 +694,7 @@ def diff_gnp_gps():
             kind="cumulog",
             normed=True,
             label_len=True,
-            xlim=(1,30000),
+            xlim=(1,15000),
             xlabel = "location error in miles",
             ylabel = "fraction of users",
             )
@@ -714,7 +716,7 @@ def near_triads(rfr_triads):
     ugly_graph_hist(data,
             "near_triads.pdf",
             bins=dist_bins(120),
-            xlim=(1,30000),
+            xlim=(1,15000),
             label_len=True,
             kind="cumulog",
             normed=True,
@@ -762,8 +764,8 @@ def plot_mine_ours():
             alpha=.05,
             markersize=10,
             )
-    ax.set_xlim(1,30000)
-    ax.set_ylim(1,30000)
+    ax.set_xlim(1,15000)
+    ax.set_ylim(1,15000)
     ax.set_xlabel("ours")
     ax.set_ylabel("mine")
     ax.set_title("closed vs. open triads")
