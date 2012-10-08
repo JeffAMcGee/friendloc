@@ -556,10 +556,12 @@ def graph_locals(rfr_dists):
     data=dict(
         lofrd = defaultdict(list),
         lofol = defaultdict(list),
+        cheap = defaultdict(list),
+        dirt = defaultdict(list),
     )
 
     for amigo in rfr_dists:
-        for color,key in (('r','lofrd'),('b','lofol')):
+        for color,key in (('r','dirt'),('b','lofol'),('g','cheap')):
             label = _bucket(amigo[key])
             if label is None:
                 data[key][('No leafs','k','dotted')].append(amigo['dist'])
@@ -567,11 +569,13 @@ def graph_locals(rfr_dists):
                 data[key][label].append(amigo['dist'])
 
     titles = dict(
-                lofrd="Contacts with Local Friends",
+                cheap="Contacts with Local Contacts",
+                dirt="10 Contacts with Local Contacts",
+                #lofrd="Contacts with Local Friends",
                 lofol="Contacts with Local Followers")
     fig = plt.figure(figsize=(18,6))
-    for spot,key in enumerate(('lofol','lofrd')):
-        ax = fig.add_subplot(1,2,1+spot,title=titles[key])
+    for spot,key in enumerate(('lofol','cheap','dirt')):
+        ax = fig.add_subplot(1,3,1+spot,title=titles[key])
 
         for subkey,dists in data[key].iteritems():
             print key, subkey, 1.0*sum(1 for d in dists if d<25)/len(dists)
@@ -675,21 +679,18 @@ def triad_types():
     fig.savefig("../www/triad_types.pdf",bbox_inches='tight')
 
 
-def diff_gnp_gps():
-    users = (User(u) for u in read_json('gnp_gps_46'))
-    mdist = gisgraphy.GisgraphyResource()
+@gob.mapper(all_items=True)
+def graph_mloc_mdist(mloc_mdists):
     dists = defaultdict(list)
     labels = ["1",'10','100','1000']
-    for user in users:
-            d = coord_in_miles(user.geonames_place.to_d(),user.median_loc)
-            md = mdist.mdist(user.geonames_place)
-            bin = len(str(int(md))) if md>=1 else 0
+    for mloc,mdist in mloc_mdists:
+            bin = len(str(int(mdist))) if mdist>=1 else 0
             for key in labels[bin:]:
-                dists['PLE<'+key].append(d)
-            dists[('all','k','solid',2)].append(d)
-            dists[('PLE','.6','dashed',1)].append(md)
+                dists['PLE<'+key].append(mloc)
+            dists[('all','k','solid',2)].append(mloc)
+            dists[('PLE','.6','dashed',1)].append(mdist)
     ugly_graph_hist(dists,
-            "diff_gnp_gps.eps",
+            "graph_mloc_mdist.png",
             bins = dist_bins(120),
             kind="cumulog",
             normed=True,

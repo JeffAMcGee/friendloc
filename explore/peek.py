@@ -47,6 +47,14 @@ def contact_mdist(uids):
 
 
 @gob.mapper(all_items=True)
+def diff_mloc_mdist(uids):
+    for contact in _paged_users(uids,fields=['gnp','mloc']):
+        if contact.geonames_place:
+            dist = coord_in_miles(contact.geonames_place.to_d(),contact.median_loc)
+            yield dist,contact.geonames_place.mdist
+
+
+@gob.mapper(all_items=True)
 def mloc_tile(mloc_uids):
     users = User.find(User._id.is_in(tuple(mloc_uids)),fields=['mloc','nebrs'])
     for user in users:
@@ -401,12 +409,24 @@ def edge_dists(edge_d):
             yield (key,amigo['i_at'],amigo['u_at'],amigo['prot']),dist
 
 
-@gob.mapper()
-def rfrd_dists(edge_d):
-    amigo = edge_d.get('rfrd')
-    if amigo:
-        amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
-        yield amigo
+class RecipFriendDists(object):
+    def __init__(self,env):
+        self.env = env
+        self.cheap = dict(chain.from_iterable(
+            self.env.load('cheap_locals.%02d'%x) for x in xrange(100)
+        ))
+        self.dirt = dict(chain.from_iterable(
+            self.env.load('dirt_cheap_locals.%02d'%x) for x in xrange(100)
+        ))
+
+    @gob.mapper()
+    def rfrd_dists(self,edge_d):
+        amigo = edge_d.get('rfrd')
+        if amigo:
+            amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
+            amigo['cheap'] = self.cheap.get(amigo['_id'])
+            amigo['dirt'] = self.dirt.get(amigo['_id'])
+            yield amigo
 
 
 @gob.mapper()
