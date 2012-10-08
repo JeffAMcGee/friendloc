@@ -724,8 +724,11 @@ def graph_mloc_mdist(mloc_mdists):
                 dists['PLE<'+key].append(mloc)
             dists[('all','k','solid',2)].append(mloc)
             dists[('PLE','.6','dashed',1)].append(mdist)
+    for key,vals in dists.iteritems():
+        print key,sum(1 for v in vals if v<1000)
+
     ugly_graph_hist(dists,
-            "graph_mloc_mdist.png",
+            "mloc_mdist.pdf",
             bins = dist_bins(120),
             kind="cumulog",
             normed=True,
