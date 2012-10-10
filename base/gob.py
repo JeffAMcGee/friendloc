@@ -122,7 +122,11 @@ class Job(object):
 
     def output_files(self, env):
         if self.split_data:
-            return env.split_files(self.name)
+            # FIXME: hasattr is ugly
+            if hasattr(self,'encoding'):
+                return env.split_files(self.name, self.encoding)
+            else:
+                return env.split_files(self.name)
         return [self.name,]
 
 
@@ -370,7 +374,7 @@ class Executor(object):
 
     def reduce_all(self, job, reducer):
         grouped = defaultdict(list)
-        for path in self.split_files(job.name):
+        for path in self.split_files(job.name,job.encoding):
             for k,v in self.load(path):
                 grouped[k].append(v)
         results = [
@@ -414,7 +418,7 @@ class Storage(object):
         """
         raise NotImplementedError
 
-    def split_files(self, name):
+    def split_files(self, name, encoding=None):
         "return an iterator of the names that name was split into"
         raise NotImplementedError
 
@@ -499,7 +503,7 @@ class DictStorage(Storage):
         for key,items in bs.data.iteritems():
             self.THE_FS[key] = items
 
-    def split_files(self, name):
+    def split_files(self, name, encoding=None):
         return (n for n in self.THE_FS if n.startswith(name+'.'))
 
     def job_status(self, name):
@@ -612,13 +616,13 @@ class FileStorage(Storage):
         yield bs
         bs._close()
 
-    def split_files(self, name):
+    def split_files(self, name, encoding='mp'):
+        suffix = '.'+encoding
         for dirpath, dirs, files in os.walk(os.path.join(self.path,name)):
             _dir = dirpath.replace(self.path,'').lstrip('/').replace('/','.')
             for file in files:
-                # FIXME: this is broken for non-mp files!
-                if file.endswith(".mp"):
-                    yield "%s.%s"%(_dir,file[:-3])
+                if file.endswith(suffix):
+                    yield "%s.%s"%(_dir,file[:-len(suffix)])
 
     @contextlib.contextmanager
     def _cursor(self,commit=False):
