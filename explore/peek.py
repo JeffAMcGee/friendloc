@@ -241,7 +241,6 @@ class ContactFit(object):
         dists = np.power(2,[tup[1] for tup in tups])-.01
         splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
 
-        cutoff = 0
         for index,chunk in enumerate(np.split(dists,splits)):
             hist,b = np.histogram(chunk,bins)
             ratio = hist[1:481]/fit_stgrs
@@ -254,10 +253,9 @@ class ContactFit(object):
                             1/miles,
                             ftol=.0001,
                             )
+            cutoff = tups[len(tups)*index//CHUNKS][0]
             print (cutoff,tuple(popt))
             yield (cutoff,tuple(popt))
-            # FIXME: I think this is wrong -- should we use index+1 ?
-            cutoff = tups[len(tups)*index//CHUNKS][0]
 
 
 class CheapLocals(object):
