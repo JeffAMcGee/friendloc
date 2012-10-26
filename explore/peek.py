@@ -218,7 +218,7 @@ class ContactFit(object):
         yield tuple(popt)
 
     @gob.mapper(all_items=True)
-    def vect_fit(self,vects,in_paths):
+    def vect_ratios(self,vects,in_paths):
         CHUNKS = 10
         bins = self._bins()
         miles = self._miles()
@@ -244,7 +244,13 @@ class ContactFit(object):
         for index,chunk in enumerate(np.split(dists,splits)):
             hist,b = np.histogram(chunk,bins)
             ratio = hist[1:481]/fit_stgrs
+            cutoff = tups[len(tups)*index//CHUNKS][0]
+            yield (cutoff, tuple(ratio))
 
+    @gob.mapper(all_items=True)
+    def vect_fit(self,vect_ratios):
+        miles = self._miles()
+        for cutoff,ratio in vect_ratios:
             popt,pcov = optimize.curve_fit(
                             contact_curve,
                             miles,
@@ -253,7 +259,6 @@ class ContactFit(object):
                             1/miles,
                             ftol=.0001,
                             )
-            cutoff = tups[len(tups)*index//CHUNKS][0]
             print (cutoff,tuple(popt))
             yield (cutoff,tuple(popt))
 

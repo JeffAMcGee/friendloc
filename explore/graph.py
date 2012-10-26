@@ -1,4 +1,5 @@
 OUTPUT_TYPE = None # 'png', 'pdf', or None
+OUTPUT_TYPE = 'png'#, 'pdf', or None
 
 import random
 import logging
@@ -21,7 +22,7 @@ from matplotlib.patches import Patch
 import numpy
 
 from settings import settings
-import base.gisgraphy as gisgraphy
+from explore import peek
 #from base.models import *
 from base.utils import dist_bins, coord_in_miles
 from base import gob
@@ -272,12 +273,38 @@ def _plot_dist_model(ax, row, *ignored):
     Y = (math.e**b) * (X**a)
     ax.plot(X, Y, '-', color='k',alpha=.2)
 
-CONTACT_GROUPS = dict(
-    jfol = dict(label='just followers',color='g'),
-    jfrd = dict(label='just friends',color='b'),
-    rfrd = dict(label='recip friends',color='r'),
-    jat = dict(label='just mentioned',color='c'),
-)
+
+class VectFit(object):
+    def __init__(self,env):
+        self.env = env
+
+    @gob.mapper(all_items=True)
+    def graph_vect_fit(self, vect_fit, in_paths):
+        if in_paths[0][-1] != '0':
+            return
+        ratios = (ratio for cutoff,ratio in self.env.load('vect_ratios.0'))
+        fits = (fit for cutoff,fit in vect_fit)
+
+        bins = dist_bins(120)
+        miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+
+        with axes('graph_vect_fit') as ax:
+            ax.set_xlim(1,15000)
+            ax.set_xscale('log')
+            ax.set_yscale('log')
+            ax.set_xlabel('distance in miles')
+            ax.set_ylabel('probablility of being a contact')
+
+            colors = iter('rgbc')
+            for index,(ratio,fit) in enumerate(zip(ratios, fits)):
+                if index%3!=0:
+                    continue
+
+                color = next(colors)
+                ax.plot(miles, ratio, '-', color=color)
+                ax.plot(miles, peek.contact_curve(miles,*fit), '-',
+                        linestyle='dashed', color=color)
+
 
 @gob.mapper(all_items=True)
 def gr_preds(preds, in_paths):
@@ -296,6 +323,14 @@ def gr_preds(preds, in_paths):
             xlabel = "error in prediction (miles)",
             bins = dist_bins(120),
             )
+
+
+CONTACT_GROUPS = dict(
+    jfol = dict(label='just followers',color='g'),
+    jfrd = dict(label='just friends',color='b'),
+    rfrd = dict(label='recip friends',color='r'),
+    jat = dict(label='just mentioned',color='c'),
+)
 
 
 @gob.mapper(all_items=True)
