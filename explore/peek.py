@@ -256,7 +256,7 @@ class ContactFit(object):
                             miles,
                             ratio,
                             (.001,2,-1),
-                            1/miles,
+                            miles**-1.1,
                             ftol=.0001,
                             )
             print (cutoff,tuple(popt))

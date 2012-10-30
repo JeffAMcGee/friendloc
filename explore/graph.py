@@ -288,20 +288,30 @@ class VectFit(object):
         bins = dist_bins(120)
         miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
 
-        with axes('graph_vect_fit') as ax:
-            ax.set_xlim(1,15000)
+        with axes('vect_fit',legend_loc=1) as ax:
+            ax.set_xlim(1,10000)
+            ax.set_ylim(1e-8,2e-3)
             ax.set_xscale('log')
             ax.set_yscale('log')
             ax.set_xlabel('distance in miles')
             ax.set_ylabel('probablility of being a contact')
 
-            colors = iter('rgbc')
+            colors = iter('rgbkm')
+            labels = iter([
+                'edges predicted in nearest 10%',
+                'edges in 60th to 70th percentile',
+                'edges in 30th to 40th percentile',
+                'edges predicted in most distant 10%',
+            ])
             for index,(ratio,fit) in enumerate(zip(ratios, fits)):
                 if index%3!=0:
                     continue
 
                 color = next(colors)
-                ax.plot(miles, ratio, '-', color=color)
+                label = next(labels)
+                window = numpy.bartlett(5)
+                smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
+                ax.plot(miles, smooth_ratio, '-', color=color, label=label)
                 ax.plot(miles, peek.contact_curve(miles,*fit), '-',
                         linestyle='dashed', color=color)
 
