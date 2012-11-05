@@ -83,15 +83,15 @@ def create_jobs(g):
     g.add_map_job(peek.geo_ats,saver='split_save',requires=['find_leafs'])
     g.add_cat('cat_geo_ats','geo_ats')
     g.add_map_job(peek.at_tuples,'cat_geo_ats',saver='split_save')
-    g.add_map_job(peek.geo_ated,'at_tuples')
-
     g.add_map_job(prep.pred_users,'mloc_uids')
+    g.add_map_job(peek.GeoAted.geo_ated,'at_tuples',requires=['mloc_uids'])
     g.add_map_job(peek.EdgesDict.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.RecipFriendDists.rfrd_dists,'edges_d',
                   requires=['contact_blur','cheap_locals'])
     g.add_cat('cat_rfrd_dists','rfrd_dists')
     g.add_map_job(peek.edge_leaf_dists,'edges_d')
+
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
     g.add_map_job(graph.graph_edge_types_norm,'edge_dists')

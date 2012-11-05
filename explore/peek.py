@@ -346,12 +346,21 @@ def at_tuples(geo_at):
         yield User.mod_id(at), (at,uid)
 
 
-@gob.mapper(all_items=True)
-def geo_ated(at_tuples):
-    ated = collections.defaultdict(list)
-    for to, frm in at_tuples:
-        ated[to].append(frm)
-    return ated.iteritems()
+
+class GeoAted(object):
+    def __init__(self,env):
+        self.mloc_uids = set(chain.from_iterable(
+            env.load('mloc_uids.%02d'%x) for x in xrange(100)
+        ))
+        logging.info('done loading mloc_uids')
+
+    @gob.mapper(all_items=True)
+    def geo_ated(self,at_tuples):
+        ated = collections.defaultdict(list)
+        for to, frm in at_tuples:
+            if to in self.mloc_uids:
+                ated[to].append(frm)
+        return ated.iteritems()
 
 
 class EdgesDict(object):

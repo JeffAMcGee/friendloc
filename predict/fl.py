@@ -28,7 +28,7 @@ def nebr_vect(user):
         flags = [nebr['kind'] >>i & 1 for i in range(3)]
         logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
         others = [
-            _scaled_local(nebr['lofrd']),
+            flags[2] and flags[1],# true if rfriends
             _scaled_local(nebr['lofol']),
             int(bool(nebr['prot'])),
             logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
