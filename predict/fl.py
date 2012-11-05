@@ -19,21 +19,36 @@ def logify(x,fudge=1):
 def unlogify(x,fudge=1):
     return 2**x - fudge
 
-def _scaled_local(x):
-    return x if x is not None else .3
 
-@gob.mapper()
-def nebr_vect(user):
-    for nebr in user['nebrs']:
-        flags = [nebr['kind'] >>i & 1 for i in range(3)]
-        logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
-        others = [
-            flags[2] and flags[1],# true if rfriends
-            _scaled_local(nebr['lofol']),
-            int(bool(nebr['prot'])),
-            logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
-        ]
-        yield flags + logged + others
+class NebrVect(object):
+    def __init__(self,env):
+        to_froms = chain.from_iterable(
+            env.load('geo_ated.%02d'%x) for x in xrange(100)
+        )
+        self.geo_ated = {to:set(froms) for to, froms in to_froms}
+
+        self.cheap_locals = dict(chain.from_iterable(
+            env.load('cheap_locals.%02d'%x) for x in xrange(100)
+        ))
+
+    def _scaled_local(self,_id):
+        return self.cheap_locals.get(_id,.3)
+
+    @gob.mapper()
+    def nebr_vect(self,user):
+        mentioned = self.geo_ated.get(user['_id'],())
+        for nebr in user['nebrs']:
+            # I really don't like the way I did these flags.
+            ated,fols,frds = [nebr['kind'] >>i & 1 for i in range(3)]
+            at_back = int(nebr['_id'] in mentioned)
+            flags = [ated, at_back, ated and at_back, fols, frds, fols and frds]
+            logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
+            others = [
+                self._scaled_local(nebr['_id']),
+                int(bool(nebr['prot'])),
+                logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
+            ]
+            yield flags + logged + others
 
 
 def vects_as_mat(vects):

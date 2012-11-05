@@ -10,6 +10,10 @@ class TestFriendLoc(SimpleGobTest):
 
     def test_edge_vect_flow(self):
         # integration test
+        for x in xrange(100):
+            self.FS['geo_ated.%02d'%x] = []
+            self.FS['cheap_locals.%02d'%x] = []
+
         self.FS['mloc_uids.03'] = [3]
         self.FS['mloc_uids.06'] = [6]
         self.FS['mloc_blur'] = [1,[10],[2,4]]
@@ -19,20 +23,3 @@ class TestFriendLoc(SimpleGobTest):
         vects03 = self.FS['nebr_vect.03']
         # there are 4 relationships
         self.assertEqual(len(vects03),4)
-
-    def test_edge_vect(self):
-        rel = dict(lat=31, lng=-96, mdist=3,
-                   kind=6, folc=7, frdc=1, prot=True,
-                   lofrd=None, lofol=.43,)
-        user = dict(
-                nebrs = [rel],
-                _id = 3,
-                mloc = [-96,30],
-                )
-        vect = next(fl.nebr_vect(user))
-        vect[-1] = int(vect[-1])
-        # (ated, is_frd, is_fol, mdist, folc, frdc, lofrd, lofol, prot, dist)
-        self.assertEqual(vect, [0,1,1,2,3,1,.3,.43,1,6])
-
-
-

@@ -154,7 +154,7 @@ def create_jobs(g):
     g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
 
     # the predictor
-    g.add_map_job(fl.nebr_vect,'nebrs_d')
+    g.add_map_job(fl.NebrVect.nebr_vect,'nebrs_d')
     g.add_clump(train_set, folds, 'nebr_vect', name='nvect_train')
     g.add_clump(eval_set, folds, 'nebr_vect', name='nvect_eval')
 

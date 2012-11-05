@@ -34,6 +34,7 @@ class NeighborsDict(object):
         self.mb_ratios = next(mloc_blur)
 
     def _prep_nebr(self,nebr):
+        # FIXME: these flags are really ugly.
         kind = sum(
                 bit if nebr._id in self.contacts[key] else 0
                 for key,bit in NEBR_FLAGS.iteritems()
