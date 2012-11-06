@@ -25,36 +25,37 @@ class NebrVect(object):
         to_froms = chain.from_iterable(
             env.load('geo_ated.%02d'%x) for x in xrange(100)
         )
+        # I wish there was a more functional way to get data from files
         self.geo_ated = {to:set(froms) for to, froms in to_froms}
 
         self.cheap_locals = dict(chain.from_iterable(
             env.load('cheap_locals.%02d'%x) for x in xrange(100)
         ))
 
-    def _scaled_local(self,_id):
-        return self.cheap_locals.get(_id,.3)
-
     @gob.mapper()
     def nebr_vect(self,user):
-        mentioned = self.geo_ated.get(user['_id'],())
-        for nebr in user['nebrs']:
-            # I really don't like the way I did these flags.
-            ated,fols,frds = [nebr['kind'] >>i & 1 for i in range(3)]
-            at_back = int(nebr['_id'] in mentioned)
-            flags = [ated, at_back, ated and at_back, fols, frds, fols and frds]
-            logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
-            others = [
-                self._scaled_local(nebr['_id']),
-                int(bool(nebr['prot'])),
-                logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
-            ]
-            yield flags + logged + others
+        return _make_nebr_vect(user,self.geo_ated,self.cheap_locals)
+
+def _make_nebr_vect(user,geo_ated,cheap_locals):
+    mentioned = geo_ated.get(user['_id'],())
+    for nebr in user['nebrs']:
+        # I really don't like the way I did these flags.
+        ated,fols,frds = [nebr['kind'] >>i & 1 for i in range(3)]
+        at_back = int(nebr['_id'] in mentioned)
+        flags = [ated, at_back, ated and at_back, fols, frds, fols and frds]
+        logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
+        others = [
+            cheap_locals.get(nebr['_id'],.3),
+            int(bool(nebr['prot'])),
+            logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
+        ]
+        yield flags + logged + others
 
 
 def vects_as_mat(vects):
     # convert vects to a scaled numpy array
     vects_ = np.fromiter( chain.from_iterable(vects), np.float32 )
-    vects_.shape = (len(vects_)//10),10
+    vects_.shape = (len(vects_)//12),12
     X = np.array(vects_[:,:-1])
     y = np.array(vects_[:,-1])
     #scaler = preprocessing.Scaler().fit(X)
@@ -249,7 +250,8 @@ class Predictors(object):
 
     def prep(self,nebrs_d):
         # add fields to nebrs_d
-        nebrs_d['vects'] = list(nebr_vect(nebrs_d))
+        vects = _make_nebr_vect(nebrs_d,self.geo_ated,self.cheap_locals)
+        nebrs_d['vects']=list(vects)
         X, y = vects_as_mat(nebrs_d['vects'])
         nebrs_d['pred_dists'] = self.nebr_clf.predict(X)
         nebrs_d['dist_mat'] = _calc_dists(nebrs_d)
@@ -276,6 +278,17 @@ class Predictors(object):
         self.mdist_curves = self._mdist_curves(clump)
         self.nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
         vect_fit = tuple(self.env.load('vect_fit.'+clump))
+
+        # This is ugly.
+        to_froms = chain.from_iterable(
+            self.env.load('geo_ated.%02d'%x) for x in xrange(100)
+        )
+        self.geo_ated = {to:set(froms) for to, froms in to_froms}
+
+        self.cheap_locals = dict(chain.from_iterable(
+            self.env.load('cheap_locals.%02d'%x) for x in xrange(100)
+        ))
+
 
         for nebrs_d in nebrs_ds:
             if not nebrs_d['nebrs']:
