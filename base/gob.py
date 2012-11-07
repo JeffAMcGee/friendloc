@@ -179,6 +179,7 @@ class MapJob(Job):
         them to bind to, and bind them. If the mapper and reducer are in the
         same class, only make one instance and have them share it.
         """
+        # FIXME: can we remove all this class magic? Take env as a param
         res = {}
         if inspect.ismethod(self.mapper):
             cls = self.mapper.im_class
@@ -329,7 +330,11 @@ class Executor(object):
 
         for args in item_iters:
             try:
-                results = _call_opt_kwargs(mapper,*args,in_paths=in_paths)
+                results = _call_opt_kwargs(
+                            mapper,
+                            *args,
+                            in_paths=in_paths,
+                            env=self)
                 if results:
                     for res in results:
                         yield res

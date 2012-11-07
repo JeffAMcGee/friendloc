@@ -33,22 +33,17 @@ def expand(value):
         digits=[int(x) for x in str(value)])
 
 
-class SecondHalf(object):
-    result_data = {}
+@gob.mapper()
+def take(value):
+    if value['digits'][0]==4:
+        yield value['num']%5, value['num']
 
-    def __init__(self,env):
-        pass
 
-    @gob.mapper()
-    def take(self, value):
-        if value['digits'][0]==4:
-            yield value['num']%5, value['num']
-
-    @gob.mapper(all_items=True)
-    def results(self, items):
-        # items should be an iterator of (k,v) pairs - just store the data on
-        # the class so we can run tests on it
-        self.__class__.result_data = dict(items)
+@gob.mapper(all_items=True)
+def stash_results(items):
+    # items should be an iterator of (k,v) pairs - just store the data on
+    # the class so we can run tests on it
+    BaseGobTests.result_data = dict(items)
 
 @gob.mapper()
 def combine_inputs(count, expanded):
@@ -60,8 +55,8 @@ def create_jobs(gob):
     gob.add_map_job(counter,'source',saver='split_save')
     gob.add_map_job(sourceless_counter,saver='split_save')
     gob.add_map_job(expand,'counter')
-    gob.add_map_job(SecondHalf.take,'expand',reducer=join_reduce)
-    gob.add_map_job(SecondHalf.results,'take',saver=None)
+    gob.add_map_job(take,'expand',reducer=join_reduce)
+    gob.add_map_job(stash_results,'take',saver=None)
     gob.add_map_job(combine_inputs,('counter','expand'))
 
 
@@ -74,7 +69,7 @@ class BaseGobTests(object):
         self.gob.run_job('counter')
         self.gob.run_job('expand')
         self.gob.run_job('take')
-        self.gob.run_job('results')
+        self.gob.run_job('stash_results')
 
         # These jobs find numbers less than 100 that begin with a four and end
         # with a 2 or 7.
@@ -158,8 +153,8 @@ class TestSimpleEnv(unittest.TestCase, BaseGobTests):
 
     def test_no_output(self):
         SimpleEnv.THE_FS['take'] = [(2, [42, 47]), (3, [43])]
-        self.gob.run_job('results')
-        self.assertEqual(set(SecondHalf.result_data[2]), {42,47})
+        self.gob.run_job('stash_results')
+        self.assertEqual(set(self.result_data[2]), {42,47})
 
 
 def clean_data_dir():
