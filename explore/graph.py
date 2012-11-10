@@ -317,14 +317,39 @@ class VectFit(object):
 
 
 @gob.mapper(all_items=True)
-def gr_preds(preds, in_paths):
-    data = dict(preds)
-    clump = in_paths[0][-1]
+def gr_basic(preds):
+    labels = dict(
+        backstrom="Backstrom",
+        last="Random Contact",
+        #median="Median Contact",
+        nearest="Nearest Predicted Contact",
+        friendloc_basic="FriendlyLocation Basic",
+        friendloc_full="FriendlyLocation Full",
+        omni="Omniscient",
+    )
+    _gr_preds(preds,labels,'gr_basic.png')
+
+
+@gob.mapper(all_items=True)
+def gr_parts(preds):
+    labels = dict(
+        backstrom="Backstrom Baseline",
+        friendloc_plain="FriendlyLocation Basic",
+        friendloc_cut="FriendlyLocation with Cutoff",
+        friendloc_tz="FriendlyLocation with UTC offset",
+        friendloc_field="FriendlyLocation with Location field",
+        omni="Omniscient Baseline",
+    )
+    _gr_preds(preds,labels,'gr_parts.png')
+
+
+def _gr_preds(preds,labels,path):
+    data = {labels[key]:val for key,val in preds}
     for key,vals in data.iteritems():
         print key,sum(1 for v in vals if v<25)
 
     ugly_graph_hist(data,
-            "gr_preds%s.png"%clump,
+            path,
             xlim= (1,15000),
             normed=True,
             label_len=True,

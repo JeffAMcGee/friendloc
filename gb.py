@@ -166,7 +166,11 @@ def create_jobs(g):
     g.add_map_job(graph.VectFit.graph_vect_fit,'vect_fit')
     g.add_map_job(fl.Predictors.predictions,'nebrs_eval',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
-    g.add_map_job(graph.gr_preds,'predictions')
+    g.add_cat('preds_cat','stranger_prob')
+    g.add_map_job(graph.gr_basic,'preds_cat')
+    g.add_map_job(graph.gr_parts,'preds_cat')
+    #g.add_map_job(graph.gr_count,'preds_cat')
+    #g.add_map_job(graph.gr_usonly,'preds_us')
     g.add_map_job(fl.eval_preds,'predictions')
 
 def make_gob(args):
