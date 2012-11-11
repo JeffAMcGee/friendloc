@@ -424,11 +424,15 @@ def edge_dists(edge_d):
 class RecipFriendDists(object):
     def __init__(self,env):
         self.env = env
+        # FIXME: this is all kinds of ugly
         self.cheap = dict(chain.from_iterable(
             self.env.load('cheap_locals.%02d'%x) for x in xrange(100)
         ))
         self.dirt = dict(chain.from_iterable(
             self.env.load('dirt_cheap_locals.%02d'%x) for x in xrange(100)
+        ))
+        self.aint = dict(chain.from_iterable(
+            self.env.load('aint_cheap_locals.%02d'%x) for x in xrange(100)
         ))
 
     @gob.mapper()
@@ -438,6 +442,7 @@ class RecipFriendDists(object):
             amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
             amigo['cheap'] = self.cheap.get(amigo['_id'])
             amigo['dirt'] = self.dirt.get(amigo['_id'])
+            amigo['aint'] = self.aint.get(amigo['_id'])
             yield amigo
 
 

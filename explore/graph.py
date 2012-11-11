@@ -3,6 +3,7 @@ OUTPUT_TYPE = 'png'#, 'pdf', or None
 
 import random
 import contextlib
+import operator
 from collections import defaultdict
 
 import matplotlib
@@ -392,54 +393,59 @@ def graph_locals(rfr_dists):
         if ratio is None:
             return None
         elif 0<=ratio<.25:
-            return "0.0<=ratio<.25"
+            return ".0<=lr<.25"
         elif ratio<.5:
-            return "0.25<=ratio<.5"
+            return ".25<=lr<.5"
         elif ratio<.75:
-            return "0.5<=ratio<.75"
+            return ".5<=lr<.75"
         assert ratio<=1
-        return "0.75<=ratio<=1"
+        return ".75<=lr<=1"
 
-    data=dict(
-        lofrd = defaultdict(list),
-        lofol = defaultdict(list),
-        cheap = defaultdict(list),
-        dirt = defaultdict(list),
-    )
+    dirt = defaultdict(list)
+    ratio_dists = defaultdict(list)
 
     for amigo in rfr_dists:
-        for color,key in (('r','dirt'),('b','lofol'),('g','cheap')):
-            label = _bucket(amigo[key])
-            if label is None:
-                data[key][('No leafs','k','dotted')].append(amigo['dist'])
-            else:
-                data[key][label].append(amigo['dist'])
+        for key in ('dirt','aint','cheap'):
+            if amigo[key] is not None:
+                ratio_dists[key].append((amigo[key],amigo['dist']))
+        label = _bucket(amigo['dirt'])
+        if label is None:
+            dirt[('No leafs','k','dotted')].append(amigo['dist'])
+        else:
+            dirt[label].append(amigo['dist'])
 
-    titles = dict(
-                cheap="Contacts with Local Contacts",
-                dirt="10 Contacts with Local Contacts",
-                #lofrd="Contacts with Local Friends",
-                lofol="Contacts with Local Followers")
+    good_dists = {}
+    for key,tups in ratio_dists.iteritems():
+        med = numpy.median([ratio for ratio,dist in tups])
+        good_dists[key] = [dist for ratio,dist in tups if ratio>=med]
+
     fig = plt.figure(figsize=(18,6))
-    for spot,key in enumerate(('lofol','cheap','dirt')):
-        ax = fig.add_subplot(1,3,1+spot,title=titles[key])
 
-        for subkey,dists in data[key].iteritems():
-            print key, subkey, 1.0*sum(1 for d in dists if d<25)/len(dists)
+    ugly_graph_hist(good_dists,
+        'ignored',
+        ax = fig.add_subplot(1,3,1,title="contacts with local ratio >= median ratio"),
+        bins=dist_bins(120),
+        xlim=(1,15000),
+        label_len=True,
+        kind="cumulog",
+        normed=True,
+        xlabel = "distance between edges in miles",
+        ylabel = "fraction of users",
+        )
 
-        ugly_graph_hist(data[key],
-            'ignored',
-            ax=ax,
-            bins=dist_bins(120),
-            xlim=(1,15000),
-            label_len=True,
-            kind="cumulog",
-            normed=True,
-            xlabel = "distance between edges in miles",
-            ylabel = "fraction of users",
-            )
+    ugly_graph_hist(dirt,
+        'ignored',
+        ax = fig.add_subplot(1,3,2,title="local ratio based on 10 contacts"),
+        bins=dist_bins(120),
+        xlim=(1,15000),
+        label_len=True,
+        kind="cumulog",
+        normed=True,
+        xlabel = "distance between edges in miles",
+        ylabel = "fraction of users",
+        )
 
-    fig.savefig("../flt/figures/local_ratio.pdf",bbox_inches='tight')
+    fig.savefig("../www/local_ratio.pdf",bbox_inches='tight')
 
 
 
