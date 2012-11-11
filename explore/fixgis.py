@@ -6,16 +6,6 @@ import numpy
 
 from base import utils,gob
 from base.gisgraphy import GisgraphyResource
-from base.models import User
-
-
-def fix_user_mdist():
-    gis = GisgraphyResource()
-    users = User.find(User.geonames_place.exists(), timeout=False)
-    for user in users:
-        if not user.geonames_place.mdist:
-            user.geonames_place.mdist = gis.mdist(user.geonames_place)
-            user.save()
 
 
 @gob.mapper(all_items=True)

@@ -2,15 +2,9 @@ OUTPUT_TYPE = None # 'png', 'pdf', or None
 OUTPUT_TYPE = 'png'#, 'pdf', or None
 
 import random
-import logging
-import math
-import bisect
 import contextlib
-from collections import defaultdict, namedtuple
-from datetime import datetime as dt
-from datetime import timedelta
+from collections import defaultdict
 
-import networkx as nx
 import matplotlib
 
 # this needs to happen before pyplot is imported - it cannot be changed
@@ -18,10 +12,8 @@ if OUTPUT_TYPE:
     matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import numpy
 
-from settings import settings
 from explore import peek
 #from base.models import *
 from base.utils import dist_bins, coord_in_miles
@@ -171,107 +163,6 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
     ax.set_ylabel(kwargs.get('ylabel'))
     if fig is not None:
         fig.savefig('../www/'+path,bbox_inches='tight')
-
-
-def graph_results(path="results"):
-    linestyle = defaultdict(lambda: 'solid')
-    linestyle['Median'] = 'dotted'
-    linestyle['Omniscient *'] = 'dotted'
-    linestyle['Mode'] = 'dotted'
-    data = defaultdict(list)
-    for block in read_json(path):
-        for k,v in block.iteritems():
-            k = k.replace('lul','contacts')
-            data[(k,None,linestyle[k])].extend(v)
-    for k,v in data.iteritems():
-        print k[0], 1.0*sum(1 for d in v if d<25)/len(v)
-    ugly_graph_hist(data,
-            "top_results.pdf",
-            bins=dist_bins(120),
-            xlim=(1,15000),
-            kind="cumulog",
-            normed=True,
-            ordered_label=True,
-            xlabel = "error in prediction in miles",
-            ylabel = "fraction of users",
-            )
-
-
-def diff_mode_fl():
-    mode=[]
-    fl=[]
-    for block in read_json('results'):
-        mode.extend(block['Mode'])
-        fl.extend(block['FriendlyLocation'])
-    mode = numpy.array(mode)+1
-    fl = numpy.array(fl)+1
-
-    fig = plt.figure(figsize=(12,12))
-    ax = fig.add_subplot(111)
-    ax.loglog(mode, fl, '+',
-            color='k',
-            alpha='.05',
-            markersize=5,
-            )
-    ax.set_xlim(1,15000)
-    ax.set_ylim(1,15000)
-    ax.set_xlabel("mode")
-    ax.set_ylabel("fl")
-    fig.savefig('../www/mode_fl.png')
-
- 
-def filter_rtt(path=None):
-    format = "%a %b %d %H:%M:%S +0000 %Y"
-    for tweet in read_json(path):
-        if tweet.get('in_reply_to_status_id'):
-            #ca = time.mktime(dt.strptime(t[2],format).timetuple())
-            print "%d\t%d\t%s"%(
-                tweet['id'],
-                tweet['uid'],
-                tweet['in_reply_to_status_id'],
-                tweet['created_at']
-                )
-
-
-def graph_rtt(path=None):
-    #FIXME: This is for crowdy, not FriendlyLocation!
-    reply = namedtuple("reply",['id','uid','rtt','ca'])
-    file = open(path) if path else sys.stdin
-    tweets = [reply([int(f) for f in t])
-        for t in (line.strip().split('\t') for line in file)]
-    time_id = {}
-    for t in tweets:
-        time_id[t.ca] = max(t.id, time_id.get(t.ca,0))
-    cas = sorted(time_id.iterkeys())
-    ids = [time_id[ca] for ca in cas]
-    deltas = [
-        t.ca - cas[bisect.bisect_left(ids,t.rtt)]
-        for t in tweets[len(tweets)/2:]
-        if t.rtt>ids[0]]
-    ugly_graph_hist(deltas,
-            "reply_time_sum",
-            bins=xrange(0,3600*12,60),
-            xlabel="seconds between tweet and reply",
-            ylabel="count of tweets in a minute",
-        )
-
-
-def _plot_dist_model(ax, row, *ignored):
-    inner = 1.0*sum(1 for r in row if r<1)/len(row)
-    ax.plot([.001,1000],[inner,inner],'-',color='k',alpha=.2)
-
-    bins = 10**numpy.linspace(0,1,11)
-    hist,bins = numpy.histogram(row,bins)
-    step_size = bins[2]/bins[1]
-    centers = numpy.sqrt(bins[1:]*bins[:-1])
-    #scale for distance and the width of the bucket
-    line = hist/bins[1:] * (step_size/(step_size-1)/len(row))
-    a,b = numpy.polyfit(numpy.log(centers),numpy.log(line),1)
-    
-    #data = [(10**b)*(x**a) for x in bins]
-    X = 10**numpy.linspace(0,2,21)
-    Y = (math.e**b) * (X**a)
-    ax.plot(X, Y, '-', color='k',alpha=.2)
 
 
 class VectFit(object):
@@ -436,120 +327,6 @@ def graph_edge_types_norm(edge_dists):
             bins = dist_bins(40),
             ylim = .6,
             )
-
-
-def shuffled_dists(edges,kind="rfrd"):
-    good = [e for e in edges if kind in e and e[kind]['mdist']<1000]
-    dists = (
-        coord_in_miles(me['mloc'],you[kind])
-        for me,you in zip(good, random.sample(good, len(good)))
-        )
-    return numpy.fromiter(dists, float, len(good))
-
-
-def gen_rand_dists():
-    users = list(User.find_connected())
-    collection = User.database.User
-    dests = dict(
-        (user['_id'],user['gnp'])
-        for user in collection.find({'gnp':{'$exists':1}},fields=['gnp']))
-    keys = ('just_followers','just_friends','rfriends') 
-    for user in users:
-        for key in keys:
-            amigo_id = getattr(user,key)[0]
-            if dests[amigo_id]['mdist']<1000:
-                other = random.choice(users)
-                print coord_in_miles(other.median_loc,dests[amigo_id])
-
-def find_urls():
-    #for New Zealand project and Krishna
-    start = dt(2011,2,22,0)
-    tweets = Tweet.find(Tweet.created_at.range(start,start+timedelta(hours=2)))
-    for t in tweets:
-        print t.to_d(long_names=True,dateformat="%a %b %d %H:%M:%S +0000 %Y")
-
-
-def tweets_over_time():
-    #for the New Zealand project
-    tweets = Tweet.find(
-            (Tweet.text//r'twitpic\.com/\w+')&
-            Tweet.created_at.range(dt(2011,2,19),dt(2011,3,1)),
-            fields=['ca'])
-    days = [tweet.created_at.hour/24.0+tweet.created_at.day for tweet in tweets]
-    ugly_graph_hist(
-            days,
-            "twitpic_hr_lim",
-            kind="linear",
-            xlabel = "March 2011, UTC",
-            ylabel = "tweets with twitpic per hour",
-            bins=numpy.arange(19,29,1/24.0),
-            xlim=(21,29),
-            )
-
-
-def all_ratio_subplot(ax, edges, key, ated):
-    CUTOFF=settings.local_max_dist
-    BUCKETS=settings.fol_count_buckets
-    for kind,color in [['folc','r'],['frdc','b']]:
-        dists = defaultdict(list)
-        for edge in edges:
-            amigo = edge.get(key)
-            if amigo and amigo['ated']==ated and amigo['mdist']<1000:
-                dist = coord_in_miles(edge['mloc'],amigo)
-                bits = min(BUCKETS-1, int(math.log((amigo[kind] or 1),4)))
-                dists[bits].append(dist)
-        users = 0
-        for i in xrange(BUCKETS):
-            row = dists[i]
-            if not row: continue
-            height = 1.0*sum(1 for d in row if d<CUTOFF)/len(row)
-            ax.bar(users,height,len(row),color=color,edgecolor=color,alpha=.3)
-            users+=len(row)
-    ax.set_xlim(0,users)
-    ax.set_ylim(0,.8)
-
-
-def gr_ratio_all():
-    edges = list(read_json('edges_json'))
-    print "read edges"
-    
-    conv_labels = [
-            "Public I talk to",
-            "Public I ignore",
-            "Protected I talk to",
-            "Protected I ignore"]
-    edge_labels = ('just followers','recip friends','just friends','just mentioned')
-    edge_types = ('jfol','rfrd','jfrd','jat')
-
-    fig = plt.figure(figsize=(24,12))
-    for row, edge_type, edge_label in zip(range(4), edge_types, edge_labels):
-        for col,conv_label in enumerate(conv_labels):
-            ated = (col%2==0)
-            if not ated and row==3:
-                continue # this case is a contradiction
-            ax = fig.add_subplot(4,4,1+col+row*4)
-            edge_key = 'p'+edge_type if col>=2 else edge_type
-
-            all_ratio_subplot(ax, edges, edge_key, ated)
-            if col==0:
-                ax.set_ylabel(edge_label)
-            if row==3:
-                ax.set_xlabel('count of users')
-            elif row==0:
-                ax.set_title('%s users I %s'%(
-                    'protected' if col>=2 else 'public', 
-                    'talk to' if ated else 'ignore',
-                    ))
-            ax.tick_params(labelsize="small")
-            print 'graphed %d,%d'%(row,col)
-    ax = fig.add_subplot(4,4,16,frame_on=False)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.legend(
-        [Patch(color=c,alpha=.3) for c in "rb"],
-        ("follower count","friend count"),
-        4)
-    fig.savefig('../www/local_all.pdf',bbox_inches='tight')
 
 
 @gob.mapper(all_items=True)
@@ -797,96 +574,3 @@ def near_triads(rfr_triads):
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
-
-
-def mine_ours_img():
-    bins = dist_bins(40)
-    data = numpy.zeros((len(bins),len(bins)))
-    for quad in read_json('rfr_triads'):
-        if quad['my']['loc']['mdist']<100  and quad['our']['loc']['mdist']<100:
-            spot = [
-                bisect.bisect_left(bins, 1+coord_in_miles(quad['me']['loc'],quad[key]['loc']))
-                for key in ('our','my')
-            ]
-            data[tuple(spot)]+=1
-    
-    data = data-numpy.transpose(data)
-    fig = plt.figure(figsize=(24,24))
-    ax = fig.add_subplot(111)
-    ax.imshow(data,interpolation='nearest')
-
-    ax.set_xlim(0,160)
-    ax.set_ylim(0,160)
-    ax.set_xlabel("mine")
-    ax.set_ylabel("ours")
-    ax.set_title("closed vs. open triads")
-    fig.savefig('../www/mine_ours.png')
-    
-
-def plot_mine_ours():
-    data = dict(our=[],my=[])
-    for quad in read_json('rfr_triads'):
-        if quad['my']['loc']!=quad['our']['loc'] and quad['my']['loc']['mdist']<100  and quad['our']['loc']['mdist']<100:
-            for key in data:
-                dist = coord_in_miles(quad['me']['loc'],quad[key]['loc'])
-                data[key].append(1+dist)
-    
-    fig = plt.figure(figsize=(24,24))
-    ax = fig.add_subplot(111)
-    ax.loglog(data['our'],data['my'],'+',
-            color='k',
-            alpha=.05,
-            markersize=10,
-            )
-    ax.set_xlim(1,15000)
-    ax.set_ylim(1,15000)
-    ax.set_xlabel("ours")
-    ax.set_ylabel("mine")
-    ax.set_title("closed vs. open triads")
-    fig.savefig('../www/mine_ours.png')
-    
-
-def graph_from_net(net):
-    edges = [(fol,rfr['_id'])
-        for rfr in net['rfrs']
-        for fol in rfr['fols']]
-    g = nx.DiGraph(edges)
-    g.add_nodes_from(
-        (r['_id'], dict(lat=r['lat'],lng=r['lng']))
-        for r in net['rfrs'])
-    return g
-
-
-def draw_net_map():
-    size=10
-    counter = 0
-    fig = plt.figure(figsize=(size*4,size*2))
-    for net in read_json('rfr_net'):
-        counter+=1
-        g = graph_from_net(net)
-        if not g.size(): continue
-        ax = fig.add_subplot(size,size,counter,frame_on=False)
-        ax.bar(net['mloc'][0]-.5,1,1,net['mloc'][1]-.5,edgecolor='b')
-        pos = dict((r['_id'],(r['lng'],r['lat'])) for r in net['rfrs'])
-        nx.draw_networkx_nodes(g,
-                ax=ax,
-                pos=pos,
-                alpha=.1,
-                node_size=50,
-                edgecolor='r',
-                node_shape='d',
-                )
-        nx.draw_networkx_edges(g,
-                ax=ax,
-                pos=pos,
-                alpha=.2,
-                width=1,
-                )
-        ax.set_xlim(-126,-66)
-        ax.set_ylim(24,50)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        if counter ==size*size:
-            break
-    fig.savefig('../www/net_map.png')
-

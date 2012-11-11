@@ -24,12 +24,7 @@ from base.gisgraphy import GisgraphyResource
 from maroon import *
 from base.models import *
 from localcrawl.admin import *
-from explore.graph import *
-from explore.peek import *
-from explore.fixgis import *
 from base.utils import *
-
-from base.tests.models_tests import save_fixtures
 
 
 logging.basicConfig(level=logging.INFO)
