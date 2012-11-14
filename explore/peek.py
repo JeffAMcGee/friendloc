@@ -84,8 +84,6 @@ def tile_split(groups):
 
 class StrangerDists(object):
     def __init__(self,env):
-        self.env = env
-        self.contact_count = dict(self.env.load('contact_count','mp'))
         self.contact_mat = None
 
     def _dists_for_lat(self,lat):
@@ -101,8 +99,8 @@ class StrangerDists(object):
 
         return utils.np_haversine(lng_0, lng_grid, lat_ar, lat_grid)
 
-    @gob.mapper(all_items=True)
-    def stranger_dists(self, mloc_tile):
+    @gob.mapper(all_items=True,slurp={'contact_count':dict})
+    def stranger_dists(self, mloc_tile, contact_count):
         mlocs = [m['mloc'] for m in mloc_tile]
         lat = mlocs[0][1]
         assert all(_tile(m[1])==_tile(lat) for m in mlocs)
@@ -113,7 +111,7 @@ class StrangerDists(object):
 
         dists = self._dists_for_lat(lat)
         for lng_tile, m_count in lngs.iteritems():
-            for spot, c_count in self.contact_count.iteritems():
+            for spot, c_count in contact_count.iteritems():
                 c_lng,c_lat = spot
                 if not ( -1800<=c_lng<1800 and -900<=c_lat<900):
                     continue
@@ -121,25 +119,25 @@ class StrangerDists(object):
                 dist = dists[delta if delta<1800 else 3600-delta,c_lat+900]
                 yield dist,m_count*c_count
 
-    def _contact_mat(self):
+    def _contact_mat(self,contact_count):
         if self.contact_mat is not None:
             return self.contact_mat
         mat = np.zeros((3600,1800))
-        for spot, c_count in self.contact_count.iteritems():
+        for spot, c_count in contact_count.iteritems():
             (lng_tile,lat_tile) = spot
             if -900<=lat_tile<900:
                 mat[(lng_tile+1800)%3600,lat_tile+900]+= c_count
         self.contact_mat = mat
         return mat
 
-    @gob.mapper()
-    def stranger_prob(self,lat_tile):
+    @gob.mapper(slurp={'contact_count':dict})
+    def stranger_prob(self,lat_tile,contact_count):
         lat_range = np.linspace(-89.95,89.95,1800)
         lng_range = np.linspace(.05,359.95,3600)
         lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
         dists = utils.np_haversine(.05, lng_grid, .1*lat_tile+.05, lat_grid)
-        contact_mat = self._contact_mat()
+        contact_mat = self._contact_mat(contact_count)
         dists[0,lat_tile+900] = 2
 
         for lng_tile in xrange(-1800,1800):
