@@ -120,8 +120,7 @@ def create_jobs(g):
     # add noise to location field of geolocated users
     g.add_map_job(peek.contact_mdist,'contact_split')
     g.add_map_job(peek.contact_mdist,'mloc_uids',name='mloc_mdist')
-    g.add_map_job(prep.MlocBlur.mloc_blur,
-              requires=['mloc_mdist','contact_mdist'])
+    g.add_map_job(prep.mloc_blur, requires=['mloc_mdist','contact_mdist'])
 
     # fb predictor
     g.add_map_job(peek.contact_count,'contact_split',reducer=gob.sum_reduce)
@@ -148,7 +147,7 @@ def create_jobs(g):
     folds = [str(x) for x in xrange(5)]
 
     # prep
-    g.add_map_job(prep.NeighborsDict.nebrs_d,'pred_users',
+    g.add_map_job(prep.nebrs_d,'pred_users',
               requires=['mloc_blur','lookup_leafs','contact_blur'])
     g.add_clump(train_set, folds, 'nebrs_d', name='nebrs_train')
     g.add_clump(eval_set, folds, 'nebrs_d', name='nebrs_eval')
@@ -157,7 +156,7 @@ def create_jobs(g):
     g.add_map_job(prep.mdist_real,'nebrs_d')
     g.add_clump(train_set, folds, 'mdist_real', name='mdist_train')
     g.add_map_job(prep.mdist_curves,'mdist_train')
-    g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
+    g.add_map_job(prep.utc_offset, 'nebrs_train')
 
     # the predictor
     g.add_map_job(fl.nebr_vect,'nebrs_d')

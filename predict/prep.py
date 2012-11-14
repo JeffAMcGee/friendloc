@@ -25,117 +25,109 @@ def pred_users(uids):
             yield u.to_d()
 
 
-class NeighborsDict(object):
-    def __init__(self,env):
-        self.env = env
-        mloc_blur = env.load('mloc_blur','mp')
-        self.mb_omit = next(mloc_blur)
-        self.mb_buckets = next(mloc_blur)
-        self.mb_ratios = next(mloc_blur)
+MlocBlur = collections.namedtuple('MlocBlur',('omit','buckets','ratios'))
 
-    def _prep_nebr(self,nebr):
-        # FIXME: these flags are really ugly.
-        kind = sum(
-                bit if nebr._id in self.contacts[key] else 0
-                for key,bit in NEBR_FLAGS.iteritems()
-                )
-        return dict(
-            folc=nebr.friends_count,
-            frdc=nebr.followers_count,
-            lofrd=nebr.local_friends,
-            lofol=nebr.local_followers,
-            lat=nebr.geonames_place.lat,
-            lng=nebr.geonames_place.lng,
-            mdist=nebr.geonames_place.mdist,
-            kind=kind,
-            prot=nebr.protected,
-            _id=nebr._id,
+
+def _prep_nebr(nebr,contacts):
+    # FIXME: these flags are really ugly.
+    kind = sum(
+            bit if nebr._id in contacts[key] else 0
+            for key,bit in NEBR_FLAGS.iteritems()
             )
-
-    def _blur_gnp(self, user_d):
-        gnp = user_d.get('gnp')
-        if not gnp or gnp['mdist']>1000:
-            return None
-        if random.random()>self.mb_omit:
-            return None
-        index = bisect.bisect(self.mb_buckets,gnp['mdist'])
-        ratio = self.mb_ratios[index]
-        # exaggerate the error that is already there according to the ratio
-        for key,real in zip(('lng','lat'),user_d['mloc']):
-            delta = real-gnp[key]
-            gnp[key] = real+ratio*delta
-        gnp['mdist'] = ratio*gnp['mdist']
-        return gnp
-
-    @gob.mapper()
-    def nebrs_d(self,user_d):
-        nebrs = User.find(User._id.is_in(user_d['nebrs']))
-        tweets = Tweets.get_id(user_d['_id'],fields=['ats'])
-        rfrds = set(user_d['rfrds'])
-
-        self.contacts = dict(
-            ated = set(tweets.ats or []),
-            frds = rfrds.union(user_d['jfrds']),
-            fols = rfrds.union(user_d['jfols']),
+    return dict(
+        folc=nebr.friends_count,
+        frdc=nebr.followers_count,
+        lofrd=nebr.local_friends,
+        lofol=nebr.local_followers,
+        lat=nebr.geonames_place.lat,
+        lng=nebr.geonames_place.lng,
+        mdist=nebr.geonames_place.mdist,
+        kind=kind,
+        prot=nebr.protected,
+        _id=nebr._id,
         )
 
-        res = dict(
-            _id = user_d['_id'],
-            mloc = user_d['mloc'],
-            nebrs = map(self._prep_nebr,nebrs),
-            gnp = self._blur_gnp(user_d),
-            )
-        if 'utco' in user_d:
-            res['utco'] = user_d['utco']
-        yield res
+
+def _blur_gnp(mb, user_d):
+    gnp = user_d.get('gnp')
+    if not gnp or gnp['mdist']>1000:
+        return None
+    if random.random()>mb.omit:
+        return None
+    index = bisect.bisect(mb.buckets,gnp['mdist'])
+    ratio = mb.ratios[index]
+    # exaggerate the error that is already there according to the ratio
+    for key,real in zip(('lng','lat'),user_d['mloc']):
+        delta = real-gnp[key]
+        gnp[key] = real+ratio*delta
+    gnp['mdist'] = ratio*gnp['mdist']
+    return gnp
 
 
-class MlocBlur(object):
-    def __init__(self,env):
-        self.env = env
+@gob.mapper(slurp={'mloc_blur':tuple})
+def nebrs_d(user_d,mloc_blur):
+    mb = MlocBlur(*mloc_blur)
 
-    @gob.mapper()
-    def mloc_blur(self):
-        cutoff = 250000
-        mdists = {}
-        for key in ('mloc','contact'):
-            files = self.env.split_files(key+'_mdist')
-            items_ = chain.from_iterable(self.env.load(f,'mp') for f in files)
-            mdists[key] = filter(None,itertools.islice(items_,cutoff))
-        yield 1.0*len(mdists['contact'])/len(mdists['mloc'])
+    nebrs = User.find(User._id.is_in(user_d['nebrs']))
+    tweets = Tweets.get_id(user_d['_id'],fields=['ats'])
+    rfrds = set(user_d['rfrds'])
 
-        count = len(mdists['contact'])
-        step = count//100
-        mdists['mloc'] = mdists['mloc'][:count]
-        for key,items in mdists.iteritems():
-            mdists[key] = sorted(items)
-        # the boundaries of the 100 buckets
-        yield mdists['mloc'][step:step*100:step]
+    contacts = dict(
+        ated = set(tweets.ats or []),
+        frds = rfrds.union(user_d['jfrds']),
+        fols = rfrds.union(user_d['jfols']),
+    )
 
-        ml_pts = np.array(mdists['mloc'][step/2::step])
-        ct_pts = np.array(mdists['contact'][step/2::step])
-        # the ratio at the middle of the buckets
-        yield list(ct_pts/ml_pts)
+    res = dict(
+        _id = user_d['_id'],
+        mloc = user_d['mloc'],
+        nebrs = [_prep_nebr(nebr,contacts) for nebr in nebrs],
+        gnp = _blur_gnp(mb, user_d),
+        )
+    if 'utco' in user_d:
+        res['utco'] = user_d['utco']
+    yield res
 
 
-class UtcOffset(object):
-    def __init__(self,env):
-        self.env = env
+@gob.mapper()
+def mloc_blur(env):
+    cutoff = 250000
+    mdists = {}
+    for key in ('mloc','contact'):
+        # FIXME: remove calls to env, use slurp instead
+        files = env.split_files(key+'_mdist')
+        items_ = chain.from_iterable(env.load(f,'mp') for f in files)
+        mdists[key] = filter(None,itertools.islice(items_,cutoff))
+    yield 1.0*len(mdists['contact'])/len(mdists['mloc'])
 
-    @gob.mapper(all_items=True)
-    def utc_offset(self, nebrs_d):
-        lngs = []
-        utcos = []
-        for u in nebrs_d:
-            if 'utco' in u:
-                utcos.append(u['utco'])
-                lngs.append(u['mloc'][0])
+    count = len(mdists['contact'])
+    step = count//100
+    mdists['mloc'] = mdists['mloc'][:count]
+    for key,items in mdists.iteritems():
+        mdists[key] = sorted(items)
+    # the boundaries of the 100 buckets
+    yield mdists['mloc'][step:step*100:step]
 
-        offsets = lngs-np.array(utcos)/240
-        wrapped = np.mod(offsets+180,360)-180
+    ml_pts = np.array(mdists['mloc'][step/2::step])
+    ct_pts = np.array(mdists['contact'][step/2::step])
+    # the ratio at the middle of the buckets
+    yield list(ct_pts/ml_pts)
 
-        counts,bins = np.histogram(wrapped,range(-180,181,15))
-        yield list(1.0*counts/sum(counts))
+
+@gob.mapper(all_items=True)
+def utc_offset(nebrs_d):
+    lngs = []
+    utcos = []
+    for u in nebrs_d:
+        if 'utco' in u:
+            utcos.append(u['utco'])
+            lngs.append(u['mloc'][0])
+
+    offsets = lngs-np.array(utcos)/240
+    wrapped = np.mod(offsets+180,360)-180
+
+    counts,bins = np.histogram(wrapped,range(-180,181,15))
+    yield list(1.0*counts/sum(counts))
 
 
 @gob.mapper(all_items=True)
