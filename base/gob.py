@@ -50,9 +50,11 @@ class StatefulIter(object):
         return self.current
 
 
-def mapper(all_items=False):
+def mapper(all_items=False,merge=None,slurp=None):
     def wrapper(f):
         f.all_items = all_items
+        f.merge = merge
+        f.slurp = slurp or {}
         return f
     return wrapper
 
@@ -78,6 +80,7 @@ def set_reduce(key, items, rereduce):
         return tuple(set(itertools.chain.from_iterable(items)))
     else:
         return tuple(set(items))
+
 
 @reducer()
 def avg_reduce(key, items, rereduce):
@@ -189,16 +192,7 @@ class MapJob(Job):
         else:
             res['map'] = self.mapper
 
-        if inspect.ismethod(self.reducer):
-            cls = self.reducer.im_class
-            if self.reducer.im_class != self.mapper.im_class:
-                # if the classes are the same, we want to re-use the same
-                # object, otherwise we make a new one:
-                obj = cls(env)
-            # magic: bind the unbound method self.mapper to obj
-            res['reduce'] = self.reducer.__get__(obj,cls)
-        else:
-            res['reduce'] = self.reducer
+        res['reduce'] = self.reducer
         return res
 
 
@@ -286,7 +280,7 @@ class Executor(object):
             logging.getLogger().removeHandler(self._file_hdlr)
 
 
-    def run(self, job, input_paths):
+    def run(self, job, input_paths, slurped):
         """
         run the job. save the results. block until it is done.
 
@@ -295,7 +289,7 @@ class Executor(object):
         """
         raise NotImplementedError
 
-    def map_reduce_save(self, job, in_paths, funcs):
+    def map_reduce_save(self, job, in_paths, funcs, slurped):
         "completely process one file -> map, reduce, and save"
         assert len(job.sources) == len(in_paths)
 
@@ -312,14 +306,14 @@ class Executor(object):
                 src.load_output(path, self)
                 for src, path in zip(job.sources,in_paths)
                 ]
-        results = self.map_single(funcs['map'],inputs,in_paths)
+        results = self.map_single(funcs['map'],inputs,in_paths,slurped)
         if funcs['reduce']:
             results = self.reduce_single(funcs['reduce'],results)
 
         self.save_single(job, in_paths, results)
         self.set_job_status(output,'done')
 
-    def map_single(self, mapper, inputs, in_paths):
+    def map_single(self, mapper, inputs, in_paths, slurped):
         "run mapper for one set of inputs and return an iterator of results"
         all_items = mapper.all_items or not inputs
         if all_items:
@@ -334,7 +328,8 @@ class Executor(object):
                             mapper,
                             *args,
                             in_paths=in_paths,
-                            env=self)
+                            env=self,
+                            **slurped)
                 if results:
                     for res in results:
                         yield res
@@ -428,6 +423,7 @@ class Storage(object):
         raise NotImplementedError
 
     def input_paths(self, source_jobs):
+        # FIXME: look at merge here
         inputs = [sorted(job.output_files(self)) for job in source_jobs]
         if not all(inputs):
             raise ValueError("missing dependencies for job")
@@ -452,7 +448,7 @@ class Storage(object):
 
 class SingleThreadExecutor(Executor):
     "Execute in a single process"
-    def run(self, job, input_paths):
+    def run(self, job, input_paths, slurped):
         """
         This is the cannonical implementation of run for an Executor.
         Subclasses of executor should be roughly equivalent to this method, but
@@ -466,7 +462,7 @@ class SingleThreadExecutor(Executor):
         funcs = job.runnable_funcs(self)
 
         for source_set in input_paths:
-            self.map_reduce_save(job, source_set, funcs)
+            self.map_reduce_save(job, source_set, funcs, slurped)
 
         if funcs['reduce']:
             self.reduce_all(job, funcs['reduce'])
@@ -663,9 +659,10 @@ def _usr1_handler(sig, frame):
     print(frame.f_locals)
 
 
-def _mp_worker_init(env, job):
+def _mp_worker_init(env, job, slurped):
     MultiProcEnv._worker_data['env'] = env
     MultiProcEnv._worker_data['job'] = job
+    MultiProcEnv._worker_data['slurped'] = slurped
     env.setup_logging('%s.%d'%(job.name,os.getpid()))
     signal.signal(signal.SIGUSR1, _usr1_handler)
 
@@ -676,9 +673,10 @@ def _mp_worker_run(source_set):
     env = MultiProcEnv._worker_data['env']
     job = MultiProcEnv._worker_data['job']
     funcs = MultiProcEnv._worker_data['funcs']
+    slurped = MultiProcEnv._worker_data['slurped']
     # letting exceptions bubble outside of the process confuses Pool
     try:
-        env.map_reduce_save(job, source_set, funcs)
+        env.map_reduce_save(job, source_set, funcs, slurped)
     except:
         logging.exception("crash is child proc")
         return False
@@ -690,10 +688,10 @@ class MultiProcEnv(FileStorage, Executor):
 
     _worker_data = {}
 
-    def run(self, job, input_paths):
+    def run(self, job, input_paths, slurped):
         MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
 
-        pool = Pool(job.procs,_mp_worker_init,[self, job])
+        pool = Pool(job.procs,_mp_worker_init,[self, job, slurped])
         results = pool.map(_mp_worker_run, input_paths, chunksize=1)
         pool.close()
         pool.join()
@@ -718,6 +716,7 @@ class SimpleFileEnv(FileStorage,SingleThreadExecutor):
 
 class Gob(object):
     def __init__(self, env):
+        # Is env really different from gob? How?
         # Do we want this to be some kind of singleton?
         self.jobs = {}
         self.env = env
@@ -730,8 +729,9 @@ class Gob(object):
 
     def run_job(self,name):
         job = self.jobs[name]
+        slurped = self.slurp(job.mapper.slurp)
         input_paths = self.env.input_paths(job.sources)
-        return self.env.run(job,input_paths=input_paths)
+        return self.env.run(job,input_paths=input_paths,slurped=slurped)
 
     def add(self, job):
         """ add a job to this gob """
@@ -792,3 +792,15 @@ class Gob(object):
                 **kwargs)
 
         return self.add(job)
+
+    def _cat_job_output(self,key):
+        job = self.jobs[key]
+        files = job.output_files(self.env)
+        loads = (job.load_output(p,self.env) for p in files)
+        return itertools.chain.from_iterable(loads)
+
+    def slurp(self,converters):
+        return {
+            key:converter(self._cat_job_output(key))
+            for key,converter in converters.iteritems()
+        }
