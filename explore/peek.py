@@ -258,7 +258,17 @@ def vect_fit(vect_ratios):
 
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
-def cheap_locals(nebr_ids,mloc_uids):
+def dirt_cheap_locals(nebr_ids,mloc_uids):
+    return cheap_locals(nebr_ids,mloc_uids,10)
+
+
+@gob.mapper(all_items=True,slurp={'mloc_uids':set})
+def aint_cheap_locals(nebr_ids,mloc_uids):
+    return cheap_locals(nebr_ids,mloc_uids,100)
+
+
+@gob.mapper(all_items=True,slurp={'mloc_uids':set})
+def cheap_locals(nebr_ids,mloc_uids,cutoff=20):
     seen = set()
     for nebr_id in nebr_ids:
         if nebr_id in seen:
@@ -277,7 +287,7 @@ def cheap_locals(nebr_ids,mloc_uids):
         if not cids:
             continue
         random.shuffle(cids)
-        leafs = User.find(User._id.is_in(cids[:20]), fields=['gnp'])
+        leafs = User.find(User._id.is_in(cids[:cutoff]), fields=['gnp'])
 
         dists = [
             coord_in_miles(user_loc,leaf.geonames_place.to_d())
