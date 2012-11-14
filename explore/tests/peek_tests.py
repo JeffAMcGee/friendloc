@@ -74,11 +74,8 @@ class TestPeek(SimpleGobTest):
         self.assertEqual(user.local_friends, 0)
 
     def test_edges_d(self):
-        for x in xrange(100):
-            self.FS['geo_ats.%02d'%x] = []
-        instance = peek.EdgesDict(self.env)
         user_d = models.User.get_id(6).to_d()
-        edges_d = instance.edges_d(user_d)
+        edges_d = peek.edges_d(user_d,{})
         self.assertEqual(len(edges_d),1)
         edge = edges_d[0]
         self.assertEqual(edge['jat']['_id'],7)

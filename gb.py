@@ -75,7 +75,7 @@ def create_jobs(g):
     g.add_clump(nebr_clump, clumps=["%02d"%x for x in xrange(100)],
                 source='nebr_split', name='nebr_ids')
 
-    g.add_map_job(peek.CheapLocals.cheap_locals, 'nebr_ids',
+    g.add_map_job(peek.cheap_locals, 'nebr_ids',
               requires=['lookup_leafs'], procs=4,
               )
 
@@ -84,8 +84,8 @@ def create_jobs(g):
     g.add_cat('cat_geo_ats','geo_ats')
     g.add_map_job(peek.at_tuples,'cat_geo_ats',saver='split_save')
     g.add_map_job(prep.pred_users,'mloc_uids')
-    g.add_map_job(peek.GeoAted.geo_ated,'at_tuples',requires=['mloc_uids'])
-    g.add_map_job(peek.EdgesDict.edges_d,'pred_users',requires=['geo_ats'],procs=4)
+    g.add_map_job(peek.geo_ated,'at_tuples',requires=['mloc_uids'])
+    g.add_map_job(peek.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.RecipFriendDists.rfrd_dists,'edges_d',
                   requires=['contact_blur','cheap_locals'])

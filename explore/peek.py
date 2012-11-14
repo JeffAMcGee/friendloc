@@ -257,43 +257,36 @@ def vect_fit(vect_ratios):
         yield (cutoff,tuple(popt))
 
 
-class CheapLocals(object):
-    def __init__(self,env):
-        self.env = env
-        self.mloc_uids = set(chain.from_iterable(
-            self.env.load('mloc_uids.%02d'%x) for x in xrange(100)
-        ))
+@gob.mapper(all_items=True,slurp={'mloc_uids':set})
+def cheap_locals(nebr_ids,mloc_uids):
+    seen = set()
+    for nebr_id in nebr_ids:
+        if nebr_id in seen:
+            continue
+        seen.add(nebr_id)
 
-    @gob.mapper(all_items=True)
-    def cheap_locals(self,nebr_ids):
-        seen = set()
-        for nebr_id in nebr_ids:
-            if nebr_id in seen:
-                continue
-            seen.add(nebr_id)
+        user = User.get_id(nebr_id)
+        user_loc = user.geonames_place.to_d()
 
-            user = User.get_id(nebr_id)
-            user_loc = user.geonames_place.to_d()
-
-            cids = [
-                cid
-                for key in User.NEBR_KEYS
-                for cid in (getattr(user,key) or [])
-                if cid not in self.mloc_uids
-                ]
-            if not cids:
-                continue
-            random.shuffle(cids)
-            leafs = User.find(User._id.is_in(cids[:20]), fields=['gnp'])
-
-            dists = [
-                coord_in_miles(user_loc,leaf.geonames_place.to_d())
-                for leaf in leafs
-                if leaf.has_place()
+        cids = [
+            cid
+            for key in User.NEBR_KEYS
+            for cid in (getattr(user,key) or [])
+            if cid not in mloc_uids
             ]
-            if dists:
-                blur = sum(1.0 for d in dists if d<25)/len(dists)
-                yield user._id,blur
+        if not cids:
+            continue
+        random.shuffle(cids)
+        leafs = User.find(User._id.is_in(cids[:20]), fields=['gnp'])
+
+        dists = [
+            coord_in_miles(user_loc,leaf.geonames_place.to_d())
+            for leaf in leafs
+            if leaf.has_place()
+        ]
+        if dists:
+            blur = sum(1.0 for d in dists if d<25)/len(dists)
+            yield user._id,blur
 
 
 @gob.mapper()
@@ -340,68 +333,54 @@ def at_tuples(geo_at):
         yield User.mod_id(at), (at,uid)
 
 
-
-class GeoAted(object):
-    def __init__(self,env):
-        self.mloc_uids = set(chain.from_iterable(
-            env.load('mloc_uids.%02d'%x) for x in xrange(100)
-        ))
-        logging.info('done loading mloc_uids')
-
-    @gob.mapper(all_items=True)
-    def geo_ated(self,at_tuples):
-        ated = collections.defaultdict(list)
-        for to, frm in at_tuples:
-            if to in self.mloc_uids:
-                ated[to].append(frm)
-        return ated.iteritems()
+@gob.mapper(all_items=True,slurp={'mloc_uids':set})
+def geo_ated(at_tuples,mloc_uids):
+    ated = collections.defaultdict(list)
+    for to, frm in at_tuples:
+        if to in mloc_uids:
+            ated[to].append(frm)
+    return ated.iteritems()
 
 
-class EdgesDict(object):
-    def __init__(self,env):
-        self.env = env
-        self.ats = dict(chain.from_iterable(
-            self.env.load('geo_ats.%02d'%x) for x in xrange(100)
-        ))
-        logging.info('done loading geo_ats')
-    def _ated(self,from_id,to_id):
-        return from_id in self.ats and to_id in self.ats[from_id]
+def _ated(ats,from_id,to_id):
+    return from_id in ats and to_id in ats[from_id]
 
-    @gob.mapper()
-    def edges_d(self, user_d):
-        me = User(user_d)
-        if not me.neighbors:
-            return []
-        nebrs = set(me.neighbors)
 
-        keys = {'just_followers':'jfol',
-                'just_friends':'jfrd',
-                'rfriends':'rfrd',
-                'just_mentioned':'jat'}
-        rels = dict(_id = me._id, mloc = me.median_loc)
-        for long,short in keys.iteritems():
-            amigos = [a for a in getattr(me,long) if a in nebrs]
-            if not amigos:
-                continue
-            amigo = User.get_id(amigos[0])
-            gnp = amigo.geonames_place.to_d()
-            if gnp['mdist']>1000:
-                continue
-            rels[short] = dict(
-                    folc=amigo.followers_count,
-                    frdc=amigo.friends_count,
-                    lofrd=amigo.local_friends,
-                    lofol=amigo.local_followers,
-                    prot=amigo.protected,
-                    lat=gnp['lat'],
-                    lng=gnp['lng'],
-                    mdist=gnp['mdist'],
-                    _id=amigo._id,
-                    i_at=self._ated(me._id,amigo._id),
-                    u_at=self._ated(amigo._id,me._id),
-                    )
+@gob.mapper(slurp={'geo_ats':dict})
+def edges_d(user_d, geo_ats):
+    me = User(user_d)
+    if not me.neighbors:
+        return []
+    nebrs = set(me.neighbors)
 
-        return [rels]
+    keys = {'just_followers':'jfol',
+            'just_friends':'jfrd',
+            'rfriends':'rfrd',
+            'just_mentioned':'jat'}
+    rels = dict(_id = me._id, mloc = me.median_loc)
+    for long,short in keys.iteritems():
+        amigos = [a for a in getattr(me,long) if a in nebrs]
+        if not amigos:
+            continue
+        amigo = User.get_id(amigos[0])
+        gnp = amigo.geonames_place.to_d()
+        if gnp['mdist']>1000:
+            continue
+        rels[short] = dict(
+                folc=amigo.followers_count,
+                frdc=amigo.friends_count,
+                lofrd=amigo.local_friends,
+                lofol=amigo.local_followers,
+                prot=amigo.protected,
+                lat=gnp['lat'],
+                lng=gnp['lng'],
+                mdist=gnp['mdist'],
+                _id=amigo._id,
+                i_at=_ated(geo_ats,me._id,amigo._id),
+                u_at=_ated(geo_ats,amigo._id,me._id),
+                )
+
+    return [rels]
 
 
 @gob.mapper()
