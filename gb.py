@@ -41,8 +41,6 @@ def create_jobs(g):
     # the crawler
     g.add_source(utils.read_json, name='geotweets')
     g.add_map_job(sprawl.parse_geotweets,'geotweets',saver='split_save')
-    g.add_map_job(sprawl.parse_geotweets,'geotweets',
-                  saver='split_save', name="new_geotweets")
     g.add_map_job(sprawl.mloc_users,'parse_geotweets')
     g.add_map_job(sprawl.find_contacts,'mloc_users',
               reducer=gob.set_reduce)
@@ -68,6 +66,10 @@ def create_jobs(g):
     g.add_map_job(sprawl.saved_users,saver='split_save')
     g.add_map_job(sprawl.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
+
+    g.add_map_job(sprawl.parse_geotweets,'geotweets',
+                  saver='split_save', name="new_geotweets")
+    g.add_map_job(sprawl.moved_mloc_uids,'new_geotweets')
 
     g.add_map_job(peek.contact_blur,'nebr_split',
                   requires=['lookup_leafs'],reducer=gob.avg_reduce)
@@ -161,7 +163,7 @@ def create_jobs(g):
     g.add_map_job(prep.utc_offset, 'nebrs_train')
 
     # the predictor
-    g.add_map_job(fl.nebr_vect,'nebrs_d')
+    g.add_map_job(fl.nebr_vect,'nebrs_d',requires=['dirt_cheap_locals'])
     g.add_clump(train_set, folds, 'nebr_vect', name='nvect_train')
     g.add_clump(eval_set, folds, 'nebr_vect', name='nvect_eval')
 

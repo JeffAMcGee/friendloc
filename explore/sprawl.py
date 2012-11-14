@@ -33,8 +33,7 @@ def parse_geotweets(tweets):
     logging.info("sending up to %d users"%len(users))
 
 
-@gob.mapper(all_items=True)
-def mloc_users(users_and_coords):
+def _untangle_users_and_coords(users_and_coords):
     users = {}
     locs = defaultdict(list)
     for user_or_coord in users_and_coords:
@@ -43,6 +42,12 @@ def mloc_users(users_and_coords):
         else:
             uid,coord = user_or_coord
             locs[uid].append(coord)
+    return users, locs
+
+
+@gob.mapper(all_items=True)
+def mloc_users(users_and_coords):
+    users, locs = _untangle_users_and_coords(users_and_coords)
     selected = []
     for uid,user in users.iteritems():
         spots = locs[uid]
@@ -55,6 +60,19 @@ def mloc_users(users_and_coords):
         user['mloc'] = median
         selected.append(user)
     random.shuffle(selected)
+    return selected
+
+
+@gob.mapper(all_items=True,slurp={'mloc_uids':set})
+def moved_mloc_uids(users_and_coords,mloc_uids):
+    users, locs = _untangle_users_and_coords(users_and_coords)
+    selected = []
+    for uid,user in users.iteritems():
+        if uid not in mloc_uids: continue
+        old_user = User.get_id(uid)
+        median = utils.median_2d(locs[uid])
+        if utils.coord_in_miles(median,old_user.median_loc)>100:
+            selected.append(uid)
     return selected
 
 
