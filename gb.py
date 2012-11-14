@@ -41,6 +41,8 @@ def create_jobs(g):
     # the crawler
     g.add_source(utils.read_json, name='geotweets')
     g.add_map_job(sprawl.parse_geotweets,'geotweets',saver='split_save')
+    g.add_map_job(sprawl.parse_geotweets,'geotweets',
+                  saver='split_save', name="new_geotweets")
     g.add_map_job(sprawl.mloc_users,'parse_geotweets')
     g.add_map_job(sprawl.find_contacts,'mloc_users',
               reducer=gob.set_reduce)
