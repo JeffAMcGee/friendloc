@@ -404,29 +404,15 @@ def edge_dists(edge_d):
             yield (key,amigo['i_at'],amigo['u_at'],amigo['prot']),dist
 
 
-class RecipFriendDists(object):
-    def __init__(self,env):
-        self.env = env
-        # FIXME: this is all kinds of ugly
-        self.cheap = dict(chain.from_iterable(
-            self.env.load('cheap_locals.%02d'%x) for x in xrange(100)
-        ))
-        self.dirt = dict(chain.from_iterable(
-            self.env.load('dirt_cheap_locals.%02d'%x) for x in xrange(100)
-        ))
-        self.aint = dict(chain.from_iterable(
-            self.env.load('aint_cheap_locals.%02d'%x) for x in xrange(100)
-        ))
-
-    @gob.mapper()
-    def rfrd_dists(self,edge_d):
-        amigo = edge_d.get('rfrd')
-        if amigo:
-            amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
-            amigo['cheap'] = self.cheap.get(amigo['_id'])
-            amigo['dirt'] = self.dirt.get(amigo['_id'])
-            amigo['aint'] = self.aint.get(amigo['_id'])
-            yield amigo
+@gob.mapper(slurp={'dirt_cheap_locals':dict,'cheap_locals':dict,'aint_cheap_locals':dict})
+def rfrd_dists(self,edge_d,dirt_cheap_locals,cheap_locals,aint_cheap_locals):
+    amigo = edge_d.get('rfrd')
+    if amigo:
+        amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
+        amigo['cheap'] = cheap_locals.get(amigo['_id'])
+        amigo['dirt'] = dirt_cheap_locals.get(amigo['_id'])
+        amigo['aint'] = aint_cheap_locals.get(amigo['_id'])
+        yield amigo
 
 
 @gob.mapper()

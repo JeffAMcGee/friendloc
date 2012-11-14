@@ -166,46 +166,43 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
         fig.savefig('../www/'+path,bbox_inches='tight')
 
 
-class VectFit(object):
-    def __init__(self,env):
-        self.env = env
 
-    @gob.mapper(all_items=True)
-    def graph_vect_fit(self, vect_fit, in_paths):
-        if in_paths[0][-1] != '0':
-            return
-        ratios = (ratio for cutoff,ratio in self.env.load('vect_ratios.0'))
-        fits = (fit for cutoff,fit in vect_fit)
+@gob.mapper(all_items=True)
+def graph_vect_fit(vect_fit, in_paths, env):
+    if in_paths[0][-1] != '0':
+        return
+    ratios = (ratio for cutoff,ratio in env.load('vect_ratios.0'))
+    fits = (fit for cutoff,fit in vect_fit)
 
-        bins = dist_bins(120)
-        miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+    bins = dist_bins(120)
+    miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
 
-        with axes('vect_fit',legend_loc=1) as ax:
-            ax.set_xlim(1,10000)
-            ax.set_ylim(1e-8,2e-3)
-            ax.set_xscale('log')
-            ax.set_yscale('log')
-            ax.set_xlabel('distance in miles')
-            ax.set_ylabel('probablility of being a contact')
+    with axes('vect_fit',legend_loc=1) as ax:
+        ax.set_xlim(1,10000)
+        ax.set_ylim(1e-8,2e-3)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_xlabel('distance in miles')
+        ax.set_ylabel('probablility of being a contact')
 
-            colors = iter('rgbkm')
-            labels = iter([
-                'edges predicted in nearest 10%',
-                'edges in 60th to 70th percentile',
-                'edges in 30th to 40th percentile',
-                'edges predicted in most distant 10%',
-            ])
-            for index,(ratio,fit) in enumerate(zip(ratios, fits)):
-                if index%3!=0:
-                    continue
+        colors = iter('rgbkm')
+        labels = iter([
+            'edges predicted in nearest 10%',
+            'edges in 60th to 70th percentile',
+            'edges in 30th to 40th percentile',
+            'edges predicted in most distant 10%',
+        ])
+        for index,(ratio,fit) in enumerate(zip(ratios, fits)):
+            if index%3!=0:
+                continue
 
-                color = next(colors)
-                label = next(labels)
-                window = numpy.bartlett(5)
-                smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
-                ax.plot(miles, smooth_ratio, '-', color=color, label=label)
-                ax.plot(miles, peek.contact_curve(miles,*fit), '-',
-                        linestyle='dashed', color=color)
+            color = next(colors)
+            label = next(labels)
+            window = numpy.bartlett(5)
+            smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
+            ax.plot(miles, smooth_ratio, '-', color=color, label=label)
+            ax.plot(miles, peek.contact_curve(miles,*fit), '-',
+                    linestyle='dashed', color=color)
 
 
 @gob.mapper(all_items=True)
