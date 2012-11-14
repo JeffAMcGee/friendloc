@@ -16,27 +16,17 @@ import explore.peek
 def logify(x,fudge=1):
     return math.log(x+fudge,2)
 
+
 def unlogify(x,fudge=1):
     return 2**x - fudge
 
 
-class NebrVect(object):
-    def __init__(self,env):
-        to_froms = chain.from_iterable(
-            env.load('geo_ated.%02d'%x) for x in xrange(100)
-        )
-        # I wish there was a more functional way to get data from files
-        self.geo_ated = {to:set(froms) for to, froms in to_froms}
+def _load_geo_ated(geo_ated):
+    return {to:set(froms) for to, froms in geo_ated}
 
-        self.cheap_locals = dict(chain.from_iterable(
-            env.load('cheap_locals.%02d'%x) for x in xrange(100)
-        ))
 
-    @gob.mapper()
-    def nebr_vect(self,user):
-        return _make_nebr_vect(user,self.geo_ated,self.cheap_locals)
-
-def _make_nebr_vect(user,geo_ated,cheap_locals):
+@gob.mapper(slurp={'geo_ated':_load_geo_ated,'dirt_cheap_locals':dict})
+def nebr_vect(user,geo_ated,dirt_cheap_locals):
     mentioned = geo_ated.get(user['_id'],())
     for nebr in user['nebrs']:
         # I really don't like the way I did these flags.
@@ -45,7 +35,7 @@ def _make_nebr_vect(user,geo_ated,cheap_locals):
         flags = [ated, at_back, ated and at_back, fols, frds, fols and frds]
         logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
         others = [
-            cheap_locals.get(nebr['_id'],.3),
+            dirt_cheap_locals.get(nebr['_id'],.3),
             int(bool(nebr['prot'])),
             logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
         ]
@@ -181,6 +171,13 @@ def _calc_dists(nebrs_d):
     return utils.np_haversine(lng1,lng2,lat1,lat2)
 
 
+@gob.mapper(all_items=True,slurp={'geo_ated':_load_geo_ated,'dirt_cheap_locals':dict})
+def predictions(self, nebrs_ds, env, in_paths, geo_ated, dirt_cheap_locals):
+    # This function is a stepping-stone to removing a useless class.
+    p = Predictors(env)
+    return p.predictions()
+
+
 class Predictors(object):
     def __init__(self,env):
         self.env = env
@@ -269,25 +266,18 @@ class Predictors(object):
 
         self._add_location_prob(nebrs_d)
 
-    @gob.mapper(all_items=True)
-    def predictions(self, nebrs_ds, in_paths):
+    def predictions(self, nebrs_ds, in_paths, geo_ated, dirt_cheap_locals):
         results = defaultdict(list)
         self.stranger_mat = self._stranger_mat()
         clump = in_paths[0][-1]
+        # FIXME: clean this up
         self.utc_offset = next(self.env.load('utc_offset.'+clump,'mp'))
         self.mdist_curves = self._mdist_curves(clump)
         self.nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
         vect_fit = tuple(self.env.load('vect_fit.'+clump))
 
-        # This is ugly.
-        to_froms = chain.from_iterable(
-            self.env.load('geo_ated.%02d'%x) for x in xrange(100)
-        )
-        self.geo_ated = {to:set(froms) for to, froms in to_froms}
-
-        self.cheap_locals = dict(chain.from_iterable(
-            self.env.load('cheap_locals.%02d'%x) for x in xrange(100)
-        ))
+        self.geo_ated = geo_ated
+        self.cheap_locals = dirt_cheap_locals
 
 
         for nebrs_d in nebrs_ds:

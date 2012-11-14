@@ -160,7 +160,7 @@ def create_jobs(g):
     g.add_map_job(prep.UtcOffset.utc_offset, 'nebrs_train')
 
     # the predictor
-    g.add_map_job(fl.NebrVect.nebr_vect,'nebrs_d')
+    g.add_map_job(fl.nebr_vect,'nebrs_d')
     g.add_clump(train_set, folds, 'nebr_vect', name='nvect_train')
     g.add_clump(eval_set, folds, 'nebr_vect', name='nvect_eval')
 
@@ -170,7 +170,7 @@ def create_jobs(g):
               requires=['strange_bins','nebr_clf'] )
     g.add_map_job(peek.vect_fit, 'vect_ratios')
     g.add_map_job(graph.graph_vect_fit,'vect_fit')
-    g.add_map_job(fl.Predictors.predictions,'nebrs_eval',
+    g.add_map_job(fl.predictions,'nebrs_eval',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
     g.add_cat('preds_cat','stranger_prob')
     g.add_map_job(graph.gr_basic,'preds_cat')
