@@ -19,13 +19,13 @@ class TestPeek(SimpleGobTest):
         self.assertAlmostEqual(dist,expected_dist,places=2)
 
     def test_stranger_probs(self):
-        contact_count = { (-1799,600):1 }
-        stranger = peek.StrangerDists(self.env)
+        contact_count = {(-1799,600):1}.iteritems()
         with mock.patch.object(utils,'contact_prob',lambda m:1.0/m):
-            row = stranger.stranger_prob(600,contact_count)
+            mat = peek._contact_mat(contact_count)
+            row = peek.stranger_prob(600,mat)
             self._assert_stranger_prob(row,(-1800,600),3.45)
             self._assert_stranger_prob(row,(-1799,600),2)
-            above = stranger.stranger_prob(610,contact_count)
+            above = peek.stranger_prob(610,mat)
             self._assert_stranger_prob(above,(-1800,610),69.18)
 
     def test_stranger_dists(self):

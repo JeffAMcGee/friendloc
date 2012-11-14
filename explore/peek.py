@@ -82,69 +82,67 @@ def tile_split(groups):
             yield group,tiled_user
 
 
-class StrangerDists(object):
-    def __init__(self,env):
-        self.contact_mat = None
+def _dists_for_lat(lat):
+    lat_range = np.linspace(-89.95,89.95,1800)
+    lng_range = np.linspace(.05,180.05,1801)
+    lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
-    def _dists_for_lat(self,lat):
-        lat_range = np.linspace(-89.95,89.95,1800)
-        lng_range = np.linspace(.05,180.05,1801)
-        lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
+    centered_lat = .05 + .1*_tile(lat)
+    lat_ar = np.empty_like(lat_grid)
+    lat_ar.fill(centered_lat)
+    lng_0 = np.empty_like(lat_grid)
+    lng_0.fill(.05)
 
-        centered_lat = .05 + .1*_tile(lat)
-        lat_ar = np.empty_like(lat_grid)
-        lat_ar.fill(centered_lat)
-        lng_0 = np.empty_like(lat_grid)
-        lng_0.fill(.05)
+    return utils.np_haversine(lng_0, lng_grid, lat_ar, lat_grid)
 
-        return utils.np_haversine(lng_0, lng_grid, lat_ar, lat_grid)
 
-    @gob.mapper(all_items=True,slurp={'contact_count':dict})
-    def stranger_dists(self, mloc_tile, contact_count):
-        mlocs = [m['mloc'] for m in mloc_tile]
-        lat = mlocs[0][1]
-        assert all(_tile(m[1])==_tile(lat) for m in mlocs)
+@gob.mapper(all_items=True,slurp={'contact_count':dict})
+def stranger_dists(mloc_tile, contact_count):
+    mlocs = [m['mloc'] for m in mloc_tile]
+    lat = mlocs[0][1]
+    assert all(_tile(m[1])==_tile(lat) for m in mlocs)
 
-        lngs = collections.defaultdict(int)
-        for mloc in mlocs:
-            lngs[_tile(mloc[0])]+=1
+    lngs = collections.defaultdict(int)
+    for mloc in mlocs:
+        lngs[_tile(mloc[0])]+=1
 
-        dists = self._dists_for_lat(lat)
-        for lng_tile, m_count in lngs.iteritems():
-            for spot, c_count in contact_count.iteritems():
-                c_lng,c_lat = spot
-                if not ( -1800<=c_lng<1800 and -900<=c_lat<900):
-                    continue
-                delta = abs(lng_tile-c_lng)
-                dist = dists[delta if delta<1800 else 3600-delta,c_lat+900]
-                yield dist,m_count*c_count
-
-    def _contact_mat(self,contact_count):
-        if self.contact_mat is not None:
-            return self.contact_mat
-        mat = np.zeros((3600,1800))
+    dists = _dists_for_lat(lat)
+    for lng_tile, m_count in lngs.iteritems():
         for spot, c_count in contact_count.iteritems():
-            (lng_tile,lat_tile) = spot
-            if -900<=lat_tile<900:
-                mat[(lng_tile+1800)%3600,lat_tile+900]+= c_count
-        self.contact_mat = mat
-        return mat
+            c_lng,c_lat = spot
+            if not ( -1800<=c_lng<1800 and -900<=c_lat<900):
+                continue
+            delta = abs(lng_tile-c_lng)
+            dist = dists[delta if delta<1800 else 3600-delta,c_lat+900]
+            yield dist,m_count*c_count
 
-    @gob.mapper(slurp={'contact_count':dict})
-    def stranger_prob(self,lat_tile,contact_count):
-        lat_range = np.linspace(-89.95,89.95,1800)
-        lng_range = np.linspace(.05,359.95,3600)
-        lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
 
-        dists = utils.np_haversine(.05, lng_grid, .1*lat_tile+.05, lat_grid)
-        contact_mat = self._contact_mat(contact_count)
-        dists[0,lat_tile+900] = 2
+def _contact_mat(contact_count):
+    mat = np.zeros((3600,1800))
+    for spot, c_count in contact_count:
+        (lng_tile,lat_tile) = spot
+        if -900<=lat_tile<900:
+            mat[(lng_tile+1800)%3600,lat_tile+900]+= c_count
+    return mat
 
-        for lng_tile in xrange(-1800,1800):
-            probs = np.log(1-utils.contact_prob(dists))
-            prob = np.sum(contact_mat*probs)
-            yield (lng_tile,lat_tile),prob
-            dists = np.roll(dists,1,0)
+
+@gob.mapper(slurp={'contact_count':_contact_mat})
+def stranger_prob(lat_tile,contact_count):
+    lat_range = np.linspace(-89.95,89.95,1800)
+    lng_range = np.linspace(.05,359.95,3600)
+    lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
+
+    dists = utils.np_haversine(.05, lng_grid, .1*lat_tile+.05, lat_grid)
+    # FIXME: the name of a slurped command-line argument should not have to
+    # match the file name
+    contact_mat = contact_count
+    dists[0,lat_tile+900] = 2
+
+    for lng_tile in xrange(-1800,1800):
+        probs = np.log(1-utils.contact_prob(dists))
+        prob = np.sum(contact_mat*probs)
+        yield (lng_tile,lat_tile),prob
+        dists = np.roll(dists,1,0)
 
 
 @gob.mapper(all_items=True)

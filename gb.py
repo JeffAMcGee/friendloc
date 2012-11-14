@@ -121,8 +121,7 @@ def create_jobs(g):
     g.add_map_job(peek.mloc_tile,'mloc_uids',reducer=gob.join_reduce)
     g.add_map_job(peek.tile_split, 'mloc_tile', saver='split_save')
     g.add_map_job(peek.nebr_dists, 'tile_split')
-    g.add_map_job(peek.StrangerDists.stranger_dists, 'tile_split',
-              requires=['contact_count'])
+    g.add_map_job(peek.stranger_dists, 'tile_split', requires=['contact_count'])
     g.add_map_job(peek.strange_nebr_bins, 'stranger_dists',
               name='strange_bins',reducer=gob.sum_reduce)
     g.add_map_job(peek.strange_nebr_bins, 'nebr_dists',
@@ -130,7 +129,7 @@ def create_jobs(g):
     g.add_map_job( peek.ContactFit.contact_fit, (),
               requires=['strange_bins','nebr_bins'] )
     g.add_map_job(peek.lat_tile, saver='split_save')
-    g.add_map_job(peek.StrangerDists.stranger_prob, 'lat_tile',
+    g.add_map_job(peek.stranger_prob, 'lat_tile',
               requires=['contact_count','contact_fit'])
     g.add_cat('stranger_prob_cat','stranger_prob')
     g.add_map_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
