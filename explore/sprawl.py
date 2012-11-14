@@ -15,19 +15,6 @@ import base.utils as utils
 NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
 
 
-class Sprawler(object):
-    def __init__(self,env):
-        self.twitter = twitter.TwitterResource()
-        self.gis = GisgraphyResource()
-        self.env = env
-        try:
-            mdists = next(env.load('mdists'))
-        except (IOError,KeyError):
-            pass
-        else:
-            self.gis.set_mdists(mdists)
-
-
 @gob.mapper(all_items=True)
 def parse_geotweets(tweets):
     # USAGE:
@@ -71,66 +58,70 @@ def mloc_users(users_and_coords):
     return selected
 
 
-class EdgeFinder(Sprawler):
-    def _pick_contacts(self, user, limit):
-        edges = Edges.get_id(user._id)
-        if not edges:
-            edges = self.twitter.get_edges(user._id)
-            edges.save()
+def _pick_contacts(twit, user, limit):
+    edges = Edges.get_id(user._id)
+    if not edges:
+        edges = twit.get_edges(user._id)
+        edges.save()
 
-        tweets = Tweets.get_id(user._id)
-        if not tweets:
-            tweets_ = self.twitter.user_timeline(user._id)
-            tweets = Tweets(_id=user._id,tweets=tweets_)
-            tweets.save()
+    tweets = Tweets.get_id(user._id)
+    if not tweets:
+        tweets_ = twit.user_timeline(user._id)
+        tweets = Tweets(_id=user._id,tweets=tweets_)
+        tweets.save()
 
-        ated = set(tweets.ats or [])
-        frds = set(edges.friends)
-        fols = set(edges.followers)
-        sets = dict(
-            rfriends = frds&fols,
-            just_friends = frds-fols,
-            just_followers = fols-frds,
-            just_mentioned = ated-(frds|fols),
-            )
+    ated = set(tweets.ats or [])
+    frds = set(edges.friends)
+    fols = set(edges.followers)
+    sets = dict(
+        rfriends = frds&fols,
+        just_friends = frds-fols,
+        just_followers = fols-frds,
+        just_mentioned = ated-(frds|fols),
+        )
 
-        #pick uids from sets
-        for key,s in sets.iteritems():
-            l = list(s)
-            random.shuffle(l)
-            setattr(user,key,l[:limit])
+    #pick uids from sets
+    for key,s in sets.iteritems():
+        l = list(s)
+        random.shuffle(l)
+        setattr(user,key,l[:limit])
 
 
-    def _save_user_contacts(self,user,limit):
-        logging.info("visit %s - %d",user.screen_name,user._id)
-        try:
-            self._pick_contacts(user,limit)
-        except twitter.TwitterFailure as e:
-            logging.warn("%d for %d",e.status_code,user._id)
-            user.error_status = e.status_code
-        user.save()
+def _save_user_contacts(twit,user,limit):
+    logging.info("visit %s - %d",user.screen_name,user._id)
+    try:
+        _pick_contacts(twit,user,limit)
+    except twitter.TwitterFailure as e:
+        logging.warn("%d for %d",e.status_code,user._id)
+        user.error_status = e.status_code
+    user.save()
 
-    def _my_contacts(self,user):
-        return ((User.mod_id(c),c) for c in user.contacts)
 
-    @gob.mapper(all_items=True)
-    def find_contacts(self,user_ds):
-        for user_d in itertools.islice(user_ds,2600):
-            user = User.get_id(user_d['id'])
-            if user:
-                logging.warn("not revisiting %d",user._id)
-            else:
-                user = User(user_d)
-                user.geonames_place = self.gis.twitter_loc(user.location)
-                self._save_user_contacts(user,limit=25)
-            for mod_nebr in self._my_contacts(user):
-                yield mod_nebr
+def _my_contacts(user):
+    return ((User.mod_id(c),c) for c in user.contacts)
 
-    @gob.mapper()
-    def find_leafs(self,uid):
-        user = User.get_id(uid)
-        self._save_user_contacts(user,limit=25)
-        return self._my_contacts(user)
+
+@gob.mapper(all_items=True)
+def find_contacts(user_ds):
+    gis = GisgraphyResource()
+    twit = twitter.TwitterResource()
+    for user_d in itertools.islice(user_ds,2600):
+        user = User.get_id(user_d['id'])
+        if user:
+            logging.warn("not revisiting %d",user._id)
+        else:
+            user = User(user_d)
+            user.geonames_place = gis.twitter_loc(user.location)
+            _save_user_contacts(twit,user,limit=25)
+        for mod_nebr in _my_contacts(user):
+            yield mod_nebr
+
+
+@gob.mapper()
+def find_leafs(uid):
+    user = User.get_id(uid)
+    _save_user_contacts(user,limit=25)
+    return _my_contacts(user)
 
 
 @gob.mapper(all_items=True)
@@ -177,31 +168,33 @@ def saved_users():
     return ((User.mod_id(u['_id']),u['_id']) for u in users)
 
 
-class ContactLookup(Sprawler):
-    @gob.mapper(all_items=True)
-    def lookup_contacts(self,contact_uids):
-        assert self.gis._mdist
+@gob.mapper(all_items=True,slurp={'mdists':next})
+def lookup_contacts(contact_uids,mdists,env):
+    twit = twitter.TwitterResource()
+    gis = GisgraphyResource()
+    gis.set_mdists(mdists)
 
-        # FIXME: we need a better way to know which file we are on.
-        first, contact_uids = utils.peek(contact_uids)
-        group = User.mod_id(first)
-        logging.info('lookup old uids for %s',group)
-        save_name = 'saved_users.%s'%group
-        if self.env.name_exists(save_name):
-            stored = set(self.env.load(save_name))
-        else:
-            stored = User.mod_id_set(int(group))
-        logging.info('loaded mod_group %s of %d users',group,len(stored))
-        missing = (id for id in contact_uids if id not in stored)
+    # FIXME: we need a better way to know which file we are on.
+    # FIXME: use the new input_paths thing
+    first, contact_uids = utils.peek(contact_uids)
+    group = User.mod_id(first)
+    logging.info('lookup old uids for %s',group)
+    save_name = 'saved_users.%s'%group
+    if env.name_exists(save_name):
+        stored = set(env.load(save_name))
+    else:
+        stored = User.mod_id_set(int(group))
+    logging.info('loaded mod_group %s of %d users',group,len(stored))
+    missing = (id for id in contact_uids if id not in stored)
 
-        chunks = utils.grouper(100, missing, dontfill=True)
-        for chunk in chunks:
-            users = self.twitter.user_lookup(user_ids=list(chunk))
-            for amigo in filter(None,users):
-                assert User.mod_id(amigo._id)==group
-                amigo.geonames_place = self.gis.twitter_loc(amigo.location)
-                amigo.merge()
-            yield len(users)
+    chunks = utils.grouper(100, missing, dontfill=True)
+    for chunk in chunks:
+        users = twit.user_lookup(user_ids=list(chunk))
+        for amigo in filter(None,users):
+            assert User.mod_id(amigo._id)==group
+            amigo.geonames_place = gis.twitter_loc(amigo.location)
+            amigo.merge()
+        yield len(users)
 
 
 def _pick_neighbors(user):
@@ -232,22 +225,22 @@ def pick_nebrs(mloc_uid):
     return ((User.mod_id(n),n) for n in user.neighbors)
 
 
-class MDistFixer(Sprawler):
-    @gob.mapper(all_items=True)
-    def fix_mloc_mdists(self,mloc_uids):
-        # We didn't have mdists at the time the mloc users were saved. This
-        # function could be avoided by running the mdist calculation before
-        # running find_contacts.
-        assert self.gis._mdist
-        fixed = 0
-        users = User.find(User._id.is_in(tuple(mloc_uids)))
-        for user in users:
-            user.geonames_place = self.gis.twitter_loc(user.location)
-            user.save()
-            if user.geonames_place:
-                fixed+=1
-        logging.info("fixed %d mdists",fixed)
-        return [fixed]
+@gob.mapper(all_items=True,slurp={'mdists':next})
+def fix_mloc_mdists(mloc_uids,mdists):
+    gis = GisgraphyResource()
+    gis.set_mdists(mdists)
+    # We didn't have mdists at the time the mloc users were saved. This
+    # function could be avoided by running the mdist calculation before
+    # running find_contacts.
+    fixed = 0
+    users = User.find(User._id.is_in(tuple(mloc_uids)))
+    for user in users:
+        user.geonames_place = gis.twitter_loc(user.location)
+        user.save()
+        if user.geonames_place:
+            fixed+=1
+    logging.info("fixed %d mdists",fixed)
+    return [fixed]
 
 
 @gob.mapper(all_items=True)

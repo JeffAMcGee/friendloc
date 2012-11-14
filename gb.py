@@ -42,17 +42,17 @@ def create_jobs(g):
     g.add_source(utils.read_json, name='geotweets')
     g.add_map_job(sprawl.parse_geotweets,'geotweets',saver='split_save')
     g.add_map_job(sprawl.mloc_users,'parse_geotweets')
-    g.add_map_job(sprawl.EdgeFinder.find_contacts,'mloc_users',
+    g.add_map_job(sprawl.find_contacts,'mloc_users',
               reducer=gob.set_reduce)
     g.add_map_job(sprawl.contact_split,'find_contacts',saver='split_save')
 
     g.add_map_job(fixgis.gnp_gps,'mloc_users')
     g.add_cat('cat_gnp_gps','gnp_gps')
     g.add_map_job(fixgis.mdists,'cat_gnp_gps')
-    g.add_map_job(sprawl.ContactLookup.lookup_contacts,'contact_split',procs=15)
+    g.add_map_job(sprawl.lookup_contacts,'contact_split',procs=15)
     g.add_map_job(sprawl.mloc_uids,'mloc_users')
     g.add_map_job(sprawl.trash_extra_mloc,'mloc_uids')
-    g.add_map_job(sprawl.MDistFixer.fix_mloc_mdists,'mloc_uids',requires=['mdists'])
+    g.add_map_job(sprawl.fix_mloc_mdists,'mloc_uids',requires=['mdists'])
 
     g.add_map_job(sprawl.pick_nebrs,'mloc_uids',
               requires=['lookup_contacts','mdists','trash_extra_mloc',
@@ -60,11 +60,11 @@ def create_jobs(g):
               reducer=gob.set_reduce,
               )
     g.add_map_job(sprawl.nebr_split, 'pick_nebrs', saver='split_save')
-    g.add_map_job(sprawl.EdgeFinder.find_leafs,'nebr_split',reducer=gob.set_reduce)
+    g.add_map_job(sprawl.find_leafs,'nebr_split',reducer=gob.set_reduce)
     g.add_map_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
     g.add_map_job(sprawl.saved_users,saver='split_save')
-    g.add_map_job(sprawl.ContactLookup.lookup_contacts, 'leaf_split',
+    g.add_map_job(sprawl.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
     g.add_map_job(peek.contact_blur,'nebr_split',

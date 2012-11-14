@@ -176,25 +176,6 @@ class MapJob(Job):
         "load the results of a previous run of this job"
         return env.load(path, encoding=self.encoding)
 
-    def runnable_funcs(self, env):
-        """
-        if the jobs mapper and reducer are unbound methods, make an object for
-        them to bind to, and bind them. If the mapper and reducer are in the
-        same class, only make one instance and have them share it.
-        """
-        # FIXME: can we remove all this class magic? Take env as a param
-        res = {}
-        if inspect.ismethod(self.mapper):
-            cls = self.mapper.im_class
-            obj = cls(env)
-            # magic: bind the unbound method job.mapper to obj
-            res['map'] = self.mapper.__get__(obj,cls)
-        else:
-            res['map'] = self.mapper
-
-        res['reduce'] = self.reducer
-        return res
-
 
 class Cat(Job):
     def __init__(self, pattern=None, **kwargs):
@@ -289,7 +270,7 @@ class Executor(object):
         """
         raise NotImplementedError
 
-    def map_reduce_save(self, job, in_paths, funcs, slurped):
+    def map_reduce_save(self, job, in_paths, slurped):
         "completely process one file -> map, reduce, and save"
         assert len(job.sources) == len(in_paths)
 
@@ -306,9 +287,9 @@ class Executor(object):
                 src.load_output(path, self)
                 for src, path in zip(job.sources,in_paths)
                 ]
-        results = self.map_single(funcs['map'],inputs,in_paths,slurped)
-        if funcs['reduce']:
-            results = self.reduce_single(funcs['reduce'],results)
+        results = self.map_single(job.mapper,inputs,in_paths,slurped)
+        if job.reducer:
+            results = self.reduce_single(job.reducer,results)
 
         self.save_single(job, in_paths, results)
         self.set_job_status(output,'done')
@@ -372,13 +353,13 @@ class Executor(object):
             for key,value in key_item_pairs:
                 saver.add(_path(name,key),value)
 
-    def reduce_all(self, job, reducer):
+    def reduce_all(self, job):
         grouped = defaultdict(list)
         for path in self.split_files(job.name,job.encoding):
             for k,v in self.load(path):
                 grouped[k].append(v)
         results = [
-            ( key, _call_opt_kwargs(reducer,key,items,rereduce=True) )
+            ( key, _call_opt_kwargs(job.reducer,key,items,rereduce=True) )
             for key,items in grouped.iteritems()
             ]
         self.save(job.name,results,encoding=job.encoding)
@@ -454,18 +435,12 @@ class SingleThreadExecutor(Executor):
         Subclasses of executor should be roughly equivalent to this method, but
         they can run map_reduce_save in different processes or on different
         machines.
-
-        runnable_funcs should be called once per proccess so that the instances
-        of the method that contains the mapper and reducer can be used to cache
-        data.
         """
-        funcs = job.runnable_funcs(self)
-
         for source_set in input_paths:
-            self.map_reduce_save(job, source_set, funcs, slurped)
+            self.map_reduce_save(job, source_set, slurped)
 
-        if funcs['reduce']:
-            self.reduce_all(job, funcs['reduce'])
+        if job.reducer:
+            self.reduce_all(job)
 
     def _handle_map_err(self, mapper, args):
         msg = "map %r failed for %r"%(mapper,args)
@@ -672,11 +647,10 @@ def _mp_worker_run(source_set):
     # pickle is broken.
     env = MultiProcEnv._worker_data['env']
     job = MultiProcEnv._worker_data['job']
-    funcs = MultiProcEnv._worker_data['funcs']
     slurped = MultiProcEnv._worker_data['slurped']
     # letting exceptions bubble outside of the process confuses Pool
     try:
-        env.map_reduce_save(job, source_set, funcs, slurped)
+        env.map_reduce_save(job, source_set, slurped)
     except:
         logging.exception("crash is child proc")
         return False
@@ -689,8 +663,6 @@ class MultiProcEnv(FileStorage, Executor):
     _worker_data = {}
 
     def run(self, job, input_paths, slurped):
-        MultiProcEnv._worker_data['funcs'] = job.runnable_funcs(self)
-
         pool = Pool(job.procs,_mp_worker_init,[self, job, slurped])
         results = pool.map(_mp_worker_run, input_paths, chunksize=1)
         pool.close()
@@ -699,9 +671,8 @@ class MultiProcEnv(FileStorage, Executor):
         if not all(results):
             raise Exception("child job failed!")
 
-        reducer = MultiProcEnv._worker_data['funcs']['reduce']
-        if reducer:
-            self.reduce_all(job, reducer)
+        if job.reducer:
+            self.reduce_all(job)
 
         MultiProcEnv._worker_data = {}
 
