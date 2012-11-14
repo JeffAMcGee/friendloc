@@ -174,89 +174,87 @@ def contact_curve(lm, a, b, c):
     return a*np.power(lm+b,c)
 
 
-class ContactFit(object):
-    def __init__(self,env):
-        self.env = env
+def _bin_counts(tups):
+    # take tuples from nebr_bins or strange_bins and return np array of
+    # counts
+    bin_d = dict(tups)
+    counts = [bin_d.get(b,0) for b in xrange(2,482)]
+    return np.array(counts)
 
-    def _counts(self, tups):
-        # take tuples from nebr_bins or strange_bins and return np array of
-        # counts
-        bin_d = dict(tups)
-        counts = [bin_d.get(b,0) for b in xrange(2,482)]
-        return np.array(counts)
 
-    def _bins(self):
-        return utils.dist_bins(120)
+def _miles():
+    bins = utils.dist_bins(120)
+    # find the geometric mean of the non-zero bins
+    return np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
 
-    def _miles(self):
-        bins = self._bins()
-        # find the geometric mean of the non-zero bins
-        return np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
 
-    def _fit_stgrs(self, miles):
-        # estimate the number of strangers at a distance from data >10 miles
-        stgrs = self._counts(self.env.load('strange_bins'))
-        sol = stats.linregress(np.log10(miles[120:]), np.log10(stgrs[120:]))
-        return 10**(sol[0]*(np.log10(miles))+sol[1])
+def _fit_stgrs(miles, stgrs):
+    # estimate the number of strangers at a distance from data >10 miles
+    sol = stats.linregress(np.log10(miles[120:]), np.log10(stgrs[120:]))
+    return 10**(sol[0]*(np.log10(miles))+sol[1])
 
-    @gob.mapper()
-    def contact_fit(self):
-        nebrs = self._counts(self.env.load('nebr_bins'))
-        miles = self._miles()
-        fit_stgrs = self._fit_stgrs(miles)
-        ratios = nebrs/fit_stgrs
 
-        # fit the porportion of strangers who are contacts to a curve.
-        def curve(lm, a, b):
-            return a/(lm+b)
-        popt,pcov = optimize.curve_fit(curve,miles,ratios,(.01,3))
-        print popt
-        yield tuple(popt)
+@gob.mapper(slurp={'strange_bins':_bin_counts,'nebr_bins':_bin_counts})
+def contact_fit(strange_bins,nebr_bins):
+    miles = _miles()
+    fit_stgrs = _fit_stgrs(miles,strange_bins)
+    ratios = nebr_bins/fit_stgrs
 
-    @gob.mapper(all_items=True)
-    def vect_ratios(self,vects,in_paths):
-        CHUNKS = 10
-        bins = self._bins()
-        miles = self._miles()
-        fit_stgrs_ = self._fit_stgrs(miles)
-        # FIXME: strange_bins was created from the whole dataset, but vects is
-        # only based on the training set. This is fragile.
-        fit_stgrs = .8*fit_stgrs_
+    # fit the porportion of strangers who are contacts to a curve.
+    def curve(lm, a, b):
+        return a/(lm+b)
+    popt,pcov = optimize.curve_fit(curve,miles,ratios,(.01,3))
+    print popt
+    yield tuple(popt)
 
-        #load and classify the vects
-        X, y = fl.vects_as_mat(vects)
-        clump = in_paths[0][-1]
-        nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
-        preds = nebr_clf.predict(X)
 
-        # sort (predicted, actual) tuples by predicted value
-        tups = zip(preds,y)
-        tups.sort(key=operator.itemgetter(0))
+@gob.mapper(all_items=True,slurp={'strange_bins':_bin_counts})
+def vect_ratios(vects,in_paths,env,strange_bins):
+    CHUNKS = 10
+    bins = utils.dist_bins(120)
+    miles = _miles()
+    fit_stgrs_ = _fit_stgrs(miles,strange_bins)
+    # FIXME: strange_bins was created from the whole dataset, but vects is
+    # only based on the training set. This is fragile.
+    fit_stgrs = .8*fit_stgrs_
 
-        # unlogify the data from vects and break into chunks
-        dists = np.power(2,[tup[1] for tup in tups])-.01
-        splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
+    #load and classify the vects
+    X, y = fl.vects_as_mat(vects)
+    clump = in_paths[0][-1]
+    # FIXME: Is there a nicer way to do this? We should be able tu use two
+    # inputs together.
+    nebr_clf = next(env.load('nebr_clf.'+clump,'pkl'))
+    preds = nebr_clf.predict(X)
 
-        for index,chunk in enumerate(np.split(dists,splits)):
-            hist,b = np.histogram(chunk,bins)
-            ratio = hist[1:481]/fit_stgrs
-            cutoff = tups[len(tups)*index//CHUNKS][0]
-            yield (cutoff, tuple(ratio))
+    # sort (predicted, actual) tuples by predicted value
+    tups = zip(preds,y)
+    tups.sort(key=operator.itemgetter(0))
 
-    @gob.mapper(all_items=True)
-    def vect_fit(self,vect_ratios):
-        miles = self._miles()
-        for cutoff,ratio in vect_ratios:
-            popt,pcov = optimize.curve_fit(
-                            contact_curve,
-                            miles,
-                            ratio,
-                            (.001,2,-1),
-                            miles**-1.1,
-                            ftol=.0001,
-                            )
-            print (cutoff,tuple(popt))
-            yield (cutoff,tuple(popt))
+    # unlogify the data from vects and break into chunks
+    dists = np.power(2,[tup[1] for tup in tups])-.01
+    splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
+
+    for index,chunk in enumerate(np.split(dists,splits)):
+        hist,b = np.histogram(chunk,bins)
+        ratio = hist[1:481]/fit_stgrs
+        cutoff = tups[len(tups)*index//CHUNKS][0]
+        yield (cutoff, tuple(ratio))
+
+
+@gob.mapper(all_items=True)
+def vect_fit(vect_ratios):
+    miles = _miles()
+    for cutoff,ratio in vect_ratios:
+        popt,pcov = optimize.curve_fit(
+                        contact_curve,
+                        miles,
+                        ratio,
+                        (.001,2,-1),
+                        miles**-1.1,
+                        ftol=.0001,
+                        )
+        print (cutoff,tuple(popt))
+        yield (cutoff,tuple(popt))
 
 
 class CheapLocals(object):

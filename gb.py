@@ -126,7 +126,7 @@ def create_jobs(g):
               name='strange_bins',reducer=gob.sum_reduce)
     g.add_map_job(peek.strange_nebr_bins, 'nebr_dists',
               name='nebr_bins',reducer=gob.sum_reduce)
-    g.add_map_job( peek.ContactFit.contact_fit, (),
+    g.add_map_job( peek.contact_fit, (),
               requires=['strange_bins','nebr_bins'] )
     g.add_map_job(peek.lat_tile, saver='split_save')
     g.add_map_job(peek.stranger_prob, 'lat_tile',
@@ -159,9 +159,9 @@ def create_jobs(g):
 
     g.add_map_job(fl.nebr_clf,'nvect_train',encoding='pkl')
     # FIXME : why don't we need vectors for nvect_eval?
-    g.add_map_job(peek.ContactFit.vect_ratios, 'nvect_train',
+    g.add_map_job(peek.vect_ratios, 'nvect_train',
               requires=['strange_bins','nebr_clf'] )
-    g.add_map_job(peek.ContactFit.vect_fit, 'vect_ratios')
+    g.add_map_job(peek.vect_fit, 'vect_ratios')
     g.add_map_job(graph.VectFit.graph_vect_fit,'vect_fit')
     g.add_map_job(fl.Predictors.predictions,'nebrs_eval',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
