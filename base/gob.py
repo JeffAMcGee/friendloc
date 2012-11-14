@@ -354,6 +354,8 @@ class Executor(object):
                 saver.add(_path(name,key),value)
 
     def reduce_all(self, job):
+        if not job.reducer:
+            return
         grouped = defaultdict(list)
         for path in self.split_files(job.name,job.encoding):
             for k,v in self.load(path):
@@ -438,9 +440,7 @@ class SingleThreadExecutor(Executor):
         """
         for source_set in input_paths:
             self.map_reduce_save(job, source_set, slurped)
-
-        if job.reducer:
-            self.reduce_all(job)
+        self.reduce_all(job)
 
     def _handle_map_err(self, mapper, args):
         msg = "map %r failed for %r"%(mapper,args)
@@ -671,9 +671,7 @@ class MultiProcEnv(FileStorage, Executor):
         if not all(results):
             raise Exception("child job failed!")
 
-        if job.reducer:
-            self.reduce_all(job)
-
+        self.reduce_all(job)
         MultiProcEnv._worker_data = {}
 
 
