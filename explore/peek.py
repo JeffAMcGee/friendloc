@@ -405,7 +405,7 @@ def edge_dists(edge_d):
 
 
 @gob.mapper(slurp={'dirt_cheap_locals':dict,'cheap_locals':dict,'aint_cheap_locals':dict})
-def rfrd_dists(self,edge_d,dirt_cheap_locals,cheap_locals,aint_cheap_locals):
+def rfrd_dists(edge_d,dirt_cheap_locals,cheap_locals,aint_cheap_locals):
     amigo = edge_d.get('rfrd')
     if amigo:
         amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)

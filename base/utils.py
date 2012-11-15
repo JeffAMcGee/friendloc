@@ -3,6 +3,7 @@ import os
 import errno
 import sys
 import math
+import logging
 import functools
 from collections import defaultdict
 
@@ -178,7 +179,11 @@ def contact_prob(miles):
 
 def read_json(path=None):
     file = open(path) if path else sys.stdin
-    return (json.loads(l) for l in file)
+    for l in file:
+        try:
+            yield json.loads(l)
+        except ValueError as e:
+            logging.exception("bad json line: %s",l)
 
 def write_json(it, path=None):
     file = open(path,'w') if path else sys.stdout
