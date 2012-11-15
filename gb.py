@@ -67,10 +67,6 @@ def create_jobs(g):
     g.add_map_job(sprawl.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
-    g.add_map_job(sprawl.parse_geotweets,'geotweets',
-                  saver='split_save', name="new_geotweets")
-    g.add_map_job(sprawl.moved_mloc_uids,'new_geotweets')
-
     g.add_map_job(peek.contact_blur,'nebr_split',
                   requires=['lookup_leafs'],reducer=gob.avg_reduce)
     def nebr_clump(keys, clump):

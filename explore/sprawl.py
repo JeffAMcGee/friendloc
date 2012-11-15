@@ -63,19 +63,6 @@ def mloc_users(users_and_coords):
     return selected
 
 
-@gob.mapper(all_items=True,slurp={'mloc_uids':set})
-def moved_mloc_uids(users_and_coords,mloc_uids):
-    users, locs = _untangle_users_and_coords(users_and_coords)
-    selected = []
-    for uid,user in users.iteritems():
-        if uid not in mloc_uids: continue
-        old_user = User.get_id(uid)
-        median = utils.median_2d(locs[uid])
-        if utils.coord_in_miles(median,old_user.median_loc)>100:
-            selected.append(uid)
-    return selected
-
-
 def _pick_contacts(twit, user, limit):
     edges = Edges.get_id(user._id)
     if not edges:
