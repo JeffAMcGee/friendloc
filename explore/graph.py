@@ -1,5 +1,5 @@
 OUTPUT_TYPE = None # 'png', 'pdf', or None
-OUTPUT_TYPE = 'png'#, 'pdf', or None
+OUTPUT_TYPE = 'pdf'#, 'pdf', or None
 
 import random
 import contextlib
@@ -233,7 +233,10 @@ def gr_parts(preds):
 
 
 def _gr_preds(preds,labels,path):
-    data = {labels[key]:val for key,val in preds}
+    preds_d = defaultdict(list)
+    for key,dists in preds:
+        preds_d[key].extend(dists)
+    data = {labels[key]:preds_d[key] for key in labels}
     for key,vals in data.iteritems():
         print key,sum(1 for v in vals if v<25)
 

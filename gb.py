@@ -175,7 +175,7 @@ def create_jobs(g):
     g.add_map_job(graph.graph_vect_fit,'vect_fit')
     g.add_map_job(fl.predictions,'nebrs_eval',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
-    g.add_cat('preds_cat','stranger_prob')
+    g.add_cat('preds_cat','predictions')
     g.add_map_job(graph.gr_basic,'preds_cat')
     g.add_map_job(graph.gr_parts,'preds_cat')
     #g.add_map_job(graph.gr_count,'preds_cat')

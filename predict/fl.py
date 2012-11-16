@@ -172,10 +172,10 @@ def _calc_dists(nebrs_d):
 
 
 @gob.mapper(all_items=True,slurp={'geo_ated':_load_geo_ated,'dirt_cheap_locals':dict})
-def predictions(self, nebrs_ds, env, in_paths, geo_ated, dirt_cheap_locals):
+def predictions(nebrs_ds, env, in_paths, geo_ated, dirt_cheap_locals):
     # This function is a stepping-stone to removing a useless class.
     p = Predictors(env)
-    return p.predictions()
+    return p.predictions(nebrs_ds,in_paths,geo_ated,dirt_cheap_locals)
 
 
 class Predictors(object):
@@ -247,7 +247,7 @@ class Predictors(object):
 
     def prep(self,nebrs_d):
         # add fields to nebrs_d
-        vects = _make_nebr_vect(nebrs_d,self.geo_ated,self.cheap_locals)
+        vects = nebr_vect(nebrs_d,self.geo_ated,self.cheap_locals)
         nebrs_d['vects']=list(vects)
         X, y = vects_as_mat(nebrs_d['vects'])
         nebrs_d['pred_dists'] = self.nebr_clf.predict(X)
