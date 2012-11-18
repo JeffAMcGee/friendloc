@@ -3,7 +3,7 @@ from itertools import chain
 import operator
 import bisect
 import itertools
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 from sklearn import preprocessing, tree, cross_validation
 import numpy as np
@@ -87,6 +87,21 @@ class FacebookMLE(Predictor):
     def predict(self,nebrs_d,vect_fit):
         probs = np.sum(np.log(nebrs_d['contact_prob']),axis=0)
         return np.argmax(probs+nebrs_d['strange_prob'])
+
+class Median(Predictor):
+    def predict(self,nebrs_d,vect_fit):
+        lats = [r['lat'] for r in nebrs_d['nebrs']]
+        lngs = [r['lng'] for r in nebrs_d['nebrs']]
+        mlat = np.median(lats)
+        mlng = np.median(lngs)
+        dists = utils.np_haversine(mlng,lngs,mlat,lats)
+        return np.argmin(dists)
+
+class Mode(Predictor):
+    def predict(self,nebrs_d,vect_fit):
+        spots = [(r['lng'],r['lat']) for r in nebrs_d['nebrs']]
+        best,count = Counter(spots).most_common(1)[0]
+        return spots.index(best)
 
 
 class NearestMLE(Predictor):
@@ -185,6 +200,8 @@ class Predictors(object):
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
+            median=Median(),
+            mode=Mode(),
             last=Last(),
             backstrom=FacebookMLE(),
             friendloc_plain=FriendLoc(env,0),

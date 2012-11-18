@@ -211,12 +211,13 @@ def gr_basic(preds):
         backstrom="Backstrom",
         last="Random Contact",
         #median="Median Contact",
+        #mode="Mode of Contacts",
         nearest="Nearest Predicted Contact",
         friendloc_plain="FriendlyLocation Basic",
         friendloc_full="FriendlyLocation Full",
         omni="Omniscient",
     )
-    _gr_preds(preds,labels,'gr_basic.pdf')
+    _gr_preds(preds,labels,'fl_basic.png')
 
 
 @gob.mapper(all_items=True)
@@ -232,7 +233,7 @@ def gr_parts(preds):
         friendloc_full="FriendlyLocation Full",
         omni="Omniscient Baseline",
     )
-    _gr_preds(preds,labels,'gr_parts.pdf')
+    _gr_preds(preds,labels,'fl_parts.pdf')
 
 
 def _gr_preds(preds,labels,path):
