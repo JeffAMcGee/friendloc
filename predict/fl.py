@@ -113,9 +113,10 @@ class NearestMLE(Predictor):
         return best[index]
 
 class FriendLoc(Predictor):
-    def __init__(self,env,loc_factor,tz_factor=0,force_loc=False):
+    def __init__(self,env,loc_factor=0,tz_factor=0,strange_factor=0,force_loc=False):
         self.env = env
         self.loc_factor = loc_factor
+        self.strange_factor = strange_factor
         self.tz_factor = tz_factor
         self.force_loc = force_loc
 
@@ -130,7 +131,7 @@ class FriendLoc(Predictor):
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
         total_probs = (
             np.sum(np.log(probs),axis=0) +
-            nebrs_d['strange_prob'] +
+            self.strange_factor*nebrs_d['strange_prob'] +
             self.tz_factor*nebrs_d['tz_prob'] +
             self.loc_factor*nebrs_d['location_prob']
             )
@@ -187,9 +188,12 @@ class Predictors(object):
             last=Last(),
             backstrom=FacebookMLE(),
             friendloc_plain=FriendLoc(env,0),
-            friendloc_field=FriendLoc(env,1),
-            friendloc_tz=FriendLoc(env,1,1),
-            friendloc_cut=FriendLoc(env,0,force_loc=True),
+            friendloc_loc=FriendLoc(env,loc_factor=1),
+            friendloc_tz=FriendLoc(env,tz_factor=1),
+            friendloc_strange=FriendLoc(env,strange_factor=1),
+            friendloc_cut0=FriendLoc(env,force_loc=True),
+            friendloc_cut=FriendLoc(env,tz_factor=1,strange_factor=1,force_loc=True),
+            friendloc_full=FriendLoc(env,1,1,1),
         )
         '''
         steps = [0,.333,1,3]

@@ -212,11 +212,11 @@ def gr_basic(preds):
         last="Random Contact",
         #median="Median Contact",
         nearest="Nearest Predicted Contact",
-        friendloc_basic="FriendlyLocation Basic",
+        friendloc_plain="FriendlyLocation Basic",
         friendloc_full="FriendlyLocation Full",
         omni="Omniscient",
     )
-    _gr_preds(preds,labels,'gr_basic.png')
+    _gr_preds(preds,labels,'gr_basic.pdf')
 
 
 @gob.mapper(all_items=True)
@@ -224,12 +224,15 @@ def gr_parts(preds):
     labels = dict(
         backstrom="Backstrom Baseline",
         friendloc_plain="FriendlyLocation Basic",
-        friendloc_cut="FriendlyLocation with Cutoff",
+        friendloc_cut0="FriendlyLocation with Cutoff",
+        friendloc_cut="FriendlyLocation with Cutoff +loc +str",
+        friendloc_strange="FriendlyLocation with Strange",
         friendloc_tz="FriendlyLocation with UTC offset",
-        friendloc_field="FriendlyLocation with Location field",
+        friendloc_loc="FriendlyLocation with Location field",
+        friendloc_full="FriendlyLocation Full",
         omni="Omniscient Baseline",
     )
-    _gr_preds(preds,labels,'gr_parts.png')
+    _gr_preds(preds,labels,'gr_parts.pdf')
 
 
 def _gr_preds(preds,labels,path):
