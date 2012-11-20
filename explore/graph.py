@@ -3,7 +3,7 @@ OUTPUT_TYPE = 'pdf'#, 'pdf', or None
 
 import random
 import contextlib
-import operator
+import bisect
 from collections import defaultdict
 
 import matplotlib
@@ -588,19 +588,29 @@ def near_triads(rfr_triads):
 
 @gob.mapper(all_items=True)
 def graph_indep(rfr_indep):
-    data = defaultdict(list)
+    # This function is ugly.
+
+    bins=dist_bins(120)
+    miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+    # FIXME: hardcoded values from _fit_stgrs in peek.py
+    fit_stgrs = 10**(1.034*(numpy.log10(miles))+6.207)
+
+    data = defaultdict(lambda: numpy.zeros(602))
     for quad in rfr_indep:
         for key,color in (('near','r'),('far','b')):
             d = coord_in_miles(quad['me']['loc'],quad[key]['gnp'])
-            data[key,color].append(d)
+            data[key][bisect.bisect(bins,d)]+=1
 
-    ugly_graph_hist(data,
-            "indep.png",
-            bins=dist_bins(120),
-            xlim=(1,15000),
-            label_len=True,
-            kind="cumulog",
-            normed=True,
-            xlabel = "distance between edges in miles",
-            ylabel = "number of users",
-            )
+    with axes('indep',legend_loc=1) as ax:
+        ax.set_xlim(1,15000)
+        #ax.set_ylim(1e-8,2e-3)
+        ax.set_xscale('log')
+        ax.set_yscale('log')
+        ax.set_xlabel('distance in miles')
+        ax.set_ylabel('probablility of being a contact')
+
+        #window = numpy.bartlett(5)
+        #smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
+        for key,vect in data.iteritems():
+            ax.plot( miles, vect[2:482]/fit_stgrs, '-', label=key)
+
