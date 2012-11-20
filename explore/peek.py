@@ -461,4 +461,31 @@ def rfr_triads(user_d):
     return []
 
 
+@gob.mapper()
+def rfr_indep(user_d):
+    me = User(user_d)
+    me_rfr = set(me.rfriends or []).intersection(me.neighbors or [])
+    if len(me_rfr)<3:
+        return []
+    nebrs = list(User.find(User._id.is_in(me_rfr), fields=['gnp']))
+    lats = np.array([nebr.geonames_place.latitude for nebr in nebrs])
+    lngs = np.array([nebr.geonames_place.longitude for nebr in nebrs])
+    for nebr in nebrs:
+        gnp = nebr.geonames_place
+        dists = utils.np_haversine(gnp.longitude, lngs, gnp.latitude, lats)
+        near = dists<25
+        far = dists>250
+        if not any(near) or not any(far):
+            continue
+        near_nebr = nebrs[random.choice(near.nonzero()[0])]
+        far_nebr = nebrs[random.choice(near.nonzero()[0])]
+
+        d = dict(
+            me = dict(_id=me._id,loc=me.median_loc),
+            nebr = nebr.to_d(),
+            near = near_nebr.to_d(),
+            far = far_nebr.to_d(),
+            )
+        return [d]
+    return []
 

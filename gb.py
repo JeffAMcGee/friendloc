@@ -112,6 +112,8 @@ def create_jobs(g):
     g.add_cat('cat_rfr_triads','rfr_triads')
     g.add_map_job(graph.near_triads,'cat_rfr_triads')
 
+    g.add_map_job(peek.rfr_indep,'pred_users')
+
     g.add_map_job(peek.diff_mloc_mdist,'mloc_uids')
     g.add_cat('cat_diff_mloc_mdist','diff_mloc_mdist')
     g.add_map_job(graph.graph_mloc_mdist,'cat_diff_mloc_mdist')
