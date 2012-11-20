@@ -584,3 +584,23 @@ def near_triads(rfr_triads):
             xlabel = "distance between edges in miles",
             ylabel = "number of users",
             )
+
+
+@gob.mapper(all_items=True)
+def graph_indep(rfr_indep):
+    data = defaultdict(list)
+    for quad in rfr_indep:
+        for key,color in (('near','r'),('far','b')):
+            d = coord_in_miles(quad['me']['loc'],quad[key]['gnp'])
+            data[key,color].append(d)
+
+    ugly_graph_hist(data,
+            "indep.png",
+            bins=dist_bins(120),
+            xlim=(1,15000),
+            label_len=True,
+            kind="cumulog",
+            normed=True,
+            xlabel = "distance between edges in miles",
+            ylabel = "number of users",
+            )

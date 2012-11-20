@@ -488,4 +488,3 @@ def rfr_indep(user_d):
             )
         return [d]
     return []
-
