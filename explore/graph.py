@@ -505,37 +505,6 @@ def graph_com_types(edge_dists):
     fig.savefig("../www/com_types.pdf",bbox_inches='tight')
 
 
-def triad_types():
-    fig = plt.figure(figsize=(24,12))
-    titles = dict(fol="Just Follower", rfrd="Reciprical Friend", frd="Just Friend", jat="Just Mentiened")
-    for col,edge_type in enumerate(['rfrd','frd','fol','jat']):
-        ax = fig.add_subplot(2,2,1+col)
-        counts = list(read_json('geo_%s_simp'%edge_type))
-        data = {}
-        for field,color in zip(("star","fan","path","loop"),'rbgk'):
-            steps = [
-                (False,'dotted',.5,"no"),
-                (True,'solid',1,"has"), ]
-            for part,style,lw,prefix in steps:
-                label = "%s %s"%(prefix,field)
-                key = (label, color, style, lw)
-                data[key] = [
-                    d['dist']
-                    for d in counts
-                    if part==bool(d[field])]
-        ugly_graph_hist(data, "", ax=ax,
-                bins=dist_bins(80),
-                kind="cumulog",
-                xlim=(1,15000),
-                label_len=True,
-                normed=True,
-                xlabel = "distance between edges in miles",
-                ylabel = "number of users",
-                )
-        ax.set_title(titles[edge_type])
-    fig.savefig("../www/triad_types.pdf",bbox_inches='tight')
-
-
 @gob.mapper(all_items=True)
 def graph_mloc_mdist(mloc_mdists):
     dists = defaultdict(list)
