@@ -356,12 +356,17 @@ def _ated(ats,from_id,to_id):
     return from_id in ats and to_id in ats[from_id]
 
 
+def _in_usa(lng,lat):
+    return 24<lat<50 and -126<lng<-66
+
+
 @gob.mapper(slurp={'geo_ats':dict})
 def edges_d(user_d, geo_ats):
     me = User(user_d)
     if not me.neighbors:
         return []
     nebrs = set(me.neighbors)
+    me_usa = _in_usa(me.median_loc[0],me.median_loc[1])
 
     keys = {'just_followers':'jfol',
             'just_friends':'jfrd',
@@ -388,6 +393,7 @@ def edges_d(user_d, geo_ats):
                 _id=amigo._id,
                 i_at=_ated(geo_ats,me._id,amigo._id),
                 u_at=_ated(geo_ats,amigo._id,me._id),
+                usa = me_usa and _in_usa(gnp['lng'],gnp['lat']),
                 )
 
     return [rels]
@@ -402,6 +408,8 @@ def edge_dists(edge_d):
             assert amigo['mdist']<1000
             dist = coord_in_miles(edge_d['mloc'],amigo)
             yield (key,amigo['i_at'],amigo['u_at'],amigo['prot']),dist
+            if key=='rfrd' and amigo['usa']:
+                yield ('usa',amigo['i_at'],amigo['u_at'],amigo['prot']),dist
 
 
 @gob.mapper(slurp={'dirt_cheap_locals':dict,'cheap_locals':dict,'aint_cheap_locals':dict})

@@ -269,7 +269,7 @@ def graph_edge_types_cuml(edge_dists):
     data = defaultdict(list)
 
     for key,dists in edge_dists:
-        if key[0]=='rand':
+        if key[0]=='usa':
             continue
         conf = CONTACT_GROUPS[key[0]]
         data[(conf['label'],conf['color'],'solid')].extend(dists)
@@ -293,7 +293,7 @@ def graph_edge_types_prot(edge_dists):
     data = defaultdict(list)
 
     for key,dists in edge_dists:
-        if key[0]=='rand':
+        if key[0]=='usa':
             continue
         conf = CONTACT_GROUPS[key[0]]
         fill = 'solid' if key[-1] else 'dotted'
@@ -314,9 +314,10 @@ def graph_edge_types_prot(edge_dists):
 def graph_edge_types_norm(edge_dists):
     data = defaultdict(list)
     for key,dists in edge_dists:
-        if key[0]=='rand':
-            continue
-        conf = CONTACT_GROUPS[key[0]]
+        if key[0]=='usa':
+            conf = dict(label='recip friends in us',color='k'),
+        else:
+            conf = CONTACT_GROUPS[key[0]]
         data[(conf['label'],conf['color'],'solid')].extend(dists)
     for key,dists in data.iteritems():
         data[key] = [d+1 for d in dists]
@@ -458,7 +459,7 @@ def graph_com_types(edge_dists):
     data = defaultdict(lambda: defaultdict(list))
 
     for key,dists in edge_dists:
-        if key[0]=='rand':
+        if key[0]=='usa':
             continue
         edge_type,i_at,u_at,prot = key
         # ignore protected
