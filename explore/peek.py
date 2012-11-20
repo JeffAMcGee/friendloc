@@ -467,18 +467,18 @@ def rfr_indep(user_d):
     me_rfr = set(me.rfriends or []).intersection(me.neighbors or [])
     if len(me_rfr)<3:
         return []
-    nebrs = list(User.find(User._id.is_in(me_rfr), fields=['gnp']))
-    lats = np.array([nebr.geonames_place.latitude for nebr in nebrs])
-    lngs = np.array([nebr.geonames_place.longitude for nebr in nebrs])
+    nebrs = list(User.find(User._id.is_in(list(me_rfr)), fields=['gnp']))
+    lats = np.array([nebr.geonames_place.lat for nebr in nebrs])
+    lngs = np.array([nebr.geonames_place.lng for nebr in nebrs])
     for nebr in nebrs:
         gnp = nebr.geonames_place
-        dists = utils.np_haversine(gnp.longitude, lngs, gnp.latitude, lats)
+        dists = utils.np_haversine(gnp.lng, lngs, gnp.lat, lats)
         near = dists<25
         far = dists>250
         if not any(near) or not any(far):
             continue
         near_nebr = nebrs[random.choice(near.nonzero()[0])]
-        far_nebr = nebrs[random.choice(near.nonzero()[0])]
+        far_nebr = nebrs[random.choice(far.nonzero()[0])]
 
         d = dict(
             me = dict(_id=me._id,loc=me.median_loc),
