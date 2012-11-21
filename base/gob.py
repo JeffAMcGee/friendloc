@@ -123,14 +123,18 @@ class Job(object):
         """This is called when a Job is added to a gob."""
         pass
 
-    def output_files(self, env):
-        if self.split_data:
+    def output_files(self, env, reduced=True):
+        if self.split_data or (not reduced and self.split_sources()):
+            self.split_data = any(j.split_data for j in self.sources)
             # FIXME: hasattr is ugly
             if hasattr(self,'encoding'):
                 return env.split_files(self.name, self.encoding)
             else:
                 return env.split_files(self.name)
         return [self.name,]
+
+    def split_sources(self):
+        return any(j.split_data for j in self.sources)
 
 
 class MapJob(Job):
@@ -151,7 +155,7 @@ class MapJob(Job):
         elif self.reducer:
             self.split_data = False
         elif self.sources:
-            self.split_data = any(j.split_data for j in self.sources)
+            self.split_data = self.split_sources()
         else:
             self.split_data = False
 
@@ -692,8 +696,8 @@ class Gob(object):
 
     def clear_job(self,name):
         job = self.jobs[name]
-        for f in job.output_files(self.env):
-            # FIXME: this should delete the files
+        for f in job.output_files(self.env,reduced=False):
+            # FIXME: should this delete the files?
             self.env.set_job_status(f,'new')
 
     def run_job(self,name):
