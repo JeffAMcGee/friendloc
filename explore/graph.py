@@ -217,7 +217,7 @@ def gr_basic(preds):
         friendloc_full="FriendlyLocation Full",
         omni="Omniscient",
     )
-    _gr_preds(preds,labels,'fl_basic.png')
+    _gr_preds(preds,labels,'fl_basic.pdf')
 
 
 @gob.mapper(all_items=True)
@@ -257,10 +257,10 @@ def _gr_preds(preds,labels,path):
 
 
 CONTACT_GROUPS = dict(
-    jfol = dict(label='just followers',color='g'),
-    jfrd = dict(label='just friends',color='b'),
-    rfrd = dict(label='recip friends',color='r'),
-    jat = dict(label='just mentioned',color='c'),
+    jfol = ('just followers','g','dashed',2),
+    jfrd = ('just friends','r','dotted',2),
+    rfrd = ('recip friends','k','solid',1),
+    jat = ('just mentioned','b','dashdot',2),
 )
 
 
@@ -272,7 +272,7 @@ def graph_edge_types_cuml(edge_dists):
         if key[0]=='usa':
             continue
         conf = CONTACT_GROUPS[key[0]]
-        data[(conf['label'],conf['color'],'solid')].extend(dists)
+        data[conf].extend(dists)
 
     for k,v in data.iteritems():
         print k,sum(1.0 for x in v if x<25)/len(v)
@@ -297,7 +297,11 @@ def graph_edge_types_prot(edge_dists):
             continue
         conf = CONTACT_GROUPS[key[0]]
         fill = 'solid' if key[-1] else 'dotted'
-        data[(conf['label'],conf['color'],fill)].extend(dists)
+        label,color,oldfill,width = conf
+        data[(lable,color,fill)].extend(dists)
+
+    for k,v in data.iteritems():
+        print k,round(100*sum(1.0 for x in v if x<25)/len(v)),len(v)
 
     ugly_graph_hist(data,
             "edge_types_prot.pdf",
@@ -317,7 +321,7 @@ def graph_edge_types_norm(edge_dists):
         if key[0]=='usa':
             continue
         conf = CONTACT_GROUPS[key[0]]
-        data[(conf['label'],conf['color'],'solid')].extend(dists)
+        data[conf].extend(dists)
 
     ugly_graph_hist(data,
             "edge_types_norm.pdf",
@@ -374,7 +378,7 @@ def graph_local_groups(edges):
             if amigo['lofol'] is None or amigo['lofol']<.5:
                 continue
             dist = coord_in_miles(edge['mloc'],amigo)
-            data[(conf['label'],conf['color'],'solid')].append(dist)
+            data[conf].append(dist)
 
     ugly_graph_hist(data,
             "local_groups.pdf",
@@ -405,6 +409,7 @@ def graph_locals(rfr_dists):
 
     dirt = defaultdict(list)
     ratio_dists = defaultdict(list)
+    comp_labels = dict(dirt="10 leafs",cheap="20 leafs",aint="100 leafs")
 
     for amigo in rfr_dists:
         for key in ('dirt','aint','cheap'):
@@ -419,9 +424,9 @@ def graph_locals(rfr_dists):
     good_dists = {}
     for key,tups in ratio_dists.iteritems():
         med = numpy.median([ratio for ratio,dist in tups])
-        good_dists[key] = [dist for ratio,dist in tups if ratio>=med]
+        good_dists[comp_labels[key]] = [dist for ratio,dist in tups if ratio>=med]
 
-    fig = plt.figure(figsize=(18,6))
+    fig = plt.figure(figsize=(24,6))
 
     ugly_graph_hist(good_dists,
         'ignored',
