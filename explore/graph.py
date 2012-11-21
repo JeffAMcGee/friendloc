@@ -315,12 +315,9 @@ def graph_edge_types_norm(edge_dists):
     data = defaultdict(list)
     for key,dists in edge_dists:
         if key[0]=='usa':
-            conf = dict(label='recip friends in us',color='k'),
-        else:
-            conf = CONTACT_GROUPS[key[0]]
+            continue
+        conf = CONTACT_GROUPS[key[0]]
         data[(conf['label'],conf['color'],'solid')].extend(dists)
-    for key,dists in data.iteritems():
-        data[key] = [d+1 for d in dists]
 
     ugly_graph_hist(data,
             "edge_types_norm.pdf",
@@ -330,8 +327,8 @@ def graph_edge_types_norm(edge_dists):
             kind="logline",
             ylabel = "fraction of users",
             xlabel = "distance to contact in miles",
-            bins = dist_bins(40),
-            ylim = .6,
+            bins = dist_bins(30,-1),
+            ylim = .35,
             )
 
 
