@@ -4,6 +4,7 @@ OUTPUT_TYPE = 'pdf'#, 'pdf', or None
 import random
 import contextlib
 import bisect
+import math
 from collections import defaultdict
 
 import matplotlib
@@ -67,7 +68,7 @@ def linhist(ax, row, bins, dist_scale=False, window=None, normed=False,
 def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-', logline_fn=None,
         label_len=False, auto_ls=False, dist_scale=False, ax=None,
-        window=None, ordered_label=False, **kwargs):
+        window=None, ordered_label=False, key_order=None, **kwargs):
     # DEPRECATED - TOO COMPLEX!
     if ax:
         fig = None
@@ -106,7 +107,10 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
         if known in kwargs:
             hargs[known] = kwargs[known]
 
-    for index,key in enumerate(sorted(data.iterkeys())):
+    if key_order is None:
+        key_order = sorted(data.iterkeys())
+
+    for index,key in enumerate(key_order):
         if isinstance(key,basestring):
             hargs['label'] = key
         else:
@@ -394,43 +398,52 @@ def graph_local_groups(edges):
 
 
 @gob.mapper(all_items=True)
-def graph_locals(rfr_dists):
-    def _bucket(ratio):
-        if ratio is None:
-            return None
-        elif 0<=ratio<.25:
-            return ".0<=lr<.25"
-        elif ratio<.5:
-            return ".25<=lr<.5"
-        elif ratio<.75:
-            return ".5<=lr<.75"
-        assert ratio<=1
-        return ".75<=lr<=1"
+def graph_locals_10(rfr_dists):
+    labels = [ ".0<=lr<.25", ".25<=lr<.5", ".5<=lr<.75", ".75<=lr<=1" ]
+    data = defaultdict(list)
 
-    dirt = defaultdict(list)
+    for amigo in rfr_dists:
+        if amigo['dirt'] is None:
+            data[('No leafs','k','dotted')].append(amigo['dist'])
+        else:
+            label = labels[min(3,int(math.floor(amigo['dirt']*4)))]
+            data[label].append(amigo['dist'])
+
+    ugly_graph_hist(data,
+        'locals_10.pdf',
+        bins=dist_bins(120),
+        xlim=(1,15000),
+        label_len=True,
+        kind="cumulog",
+        normed=True,
+        xlabel = "distance between edges in miles",
+        ylabel = "fraction of users",
+        )
+
+
+@gob.mapper(all_items=True)
+def graph_locals_cmp(rfr_dists):
     ratio_dists = defaultdict(list)
-    comp_labels = dict(dirt="10 leafs",cheap="20 leafs",aint="100 leafs")
-
     for amigo in rfr_dists:
         for key in ('dirt','aint','cheap'):
             if amigo[key] is not None:
                 ratio_dists[key].append((amigo[key],amigo['dist']))
-        label = _bucket(amigo['dirt'])
-        if label is None:
-            dirt[('No leafs','k','dotted')].append(amigo['dist'])
-        else:
-            dirt[label].append(amigo['dist'])
+
+    keys = ['dirt','cheap','aint']
+    labels = [
+        ('10 leafs','b','dashed',2),
+        ('20 leafs','r','dotted',2),
+        ('100 leafs','k','solid',1),
+    ]
 
     good_dists = {}
-    for key,tups in ratio_dists.iteritems():
+    for key,label in zip(keys,labels):
+        tups = ratio_dists[key]
         med = numpy.median([ratio for ratio,dist in tups])
-        good_dists[comp_labels[key]] = [dist for ratio,dist in tups if ratio>=med]
-
-    fig = plt.figure(figsize=(24,6))
+        good_dists[label] = [dist for ratio,dist in tups if ratio>=med]
 
     ugly_graph_hist(good_dists,
-        'ignored',
-        ax = fig.add_subplot(1,3,1,title="contacts with local ratio >= median ratio"),
+        'locals_cmp.pdf',
         bins=dist_bins(120),
         xlim=(1,15000),
         label_len=True,
@@ -438,21 +451,8 @@ def graph_locals(rfr_dists):
         normed=True,
         xlabel = "distance between edges in miles",
         ylabel = "fraction of users",
+        key_order = labels,
         )
-
-    ugly_graph_hist(dirt,
-        'ignored',
-        ax = fig.add_subplot(1,3,2,title="local ratio based on 10 contacts"),
-        bins=dist_bins(120),
-        xlim=(1,15000),
-        label_len=True,
-        kind="cumulog",
-        normed=True,
-        xlabel = "distance between edges in miles",
-        ylabel = "fraction of users",
-        )
-
-    fig.savefig("../www/local_ratio.pdf",bbox_inches='tight')
 
 
 
@@ -508,16 +508,22 @@ def graph_com_types(edge_dists):
     fig.savefig("../www/com_types.pdf",bbox_inches='tight')
 
 
+CONTACT_GROUPS = dict(
+    jfol = ('just followers','b','dashed',2),
+    jfrd = ('just friends','b','dotted',2),
+    rfrd = ('recip friends','b','solid',1),
+    jat = ('just mentioned','b','dashdot',2),
+)
+
 @gob.mapper(all_items=True)
 def graph_mloc_mdist(mloc_mdists):
     dists = defaultdict(list)
-    labels = ["1",'10','100','1000']
+    labels = ["",'0-10','10-100','100-1000','1000+']
     for mloc,mdist in mloc_mdists:
-            bin = len(str(int(mdist))) if mdist>=1 else 0
-            for key in labels[bin:]:
-                dists['PLE<'+key].append(mloc)
-            dists[('all','k','solid',2)].append(mloc)
-            dists[('PLE','.6','dashed',1)].append(mdist)
+            bin = min(4,len(str(int(mdist))))
+            width = .6*1.8**(bin-1)
+            dists[labels[bin],'b','solid',width].append(mloc)
+            dists[('PLE','k','dashed',1)].append(mdist)
     for key,vals in dists.iteritems():
         print key,sum(1 for v in vals if v<1000)
 
@@ -527,7 +533,7 @@ def graph_mloc_mdist(mloc_mdists):
             kind="cumulog",
             normed=True,
             label_len=True,
-            xlim=(1,15000),
+            xlim=(1,30000),
             xlabel = "location error in miles",
             ylabel = "fraction of users",
             )
@@ -539,17 +545,17 @@ def near_triads(rfr_triads):
     data = defaultdict(list)
 
     for quad in rfr_triads:
-        for key,color in (('my','r'),('our','b')):
+        for key,color,fill in (('my','b','dashed'),('our','r','solid')):
             edist = coord_in_miles(quad[key]['loc'],quad['you']['loc'])
             bin = min(4,len(str(int(edist))))
             label = '%s %s'%(key,labels[bin])
             dist = coord_in_miles(quad[key]['loc'],quad['me']['loc'])
-            # 1.6**(bin-1) is the line width calculation
-            data[label,color,'solid',1.6**(bin-1)].append(dist)
+            width = .6*1.8**(bin-1)
+            data[label,color,'solid',width].append(dist)
     ugly_graph_hist(data,
             "near_triads.pdf",
             bins=dist_bins(120),
-            xlim=(1,15000),
+            xlim=(1,30000),
             label_len=True,
             kind="cumulog",
             normed=True,

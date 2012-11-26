@@ -104,7 +104,8 @@ def create_jobs(g):
     g.add_map_job(graph.graph_edge_types_norm,'edge_dists')
     g.add_map_job(graph.graph_com_types,'edge_dists')
     g.add_map_job(graph.graph_edge_count,'cat_rfrd_dists')
-    g.add_map_job(graph.graph_locals,'cat_rfrd_dists')
+    g.add_map_job(graph.graph_locals_10,'cat_rfrd_dists')
+    g.add_map_job(graph.graph_locals_cmp,'cat_rfrd_dists')
     g.add_cat('cat_edges_d','edges_d')
     g.add_map_job(graph.graph_local_groups,'cat_edges_d')
 
