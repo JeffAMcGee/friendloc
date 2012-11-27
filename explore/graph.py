@@ -212,16 +212,23 @@ def graph_vect_fit(vect_fit, in_paths, env):
 @gob.mapper(all_items=True)
 def gr_basic(preds):
     labels = dict(
-        backstrom="Backstrom",
-        last="Random Contact",
+        backstrom=("Backstrom Baseline",'r','dotted',2),
+        #last="Random Contact",
         #median="Median Contact",
         #mode="Mode of Contacts",
-        nearest="Nearest Predicted Contact",
-        friendloc_plain="FriendlyLocation Basic",
-        friendloc_full="FriendlyLocation Full",
-        omni="Omniscient",
+        nearest=("Nearest Predicted Contact",'b','dashed',2),
+        #friendloc_plain="FriendlyLocation Basic",
+        friendloc_strange=("FriendlyLocation",'k','solid',1),
+        #omni="Omniscient",
     )
     _gr_preds(preds,labels,'fl_basic.pdf')
+
+CONTACT_GROUPS = dict(
+    jfol = ('just followers','g','dashed',2),
+    jfrd = ('just friends','r','dotted',2),
+    rfrd = ('recip friends','k','solid',1),
+    jat = ('just mentioned','b','dashdot',2),
+)
 
 
 @gob.mapper(all_items=True)
@@ -239,14 +246,14 @@ def gr_parts(preds):
     )
     _gr_preds(preds,labels,'fl_parts.pdf')
 
+def _aed(ratio,vals):
+    return numpy.average(sorted(vals)[:int(ratio*len(vals))])
 
 def _gr_preds(preds,labels,path):
     preds_d = defaultdict(list)
     for key,dists in preds:
         preds_d[key].extend(dists)
     data = {labels[key]:preds_d[key] for key in labels}
-    for key,vals in data.iteritems():
-        print key,sum(1 for v in vals if v<25)
 
     ugly_graph_hist(data,
             path,

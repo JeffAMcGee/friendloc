@@ -181,7 +181,8 @@ def create_jobs(g):
     g.add_map_job(graph.gr_parts,'preds_cat')
     #g.add_map_job(graph.gr_count,'preds_cat')
     #g.add_map_job(graph.gr_usonly,'preds_us')
-    g.add_map_job(fl.eval_preds,'predictions')
+    g.add_map_job(fl.eval_preds,'predictions',reducer=gob.join_reduce)
+    g.add_map_job(fl.eval_stats,'eval_preds')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

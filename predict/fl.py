@@ -315,7 +315,34 @@ class Predictors(object):
                 results[key].append(dist)
         return results.iteritems()
 
+
+def _aed(ratio,vals):
+    return np.average(sorted(vals)[:int(ratio*len(vals))])
+
+
 @gob.mapper(all_items=True)
 def eval_preds(preds):
     for key,vals in preds:
-        yield key,sum(1 for v in vals if v<25)
+        local = sum(1 for v in vals if v<25)
+        results = dict(
+            local = local,
+            per = 1.0*local/len(vals),
+            aed60 = _aed(.6,vals),
+            aed80 = _aed(.8,vals),
+            aed100 = _aed(1,vals),
+        )
+        yield key,results
+
+@gob.mapper(all_items=True)
+def eval_stats(stats):
+    for eval_key,groups in stats:
+        print eval_key
+        for stat_key in sorted(groups[0]):
+            vals = [group[stat_key] for group in groups]
+            print "%s\t%.3f\t%.5f"%(stat_key,np.average(vals),np.std(vals))
+
+
+
+
+
+
