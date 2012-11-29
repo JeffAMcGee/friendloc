@@ -11,6 +11,7 @@ from settings import settings
 from explore import peek, sprawl, fixgis, graph
 from predict import prep, fl, full
 from base import gob
+from crowds import crowds
 from base import utils
 
 try:
@@ -184,8 +185,9 @@ def create_jobs(g):
     g.add_map_job(fl.eval_preds,'predictions',reducer=gob.join_reduce)
     g.add_map_job(fl.eval_stats,'eval_preds')
 
-    def bogus(): pass
-    g.add_map_job(bogus, name='bogus')
+    g.add_source(utils.read_json, name='tweets')
+    g.add_map_job(crowds.connected_ids, 'tweets')
+    g.add_map_job(crowds.connected_users, 'tweets')
     g.add_map_job(full.crawl_predict,'bogus')
 
 def make_gob(args):
