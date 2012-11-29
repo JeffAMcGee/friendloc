@@ -64,29 +64,35 @@ def _blur_gnp(mb, user_d):
     return gnp
 
 
+def make_nebrs_d(user,nebrs,ats):
+    rfrds = set(user.rfriends)
+
+    contacts = dict(
+        ated = set(ats or []),
+        frds = rfrds.union(user.just_friends),
+        fols = rfrds.union(user.just_followers),
+    )
+    res = dict(
+            _id = user._id,
+            nebrs = [_prep_nebr(nebr,contacts) for nebr in nebrs],
+            gnp = user.geonames_place and user.geonames_place.to_d(),
+    )
+    if user.utc_offset is not None:
+        res['utco'] = user.utc_offset
+    return res
+
+
 @gob.mapper(slurp={'mloc_blur':tuple})
 def nebrs_d(user_d,mloc_blur):
     mb = MlocBlur(*mloc_blur)
-
+    user = User(user_d)
     nebrs = User.find(User._id.is_in(user_d['nebrs']))
     tweets = Tweets.get_id(user_d['_id'],fields=['ats'])
-    rfrds = set(user_d['rfrds'])
 
-    contacts = dict(
-        ated = set(tweets.ats or []),
-        frds = rfrds.union(user_d['jfrds']),
-        fols = rfrds.union(user_d['jfols']),
-    )
-
-    res = dict(
-        _id = user_d['_id'],
-        mloc = user_d['mloc'],
-        nebrs = [_prep_nebr(nebr,contacts) for nebr in nebrs],
-        gnp = _blur_gnp(mb, user_d),
-        )
-    if 'utco' in user_d:
-        res['utco'] = user_d['utco']
-    yield res
+    res = make_nebrs_d(user,nebrs,tweets.ats)
+    res['mloc'] = user_d['mloc']
+    res['gnp'] = _blur_gnp(mb, user_d)
+    return [res]
 
 
 @gob.mapper()

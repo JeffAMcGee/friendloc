@@ -288,7 +288,7 @@ def nebr_split(groups):
 
 
 def _fetch_profiles(uids,twit,gis):
-    users = User.find(User._id.is_in(uids))
+    users = list(User.find(User._id.is_in(uids)))
     existing_ids = {u._id for u in users}
     missing_ids = [uid for uid in uids if uid not in existing_ids]
 
@@ -324,7 +324,7 @@ def _calc_lorat(nebrs,twit,gis):
         nebr.local_ratio = lorat
 
 
-CrawlResults = collections.namedtuple("CrawlResults",['user','nebrs','ats'])
+CrawlResults = collections.namedtuple("CrawlResults",['nebrs','ats','ated'])
 
 
 def crawl_single(user, twit, gis):
@@ -337,10 +337,19 @@ def crawl_single(user, twit, gis):
     """
 
     edges,tweets=_save_user_contacts(twit, user, _pick_best_contacts, limit=100)
-    nebrs = _fetch_profiles(user.contacts,twit,gis)
+    contact_ids = user.contacts
+    profiles = {p._id:p for p in _fetch_profiles(contact_ids,twit,gis)}
 
+    def has_place(uid):
+        return uid in profiles and profiles[uid].has_place()
+    user.neighbors = filter(has_place, contact_ids)[:25]
+    nebrs = [profiles[nid] for nid in user.neighbors]
+
+    ated = set()
     for nebr in nebrs:
-        _save_user_contacts(twit, nebr, _pick_best_contacts, limit=100)
+        ne,nt = _save_user_contacts(twit, nebr, _pick_best_contacts, limit=100)
+        if user._id in nt.ats:
+            ated.add(nebr._id)
 
     need_lorat = [nebr for nebr in nebrs if nebr.local_ratio is None]
     _calc_lorat(need_lorat,twit,gis)
@@ -348,5 +357,5 @@ def crawl_single(user, twit, gis):
         nebr.merge()
     user.save()
 
-    return CrawlResults(user,nebrs,tweets.ats if tweets else [])
+    return CrawlResults(nebrs,tweets.ats if tweets else [],ated)
 

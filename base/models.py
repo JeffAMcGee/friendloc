@@ -50,6 +50,10 @@ class GeonamesPlace(ModelPart):
     name = TextProperty('name')
     mdist = FloatProperty('mdist')
 
+    def to_tup(self):
+        return (self.lng,self.lat)
+
+
 class User(TwitterModel):
     _id = TwitterIdProperty('_id')
     ignored = [
@@ -74,6 +78,7 @@ class User(TwitterModel):
     local_prob = FloatProperty('prob')
     geonames_place = ModelProperty('gnp',GeonamesPlace)
     median_loc = Property('mloc') # longitude, latitude tuple
+    pred_loc = Property('ploc') # longitude, latitude tuple
     rfriends = ListProperty('rfrds')
     just_friends = ListProperty('jfrds')
     just_followers = ListProperty('jfols')

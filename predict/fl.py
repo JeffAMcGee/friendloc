@@ -2,14 +2,14 @@ import math
 from itertools import chain
 import operator
 import bisect
-import itertools
 from collections import defaultdict, Counter
 
-from sklearn import preprocessing, tree, cross_validation
+from sklearn import tree
 import numpy as np
 
 from base import gob, utils
 from base.utils import coord_in_miles
+from predict import prep
 import explore.peek
 
 
@@ -34,11 +34,12 @@ def nebr_vect(user,geo_ated,dirt_cheap_locals):
         at_back = int(nebr['_id'] in mentioned)
         flags = [ated, at_back, ated and at_back, fols, frds, fols and frds]
         logged = [logify(nebr[k]) for k in ('mdist','folc','frdc')]
-        others = [
-            dirt_cheap_locals.get(nebr['_id'],.3),
-            int(bool(nebr['prot'])),
-            logify(coord_in_miles(user['mloc'],nebr),fudge=.01),
-        ]
+        if 'mloc' in user:
+            mloc_dist = logify(coord_in_miles(user['mloc'],nebr),fudge=.01)
+        else:
+            mloc_dist = float('nan')
+        lorat = dirt_cheap_locals.get(nebr['_id'],.3)
+        others = [ lorat, int(bool(nebr['prot'])), mloc_dist, ]
         yield flags + logged + others
 
 
@@ -194,6 +195,7 @@ def predictions(nebrs_ds, env, in_paths, geo_ated, dirt_cheap_locals):
     return p.predictions(nebrs_ds,in_paths,geo_ated,dirt_cheap_locals)
 
 
+
 class Predictors(object):
     def __init__(self,env):
         self.env = env
@@ -266,7 +268,7 @@ class Predictors(object):
         index = ((delta_lng+180)%360)/15
         return self.utc_offset[index]
 
-    def prep(self,nebrs_d):
+    def prep_nebrs(self,nebrs_d):
         # add fields to nebrs_d
         vects = nebr_vect(nebrs_d,self.geo_ated,self.cheap_locals)
         nebrs_d['vects']=list(vects)
@@ -287,26 +289,29 @@ class Predictors(object):
 
         self._add_location_prob(nebrs_d)
 
-    def predictions(self, nebrs_ds, in_paths, geo_ated, dirt_cheap_locals):
-        results = defaultdict(list)
-        self.stranger_mat = self._stranger_mat()
-        clump = in_paths[0][-1]
+    def load_env(self,env,clump):
         # FIXME: clean this up
         self.utc_offset = next(self.env.load('utc_offset.'+clump,'mp'))
         self.mdist_curves = self._mdist_curves(clump)
         self.nebr_clf = next(self.env.load('nebr_clf.'+clump,'pkl'))
-        vect_fit = tuple(self.env.load('vect_fit.'+clump))
+        self.stranger_mat = self._stranger_mat()
+        self.vect_fit = tuple(self.env.load('vect_fit.'+clump))
+
+
+    def predictions(self, nebrs_ds, in_paths, geo_ated, dirt_cheap_locals):
+        results = defaultdict(list)
+        clump = in_paths[0][-1]
+        self.load_env(self.env,clump)
 
         self.geo_ated = geo_ated
         self.cheap_locals = dirt_cheap_locals
 
-
         for nebrs_d in nebrs_ds:
             if not nebrs_d['nebrs']:
                 continue
-            self.prep(nebrs_d)
+            self.prep_nebrs(nebrs_d)
             for key,classifier in self.classifiers.iteritems():
-                index = classifier.predict(nebrs_d,vect_fit)
+                index = classifier.predict(nebrs_d,self.vect_fit)
                 if index==len(nebrs_d['vects']):
                     # the last one is the gnp one
                     dist = utils.coord_in_miles(nebrs_d['gnp'],nebrs_d['mloc'])
@@ -314,6 +319,24 @@ class Predictors(object):
                     dist = unlogify(nebrs_d['vects'][index][-1],.01)
                 results[key].append(dist)
         return results.iteritems()
+
+    def predict(self, user, nebrs, ats, ated):
+        # this is an ugly way to deal with geo_ated and cheap_locals
+        self.geo_ated = {user._id:ated}
+        self.cheap_locals = {}
+        for nebr in nebrs:
+            nan = math.isnan(nebr.local_ratio)
+            self.cheap_locals[nebr._id] = None if nan else nebr.local_ratio
+
+        nebrs_d = prep.make_nebrs_d(user,nebrs,ats)
+        self.prep_nebrs(nebrs_d)
+
+        index = self.classifiers['friendloc_full'].predict(nebrs_d,self.vect_fit)
+        if index==len(nebrs_d['nebrs']):
+            return user.geonames_place.to_tup()
+        else:
+            nebr = nebrs_d['nebrs'][index]
+            return nebr['lng'],nebr['lat']
 
 
 def _aed(ratio,vals):
@@ -340,9 +363,5 @@ def eval_stats(stats):
         for stat_key in sorted(groups[0]):
             vals = [group[stat_key] for group in groups]
             print "%s\t%.3f\t%.5f"%(stat_key,np.average(vals),np.std(vals))
-
-
-
-
 
 

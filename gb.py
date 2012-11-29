@@ -9,7 +9,7 @@ from maroon import Model
 
 from settings import settings
 from explore import peek, sprawl, fixgis, graph
-from predict import prep, fl
+from predict import prep, fl, full
 from base import gob
 from base import utils
 
@@ -183,6 +183,10 @@ def create_jobs(g):
     #g.add_map_job(graph.gr_usonly,'preds_us')
     g.add_map_job(fl.eval_preds,'predictions',reducer=gob.join_reduce)
     g.add_map_job(fl.eval_stats,'eval_preds')
+
+    def bogus(): pass
+    g.add_map_job(bogus, name='bogus')
+    g.add_map_job(full.crawl_predict,'bogus')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
