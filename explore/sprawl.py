@@ -3,6 +3,7 @@ import numpy
 import random
 import logging
 import itertools
+import collections
 
 from base import gob
 from base.models import Edges, User, Tweets
@@ -63,43 +64,70 @@ def mloc_users(users_and_coords):
     return selected
 
 
-def _pick_contacts(twit, user, limit):
-    edges = Edges.get_id(user._id)
+def _fetch_edges(twit,uid):
+    edges = Edges.get_id(uid)
     if not edges:
-        edges = twit.get_edges(user._id)
+        edges = twit.get_edges(uid)
         edges.save()
+    return edges
 
-    tweets = Tweets.get_id(user._id)
+
+def _fetch_tweets(twit,uid):
+    tweets = Tweets.get_id(uid)
     if not tweets:
-        tweets_ = twit.user_timeline(user._id)
-        tweets = Tweets(_id=user._id,tweets=tweets_)
+        tweets_ = twit.user_timeline(uid)
+        tweets = Tweets(_id=uid,tweets=tweets_)
         tweets.save()
+    return tweets
 
+
+def _contact_sets(tweets, edges):
     ated = set(tweets.ats or [])
     frds = set(edges.friends)
     fols = set(edges.followers)
-    sets = dict(
+    return dict(
         rfriends = frds&fols,
         just_friends = frds-fols,
         just_followers = fols-frds,
         just_mentioned = ated-(frds|fols),
         )
 
+
+def _pick_best_contacts(user, sets, limit=100):
+    def digit_sum(uid):
+        return sum(map(int,str(uid)))
+    left = limit
+    for key in NEBR_KEYS:
+        if left>0:
+            uids = sorted(sets[key],key=digit_sum,reverse=True)[:left]
+        else:
+            uids = []
+        left -=len(uids)
+        setattr(user,key,uids)
+
+
+def _pick_random_contacts(user, sets, limit=100):
+
     #pick uids from sets
     for key,s in sets.iteritems():
         l = list(s)
         random.shuffle(l)
-        setattr(user,key,l[:limit])
+        setattr(user,key,l[:limit//4])
 
 
-def _save_user_contacts(twit,user,limit):
+def _save_user_contacts(twit,user,contact_picker,limit):
     logging.info("visit %s - %d",user.screen_name,user._id)
+    edges, tweets = None, None
     try:
-        _pick_contacts(twit,user,limit)
+        edges = _fetch_edges(twit,user._id)
+        tweets = _fetch_tweets(twit,user._id)
+        sets = _contact_sets(tweets,edges)
+        contact_picker(user,sets,limit)
     except twitter.TwitterFailure as e:
         logging.warn("%d for %d",e.status_code,user._id)
         user.error_status = e.status_code
     user.save()
+    return edges, tweets
 
 
 def _my_contacts(user):
@@ -117,15 +145,16 @@ def find_contacts(user_ds):
         else:
             user = User(user_d)
             user.geonames_place = gis.twitter_loc(user.location)
-            _save_user_contacts(twit,user,limit=25)
+            _save_user_contacts(twit, user, _pick_random_contacts, limit=100)
         for mod_nebr in _my_contacts(user):
             yield mod_nebr
 
 
 @gob.mapper()
 def find_leafs(uid):
+    twit = twitter.TwitterResource()
     user = User.get_id(uid)
-    _save_user_contacts(user,limit=25)
+    _save_user_contacts(twit, user, _pick_random_contacts, limit=100)
     return _my_contacts(user)
 
 
@@ -256,3 +285,68 @@ def nebr_split(groups):
         for group,ids in groups
         for id in ids
         )
+
+
+def _fetch_profiles(uids,twit,gis):
+    users = User.find(User._id.is_in(uids))
+    existing_ids = {u._id for u in users}
+    missing_ids = [uid for uid in uids if uid not in existing_ids]
+
+    chunks = utils.grouper(100, missing_ids, dontfill=True)
+    for chunk in chunks:
+        found = twit.user_lookup(user_ids=list(chunk))
+        for amigo in filter(None,found):
+            amigo.geonames_place = gis.twitter_loc(amigo.location)
+            users.append(amigo)
+    return users
+
+
+def _calc_lorat(nebrs,twit,gis):
+    leaf_ids = {uid
+             for nebr in nebrs
+             for uid in nebr.contacts[:10]}
+    leafs_ = _fetch_profiles(list(leaf_ids),twit,gis)
+    leafs = {leaf._id:leaf for leaf in leafs_}
+
+    for nebr in nebrs:
+        # Does this break if the contact does not exist?
+        nebr_loc = nebr.geonames_place.to_d()
+        dists = []
+        for leaf_id in nebr.contacts[:10]:
+            leaf = leafs[leaf_id]
+            if leaf and leaf.has_place():
+                dist = utils.coord_in_miles(nebr_loc,leaf.geonames_place.to_d())
+                dists.append(dist)
+        if dists:
+            lorat = sum(1.0 for d in dists if d<25)/len(dists)
+        else:
+            lorat = float('nan')
+        nebr.local_ratio = lorat
+
+
+CrawlResults = collections.namedtuple("CrawlResults",['user','nebrs','ats'])
+
+
+def crawl_single(user, twit, gis):
+    """
+    save a single user, contacts, and leafs to the database
+
+    crawl a user object who has not been visited before
+    twit is a TwitterResource
+    gis is a GisgraphyResource with mdists
+    """
+
+    edges,tweets=_save_user_contacts(twit, user, _pick_best_contacts, limit=100)
+    nebrs = _fetch_profiles(user.contacts,twit,gis)
+
+    for nebr in nebrs:
+        _save_user_contacts(twit, nebr, _pick_best_contacts, limit=100)
+
+    need_lorat = [nebr for nebr in nebrs if nebr.local_ratio is None]
+    _calc_lorat(need_lorat,twit,gis)
+    for nebr in need_lorat:
+        nebr.merge()
+    user.save()
+
+    return CrawlResults(user,nebrs,tweets.ats if tweets else [])
+

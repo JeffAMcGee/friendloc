@@ -84,6 +84,7 @@ class User(TwitterModel):
     error_status = IntProperty('err')
     local_friends = FloatProperty('lofrd')
     local_followers = FloatProperty('lofol')
+    local_ratio = FloatProperty('lorat')
 
     #properties from twitter
     verified = BoolProperty("ver")

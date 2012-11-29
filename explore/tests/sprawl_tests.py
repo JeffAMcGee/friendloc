@@ -113,3 +113,13 @@ class TestSprawl(SimpleGobTest):
         self.assertEqual(u3.geonames_place.mdist,2000)
         self.assertEqual(u103.geonames_place.mdist,2)
 
+    def test_crawl_single(self):
+        twit = MockTwitterResource()
+        gis = MockGisgraphyResource()
+        user = User(_id=6)
+        results = sprawl.crawl_single(user, twit, gis)
+        self.assertEqual(results.user._id,6)
+        self.assertEqual(results.nebrs[0]._id,1)
+        self.assertEqual(results.nebrs[0].local_ratio,1)
+        self.assertEqual(results.ats,[7])
+
