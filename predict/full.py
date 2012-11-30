@@ -16,7 +16,8 @@ def _crawl_pred_one(user,twit,gis,pred):
         return
 
     nebrs, ats, ated = sprawl.crawl_single(user,twit,gis)
-    user.pred_loc = pred.predict( user, nebrs, ats, ated )
+    if nebrs:
+        user.pred_loc = pred.predict( user, nebrs, ats, ated )
 
 
 @gob.mapper(all_items=True,slurp={'mdists':next})

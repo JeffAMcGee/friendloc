@@ -297,6 +297,7 @@ def _fetch_profiles(uids,twit,gis):
         found = twit.user_lookup(user_ids=list(chunk))
         for amigo in filter(None,found):
             amigo.geonames_place = gis.twitter_loc(amigo.location)
+            amigo.merge()
             users.append(amigo)
     return users
 
@@ -313,7 +314,7 @@ def _calc_lorat(nebrs,twit,gis):
         nebr_loc = nebr.geonames_place.to_d()
         dists = []
         for leaf_id in nebr.contacts[:10]:
-            leaf = leafs[leaf_id]
+            leaf = leafs.get(leaf_id)
             if leaf and leaf.has_place():
                 dist = utils.coord_in_miles(nebr_loc,leaf.geonames_place.to_d())
                 dists.append(dist)
@@ -348,7 +349,7 @@ def crawl_single(user, twit, gis):
     ated = set()
     for nebr in nebrs:
         ne,nt = _save_user_contacts(twit, nebr, _pick_best_contacts, limit=100)
-        if user._id in nt.ats:
+        if nt and nt.ats and user._id in nt.ats:
             ated.add(nebr._id)
 
     need_lorat = [nebr for nebr in nebrs if nebr.local_ratio is None]

@@ -177,6 +177,14 @@ def contact_prob(miles):
     return .008/(miles+2.094)
 
 
+def read_tweets(path=None):
+    for i,tweet in enumerate(read_json(path)):
+        if i and i%10000 ==0:
+            logging.info("read %d tweets"%i)
+        if 'id' in tweet:
+            yield tweet
+
+
 def read_json(path=None):
     file = open(path) if path else sys.stdin
     for l in file:

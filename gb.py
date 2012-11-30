@@ -185,10 +185,10 @@ def create_jobs(g):
     g.add_map_job(fl.eval_preds,'predictions',reducer=gob.join_reduce)
     g.add_map_job(fl.eval_stats,'eval_preds')
 
-    g.add_source(utils.read_json, name='tweets')
+    g.add_source(utils.read_tweets, name='tweets')
     g.add_map_job(crowds.connected_ids, 'tweets')
-    g.add_map_job(crowds.connected_users, 'tweets')
-    g.add_map_job(full.crawl_predict,'bogus')
+    g.add_map_job(crowds.connected_users, 'tweets', requires=['connected_ids'], saver='split_save')
+    g.add_map_job(full.crawl_predict,'connected_users')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
