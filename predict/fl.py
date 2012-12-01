@@ -335,6 +335,9 @@ class Predictors(object):
         if index==len(nebrs_d['nebrs']):
             return user.geonames_place.to_tup()
         else:
+            dists = nebrs_d['dist_mat'][index]
+            if np.median(dists)>1000:
+                return None
             nebr = nebrs_d['nebrs'][index]
             return nebr['lng'],nebr['lat']
 
