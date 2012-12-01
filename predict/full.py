@@ -6,7 +6,6 @@ from predict import fl
 
 
 def _crawl_pred_one(user,twit,gis,pred):
-    # FIXME: check if this user's location is already in the db?
     if user.location and not user.geonames_place:
         user.geonames_place = gis.twitter_loc(user.location)
 
@@ -32,7 +31,10 @@ def crawl_predict(user_ds, env, mdists):
     pred = fl.Predictors(env)
     pred.load_env(env,'0')
     for user_d in user_ds:
-        user = User(user_d)
-        _crawl_pred_one(user,twit,gis,pred)
+        user = User.get_id(user_d['id'])
+        if not user or not user.pred_loc:
+            user = User(user_d)
+            _crawl_pred_one(user,twit,gis,pred)
+            user.merge()
         yield user.to_d()
 
