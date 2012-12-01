@@ -239,7 +239,8 @@ def run(my_gob,args):
         # just run the function for one input
         job = my_gob.jobs[args.job[0]]
         input_paths = [args.input.split(',')]
-        my_gob.env.run(job,input_paths=input_paths)
+        slurped = my_gob.slurp(job.mapper.slurp)
+        my_gob.env.run(job,input_paths=input_paths,slurped=slurped)
     else:
         for cmd in args.job:
             if args.rm or args.force:
