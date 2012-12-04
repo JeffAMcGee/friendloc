@@ -117,6 +117,10 @@ def _pick_random_contacts(user, sets, limit=100):
 
 def _save_user_contacts(twit,user,contact_picker,limit):
     logging.info("visit %s - %d",user.screen_name,user._id)
+    if user.protected:
+        user.error_status=401
+        user.merge()
+        return None, None
     edges, tweets = None, None
     try:
         edges = _fetch_edges(twit,user._id)
@@ -126,7 +130,7 @@ def _save_user_contacts(twit,user,contact_picker,limit):
     except twitter.TwitterFailure as e:
         logging.warn("%d for %d",e.status_code,user._id)
         user.error_status = e.status_code
-    user.save()
+    user.merge()
     return edges, tweets
 
 
