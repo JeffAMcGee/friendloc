@@ -67,7 +67,7 @@ def linhist(ax, row, bins, dist_scale=False, window=None, normed=False,
 
 def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=False,
         sample=None, histtype='step', marker='-', logline_fn=None,
-        label_len=False, auto_ls=False, dist_scale=False, ax=None,
+        label_len=False, auto_ls=False, ax=None,
         window=None, ordered_label=False, key_order=None, **kwargs):
     # DEPRECATED - TOO COMPLEX!
     if ax:
@@ -88,10 +88,7 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
         pass
     elif kind == 'logline':
         ax.set_xscale('log')
-        if dist_scale:
-            ax.set_yscale('log')
-            legend_loc = 3
-        elif legend_loc is None:
+        if legend_loc is None:
             legend_loc = 9
     elif kind == 'cumulog':
         ax.set_xscale('log')
@@ -143,8 +140,6 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
                 hist = numpy.convolve(hist,window,mode='same')/sum(window)
             if normed:
                 hist = hist*weight
-            if dist_scale:
-                hist = hist/b[1:]
             if logline_fn:
                 logline_fn(ax, row, b, hist)
             ax.plot((b[:-1]+b[1:])/2, hist, marker, **hargs)
@@ -162,7 +157,7 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
             ax.set_xlim(*kwargs['xlim'])
         except TypeError:
             ax.set_xlim(0,kwargs['xlim'])
-    if len(data)>1:
+    if legend_loc:
         ax.legend(loc=legend_loc)
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
@@ -331,20 +326,30 @@ def graph_edge_types_norm(edge_dists):
     for key,dists in edge_dists:
         if key[0]=='usa':
             continue
-        conf = CONTACT_GROUPS[key[0]]
-        data[conf].extend(dists)
+        data[key[0]].extend(dists)
+    smallest = min(len(v) for v in data.itervalues())
 
-    ugly_graph_hist(data,
-            "edge_types_norm.pdf",
-            xlim = (1,15000),
-            normed=True,
+    fig = plt.figure(figsize=(12,12))
+    for spot,key in enumerate(['rfrd','jfol','jfrd','jat']):
+        ax = fig.add_subplot(4,1,1+spot)
+        xlabel = "distance between edges in miles" if spot==3 else ''
+        label = CONTACT_GROUPS[key][0]
+        ugly_graph_hist({label:random.sample(data[key],smallest)},
+            'ignored',
+            ax=ax,
+            bins=dist_bins(40),
+            xlim=(1,15000),
+            ylim=(0,4000),
             label_len=True,
-            kind="logline",
-            ylabel = "fraction of users",
-            xlabel = "distance to contact in miles",
-            bins = dist_bins(30,-1),
-            ylim = .35,
+            legend_loc=2,
+            kind="linear",
+            xlabel = xlabel,
+            ylabel = "number of users",
             )
+        ax.set_xscale('log')
+        if spot!=3:
+            ax.get_xaxis().set_ticklabels([])
+    fig.savefig("../www/edge_types_norm.pdf",bbox_inches='tight')
 
 
 @gob.mapper(all_items=True)
