@@ -100,6 +100,13 @@ def create_jobs(g):
     g.add_cat('cat_rfrd_dists','rfrd_dists')
     g.add_map_job(peek.edge_leaf_dists,'edges_d')
 
+    g.add_map_job(peek.first_contacts,'pred_users',reducer=gob.set_reduce)
+    g.add_map_job(sprawl.contact_split,'first_contacts',name='split_first',saver='split_save')
+    g.add_map_job(peek.leaf_dists, 'split_first', procs=4)
+    g.add_map_job(peek.leaf_data,'edges_d',requires=['leaf_dists'])
+    g.add_cat('cat_leaf_data','leaf_data')
+    g.add_map_job(graph.graph_leaf_data,'cat_leaf_data')
+
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
     g.add_map_job(graph.graph_edge_types_norm,'edge_dists')

@@ -6,6 +6,7 @@ import contextlib
 import bisect
 import math
 from collections import defaultdict
+from operator import itemgetter
 
 import matplotlib
 
@@ -411,7 +412,7 @@ def graph_local_groups(edges):
 
 @gob.mapper(all_items=True)
 def graph_locals_10(rfr_dists):
-    labels = [ ".0<=lr<.25", ".25<=lr<.5", ".5<=lr<.75", ".75<=lr<=1" ]
+    labels = [ ".0<=lcr<.25", ".25<=lcr<.5", ".5<=lcr<.75", ".75<=lcr<=1" ]
     data = defaultdict(list)
 
     for amigo in rfr_dists:
@@ -422,12 +423,13 @@ def graph_locals_10(rfr_dists):
             data[label].append(amigo['dist'])
 
     ugly_graph_hist(data,
-        'locals_10.pdf',
+        'locals_10.png',
         bins=dist_bins(120),
         xlim=(1,15000),
+        ylim=(1,40000),
         label_len=True,
-        kind="cumulog",
-        normed=True,
+        kind="logline",
+        #normed=True,
         xlabel = "distance between edges in miles",
         ylabel = "fraction of users",
         )
@@ -454,6 +456,9 @@ def graph_locals_cmp(rfr_dists):
         med = numpy.median([ratio for ratio,dist in tups])
         good_dists[label] = [dist for ratio,dist in tups if ratio>=med]
 
+    for k,v in good_dists.iteritems():
+        print k,sum(1.0 for x in v if x<25)/len(v)
+
     ugly_graph_hist(good_dists,
         'locals_cmp.pdf',
         bins=dist_bins(120),
@@ -465,6 +470,38 @@ def graph_locals_cmp(rfr_dists):
         ylabel = "fraction of users",
         key_order = labels,
         )
+
+
+@gob.mapper(all_items=True)
+def graph_leaf_data(leaf_data):
+    ratio_dists = defaultdict(list)
+    for amigo in leaf_data:
+        for key in amigo.keys():
+            if key!='dist':
+                ratio_dists[key].append((amigo[key],amigo['dist']))
+
+    lim = int(len(ratio_dists['avg'])*.1)
+    good_dists = {}
+    for key,tups in ratio_dists.iteritems():
+        tups.sort(key=itemgetter(0))
+        med = tups[lim][0]
+        print key,med
+        good_dists[key] = [dist for ratio,dist in tups[:lim]]
+
+    for k,v in good_dists.iteritems():
+        print k,sum(1.0 for x in v if x<25)/len(v)
+
+    ugly_graph_hist(good_dists,
+        'leaf_data.png',
+        bins=dist_bins(120),
+        xlim=(1,15000),
+        label_len=True,
+        kind="cumulog",
+        normed=True,
+        xlabel = "distance between edges in miles",
+        ylabel = "fraction of users",
+        )
+
 
 
 
