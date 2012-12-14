@@ -417,19 +417,20 @@ def graph_locals_10(rfr_dists):
 
     for amigo in rfr_dists:
         if amigo['dirt'] is None:
-            data[('No leafs','k','dotted')].append(amigo['dist'])
+            data[('No leafs','k','dotted',2)].append(amigo['dist'])
         else:
             label = labels[min(3,int(math.floor(amigo['dirt']*4)))]
             data[label].append(amigo['dist'])
+        if amigo['dirt']==.25:
+            data['lcr==.25','.5','dashed'].append(amigo['dist'])
 
     ugly_graph_hist(data,
-        'locals_10.png',
+        'locals_10.pdf',
         bins=dist_bins(120),
         xlim=(1,15000),
-        ylim=(1,40000),
         label_len=True,
-        kind="logline",
-        #normed=True,
+        kind="cumulog",
+        normed=True,
         xlabel = "distance between edges in miles",
         ylabel = "fraction of users",
         )

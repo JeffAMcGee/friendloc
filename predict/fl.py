@@ -38,7 +38,7 @@ def nebr_vect(user,geo_ated,dirt_cheap_locals):
             mloc_dist = logify(coord_in_miles(user['mloc'],nebr),fudge=.01)
         else:
             mloc_dist = float('nan')
-        lorat = dirt_cheap_locals.get(nebr['_id'],.3)
+        lorat = dirt_cheap_locals.get(nebr['_id'],.25)
         others = [ lorat, int(bool(nebr['prot'])), mloc_dist, ]
         yield flags + logged + others
 
