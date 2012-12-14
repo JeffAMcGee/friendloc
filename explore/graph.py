@@ -475,14 +475,24 @@ def graph_locals_cmp(rfr_dists):
 @gob.mapper(all_items=True)
 def graph_leaf_data(leaf_data):
     ratio_dists = defaultdict(list)
-    for amigo in leaf_data:
-        for key in amigo.keys():
-            if key!='dist':
-                ratio_dists[key].append((amigo[key],amigo['dist']))
+    one_vals = defaultdict(list)
+    zero_dists = defaultdict(list)
+    for ld in leaf_data:
+        for key in ('lorat','logavg','clip','median'):
+            if ld['key']!='rfriends':
+                continue
+            if ld['len']:
+                ratio_dists[key].append((ld[key],ld['dist']))
+                if ld['len']==1:
+                    one_vals[key].append(ld[key])
+        if ld['len']==0:
+            zero_dists[key].append(ld['dist'])
 
-    lim = int(len(ratio_dists['avg'])*.1)
     good_dists = {}
     for key,tups in ratio_dists.iteritems():
+        avg = numpy.average(one_vals[key])
+        #tups.extend([(avg,d) for d in zero_dists[key]])
+        lim = int(len(tups)*.5)
         tups.sort(key=itemgetter(0))
         med = tups[lim][0]
         print key,med
@@ -501,8 +511,6 @@ def graph_leaf_data(leaf_data):
         xlabel = "distance between edges in miles",
         ylabel = "fraction of users",
         )
-
-
 
 
 @gob.mapper(all_items=True)

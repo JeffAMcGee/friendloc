@@ -33,7 +33,7 @@ def parse_args(argv):
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-i','--input')
     group.add_argument('--rm',action="store_true")
-    group.add_argument('--force',action="store_true")
+    group.add_argument('-f','--force',action="store_true")
     group.add_argument('--dot',action="store_true")
     return parser.parse_args(argv)
 
@@ -85,6 +85,7 @@ def create_jobs(g):
     g.add_map_job(peek.aint_cheap_locals, 'nebr_ids',
               requires=['lookup_leafs'], procs=4,
               )
+    g.add_map_job(peek.leaf_dists, 'nebr_ids', requires=['lookup_leafs'], procs=3)
 
     # the graphs
     g.add_map_job(peek.geo_ats,saver='split_save',requires=['find_leafs'])
@@ -102,8 +103,8 @@ def create_jobs(g):
 
     g.add_map_job(peek.first_contacts,'pred_users',reducer=gob.set_reduce)
     g.add_map_job(sprawl.contact_split,'first_contacts',name='split_first',saver='split_save')
-    g.add_map_job(peek.leaf_dists, 'split_first', procs=4)
-    g.add_map_job(peek.leaf_data,'edges_d',requires=['leaf_dists'])
+    g.add_map_job(peek.leaf_dists, 'split_first', name='old_leaf_dists') #BOGUS
+    g.add_map_job(peek.leaf_data,'edges_d',requires=['old_leaf_dists'])
     g.add_cat('cat_leaf_data','leaf_data')
     g.add_map_job(graph.graph_leaf_data,'cat_leaf_data')
 

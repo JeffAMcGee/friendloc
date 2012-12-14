@@ -318,58 +318,63 @@ def first_contacts(pred_user):
 
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
-def leaf_dists(nebr_ids,mloc_uids,cutoff=10):
+def leaf_dists(nebr_ids,mloc_uids):
+    seen = set()
+    # There can be duplicates because nebr_ids is created by clumping nebr_split
     for nebr_id in nebr_ids:
+        if nebr_id in seen:
+            continue
+        seen.add(nebr_id)
+
         user = User.get_id(nebr_id)
         user_loc = user.geonames_place.to_d()
-        results = dict(_id=nebr_id)
 
-        assert user_loc['mdist']<=1000
+        cids = [
+            cid
+            for cid in user.rfriends or ()
+            if cid not in mloc_uids
+            ]
+        if not cids:
+            continue
+        random.shuffle(cids)
+        leafs = User.find(User._id.is_in(cids), fields=['gnp'])
 
-        for key in ['rfriends','just_followers','just_friends']:
-            cids = [
-                cid
-                for cid in (getattr(user,key) or [])
-                if cid not in mloc_uids
-                ]
-            if not cids:
-                continue
-            random.shuffle(cids)
-            leafs = User.find(User._id.is_in(cids[:cutoff]), fields=['gnp'])
+        def leaf_dist(leaf):
+            if leaf.has_place():
+                return coord_in_miles(user_loc,leaf.geonames_place.to_d())
+            else:
+                return None
 
-            def leaf_dist(leaf):
-                if leaf.has_place():
-                    return coord_in_miles(user_loc,leaf.geonames_place.to_d())
-                else:
-                    return None
-
-            results[key] = map(leaf_dist,leafs)
-        yield results
+        yield nebr_id, map(leaf_dist,leafs)
 
 
 def _dist_dict(leaf_dists):
-    return {
-        ld['_id'] : filter(None,ld.get('rfriends',[]))
-        for ld in leaf_dists}
+    res = {}
+    for ld in leaf_dists:
+        for key in ['rfriends','just_followers','just_friends']:
+            leafs = [dist for dist in ld.get(key,[]) if dist is not None]
+            res[ld['_id'],key] = np.array(leafs)
+    return res
 
 
-@gob.mapper(all_items=True,slurp={'leaf_dists':_dist_dict})
-def leaf_data(edge_ds,leaf_dists):
+@gob.mapper(all_items=True,slurp={'old_leaf_dists':_dist_dict})
+def leaf_data(edge_ds,old_leaf_dists):
     for edge_d in edge_ds:
         amigo = edge_d.get('rfrd')
         if not amigo:
             continue
 
-        assert amigo['mdist']<1000
-        leafs = leaf_dists[amigo['_id']]
-        if leafs:
+        for key in ['rfriends','just_followers','just_friends']:
+            leafs = old_leaf_dists[amigo['_id'],key]
             dist = coord_in_miles(edge_d['mloc'],amigo)
-            yield dict(
-                    dist=dist,
-                    lorat=-local_ratio(leafs),
-                    avg=np.average(leafs),
-                    logavg=np.average(np.log(leafs)),
-            )
+            res = dict( dist=dist, key=key, len=len(leafs) )
+            if len(leafs):
+                res['lorat']=-local_ratio(leafs)
+                res['logavg']=np.average(np.log(leafs+1))
+                res['cutlogavg']=np.average(np.log(10+np.minimum(leafs+1,1000)))
+                res['clip']=np.average(np.log10(np.clip(leafs,10,100)))
+                res['median']=np.median(leafs)
+            yield res
 
 
 @gob.mapper()
