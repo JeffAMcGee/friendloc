@@ -193,16 +193,20 @@ def graph_vect_fit(vect_fit, in_paths, env):
             'edges predicted in most distant 10%',
         ])
         for index,(ratio,fit) in enumerate(zip(ratios, fits)):
-            if index%3!=0:
-                continue
-
-            color = next(colors)
-            label = next(labels)
+            if index%3==0:
+                color = next(colors)
+                label = next(labels)
+                fitstyle='dashed'
+            else:
+                color = ".6"
+                label = None
+                fitstyle='dotted'
             window = numpy.bartlett(5)
             smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
-            ax.plot(miles, smooth_ratio, '-', color=color, label=label)
+            if label:
+                ax.plot(miles, smooth_ratio, '-', color=color, label=label)
             ax.plot(miles, peek.contact_curve(miles,*fit), '-',
-                    linestyle='dashed', color=color)
+                    linestyle=fitstyle, color=color)
 
 
 @gob.mapper(all_items=True)

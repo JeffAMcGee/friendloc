@@ -38,6 +38,7 @@ def nebr_vect(user,geo_ated,dirt_cheap_locals):
             mloc_dist = logify(coord_in_miles(user['mloc'],nebr),fudge=.01)
         else:
             mloc_dist = float('nan')
+        # why not nan for missing lorat?
         lorat = dirt_cheap_locals.get(nebr['_id'],.25)
         others = [ lorat, int(bool(nebr['prot'])), mloc_dist, ]
         yield flags + logged + others
@@ -60,7 +61,7 @@ def vects_as_mat(vects):
 def nebr_clf(vects):
     X, y = vects_as_mat(vects)
     # FIXME: I made up the number for min_samples_leaf
-    clf = tree.DecisionTreeRegressor(min_samples_leaf=500)
+    clf = tree.DecisionTreeRegressor(min_samples_leaf=1000)
     clf.fit(X,y)
     yield clf
 

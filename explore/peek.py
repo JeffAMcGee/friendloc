@@ -224,7 +224,7 @@ def vect_ratios(vects,in_paths,env,strange_bins):
     #load and classify the vects
     X, y = fl.vects_as_mat(vects)
     clump = in_paths[0][-1]
-    # FIXME: Is there a nicer way to do this? We should be able tu use two
+    # FIXME: Is there a nicer way to do this? We should be able to use two
     # inputs together.
     nebr_clf = next(env.load('nebr_clf.'+clump,'pkl'))
     preds = nebr_clf.predict(X)
