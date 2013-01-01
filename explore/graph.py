@@ -1,5 +1,5 @@
-OUTPUT_TYPE = None # 'png', 'pdf', or None
 OUTPUT_TYPE = 'pdf'#, 'pdf', or None
+#OUTPUT_TYPE = 'png'
 
 import random
 import contextlib
@@ -217,8 +217,8 @@ def gr_basic(preds):
         #median="Median Contact",
         #mode="Mode of Contacts",
         nearest=("Nearest Predicted Contact",'b','dashed',2),
-        #friendloc_plain="FriendlyLocation Basic",
-        friendloc_strange=("FriendlyLocation",'k','solid',1),
+        friendloc_strange=("FriendlyLocation Basic",'k','solid',1),
+        friendloc_full=("FriendlyLocation Extended",'k','solid',3),
         #omni="Omniscient",
     )
     _gr_preds(preds,labels,'fl_basic.pdf')

@@ -208,8 +208,8 @@ class Predictors(object):
             last=Last(),
             backstrom=FacebookMLE(),
             friendloc_plain=FriendLoc(env,0),
-            friendloc_loc=FriendLoc(env,loc_factor=1),
-            friendloc_tz=FriendLoc(env,tz_factor=1),
+            friendloc_loc=FriendLoc(env,loc_factor=1,strange_factor=1),
+            friendloc_tz=FriendLoc(env,tz_factor=1,strange_factor=1),
             friendloc_strange=FriendLoc(env,strange_factor=1),
             friendloc_cut0=FriendLoc(env,force_loc=True),
             friendloc_cut=FriendLoc(env,tz_factor=1,strange_factor=1,force_loc=True),
@@ -364,8 +364,12 @@ def eval_preds(preds):
 def eval_stats(stats):
     for eval_key,groups in stats:
         print eval_key
-        for stat_key in sorted(groups[0]):
+        row = []
+        for stat_key in ('aed60','aed80','aed100','per'):
             vals = [group[stat_key] for group in groups]
-            print "%s\t%.3f\t%.5f"%(stat_key,np.average(vals),np.std(vals))
-
+            row.append(np.average(vals))
+            row.append(np.std(vals))
+        row[6]*=100
+        row[7]*=100
+        print "%.2f$\\pm$%.3f & %.1f$\\pm$%.2f & %.3g$\\pm$%.1f & %.1f\\%%$\\pm$%.2f\\%%"%tuple(row)
 
