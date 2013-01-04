@@ -43,8 +43,10 @@ def create_jobs(g):
     g.add_source(utils.read_json, name='geotweets')
     g.add_map_job(sprawl.parse_geotweets,'geotweets',saver='split_save')
     g.add_map_job(sprawl.mloc_users,'parse_geotweets')
+    g.add_map_job(sprawl.mloc_reject_count,'parse_geotweets',reducer=gob.sum_reduce)
     g.add_map_job(sprawl.find_contacts,'mloc_users',
               reducer=gob.set_reduce)
+    g.add_map_job(sprawl.total_contacts,'mloc_users')
     g.add_map_job(sprawl.contact_split,'find_contacts',saver='split_save')
 
     g.add_map_job(fixgis.gnp_gps,'mloc_users')

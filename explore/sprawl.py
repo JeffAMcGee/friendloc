@@ -64,6 +64,26 @@ def mloc_users(users_and_coords):
     return selected
 
 
+@gob.mapper(all_items=True)
+def mloc_reject_count(users_and_coords):
+    results = defaultdict(int)
+    users, locs = _untangle_users_and_coords(users_and_coords)
+    for uid,user in users.iteritems():
+        spots = locs[uid]
+        if len(spots)<=2:
+            results['spots']+=1
+            continue
+        median = utils.median_2d(spots)
+        dists = [utils.coord_in_miles(median,spot) for spot in spots]
+        if numpy.median(dists)>50:
+            results['moves']+=1
+        elif user['followers_count']==0 and user['friends_count']==0:
+            results['counts']+=1
+        else:
+            results['good']+=1
+    return results.iteritems()
+
+
 def _fetch_edges(twit,uid):
     edges = Edges.get_id(uid)
     if not edges:
@@ -160,6 +180,25 @@ def find_leafs(uid):
     user = User.get_id(uid)
     _save_user_contacts(twit, user, _pick_random_contacts, limit=100)
     return _my_contacts(user)
+
+
+@gob.mapper(all_items=True)
+def total_contacts(user_ds):
+    for user_d in itertools.islice(user_ds,2600):
+        user = User.get_id(user_d['id'])
+
+        if not user:
+            yield "no user"
+        elif user.error_status:
+            yield str(user.error_status)
+        else:
+            edges = Edges.get_id(user._id)
+            tweets = Tweets.get_id(user._id)
+            if not edges or not tweets:
+                yield "no contacts"
+            else:
+                sets = _contact_sets(tweets,edges)
+                yield [len(sets[k]) for k in User.NEBR_KEYS]
 
 
 @gob.mapper(all_items=True)

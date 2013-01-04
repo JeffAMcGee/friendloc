@@ -25,7 +25,7 @@ class TwitterModel(Model):
         Model.__init__(self, from_dict, **kwargs)
         if self._id is None and from_dict and 'id' in from_dict:
             self._id = from_dict['id']
-    
+
     def attempt_save(self):
         self.save()
 
