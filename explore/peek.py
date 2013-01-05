@@ -58,6 +58,12 @@ def diff_mloc_mdist(uids):
 
 
 @gob.mapper(all_items=True)
+def mlocs(uids):
+    for target in _paged_users(uids,fields=['mloc']):
+        yield target.median_loc
+
+
+@gob.mapper(all_items=True)
 def mloc_tile(mloc_uids):
     users = User.find(User._id.is_in(tuple(mloc_uids)),fields=['mloc','nebrs'])
     for user in users:
