@@ -179,6 +179,23 @@ def strange_nebr_bins(dist_counts):
     return counts.iteritems()
 
 
+@gob.mapper(all_items=True,slurp={'mlocs':list})
+def exact_strange_bins(uids,mlocs):
+    # find the distance between every contact and every target user
+    mlngs,mlats = np.transpose(mlocs)
+    bins = utils.dist_bins(120)
+    counts = collections.defaultdict(int)
+    for contact in _paged_users(uids,fields=['gnp']):
+        clat = _tile(contact.geonames_place.lat)
+        clng = _tile(contact.geonames_place.lng)
+        dists= utils.np_haversine(clng, mlngs, clat, mlats)
+        for dist in dists:
+            bin = bisect.bisect(bins,dist)
+            counts[bin]+=1
+    return counts.iteritems()
+
+
+
 def contact_curve(lm, a, b, c):
     return a*np.power(lm+b,c)
 

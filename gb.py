@@ -55,7 +55,6 @@ def create_jobs(g):
     g.add_map_job(sprawl.lookup_contacts,'contact_split',procs=15)
     g.add_map_job(sprawl.mloc_uids,'mloc_users')
     g.add_map_job(sprawl.trash_extra_mloc,'mloc_uids')
-    g.add_map_job(peek.mlocs,'mloc_uids')
     g.add_map_job(sprawl.fix_mloc_mdists,'mloc_uids',requires=['mdists'])
 
     g.add_map_job(sprawl.pick_nebrs,'mloc_uids',
@@ -78,6 +77,10 @@ def create_jobs(g):
 
     g.add_clump(nebr_clump, clumps=["%02d"%x for x in xrange(100)],
                 source='nebr_split', name='nebr_ids')
+
+    g.add_map_job(peek.mlocs,'mloc_uids')
+    g.add_cat('cat_mlocs','mlocs')
+    g.add_map_job(peek.exact_strange_bins,'contact_split',requires=['mlocs'])
 
     g.add_map_job(peek.dirt_cheap_locals, 'nebr_ids',
               requires=['lookup_leafs'], procs=4,
