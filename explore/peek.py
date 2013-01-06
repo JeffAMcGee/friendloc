@@ -202,7 +202,7 @@ def _bin_counts(tups):
     # take tuples from nebr_bins or strange_bins and return np array of
     # counts
     bin_d = dict(tups)
-    counts = [bin_d.get(b,0) for b in xrange(2,482)]
+    counts = [bin_d.get(b,0) for b in xrange(1,481)]
     return np.array(counts)
 
 
@@ -226,21 +226,20 @@ def contact_fit(strange_bins,nebr_bins):
 
     # fit the porportion of strangers who are contacts to a curve.
     def curve(lm, a, b):
+        # FIXME: what happened to c here?
         return a/(lm+b)
     popt,pcov = optimize.curve_fit(curve,miles,ratios,(.01,3))
     print popt
     yield tuple(popt)
 
 
-@gob.mapper(all_items=True,slurp={'strange_bins':_bin_counts})
-def vect_ratios(vects,in_paths,env,strange_bins):
+@gob.mapper(all_items=True,slurp={'exact_strange_bins':_bin_counts})
+def vect_ratios(vects,in_paths,env,exact_strange_bins):
     CHUNKS = 10
     bins = utils.dist_bins(120)
-    miles = _miles()
-    fit_stgrs_ = _fit_stgrs(miles,strange_bins)
-    # FIXME: strange_bins was created from the whole dataset, but vects is
+    # FIXME: exact_strange_bins was created from the whole dataset, but vects is
     # only based on the training set. This is fragile.
-    fit_stgrs = .8*fit_stgrs_
+    strange_bins = .8*exact_strange_bins
 
     #load and classify the vects
     X, y = fl.vects_as_mat(vects)
@@ -260,7 +259,7 @@ def vect_ratios(vects,in_paths,env,strange_bins):
 
     for index,chunk in enumerate(np.split(dists,splits)):
         hist,b = np.histogram(chunk,bins)
-        ratio = hist[1:481]/fit_stgrs
+        ratio = hist[1:481]/strange_bins
         cutoff = tups[len(tups)*index//CHUNKS][0]
         yield (cutoff, tuple(ratio))
 
@@ -274,7 +273,7 @@ def vect_fit(vect_ratios):
                         miles,
                         ratio,
                         (.001,2,-1),
-                        miles**-1.1,
+                        miles**-.8,
                         ftol=.0001,
                         )
         print (cutoff,tuple(popt))

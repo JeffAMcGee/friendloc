@@ -371,5 +371,6 @@ def eval_stats(stats):
             row.append(np.std(vals))
         row[6]*=100
         row[7]*=100
-        print "%.2f$\\pm$%.3f & %.1f$\\pm$%.2f & %.3g$\\pm$%.1f & %.1f\\%%$\\pm$%.2f\\%%"%tuple(row)
+        line = "%.2f$\\pm$%.3f & %.1f$\\pm$%.2f & %.3g$\\pm$%.1f & %.1f\\%%$\\pm$%.2f\\%% \\\\"
+        print (line%tuple(row)).replace('pm$0.','pm$.')
 

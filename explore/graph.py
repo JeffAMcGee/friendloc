@@ -179,7 +179,7 @@ def graph_vect_fit(vect_fit, in_paths, env):
 
     with axes('vect_fit',legend_loc=1) as ax:
         ax.set_xlim(1,10000)
-        ax.set_ylim(1e-8,2e-3)
+        ax.set_ylim(1e-8,1e-3)
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_xlabel('distance in miles')
