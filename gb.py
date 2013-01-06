@@ -80,7 +80,8 @@ def create_jobs(g):
 
     g.add_map_job(peek.mlocs,'mloc_uids')
     g.add_cat('cat_mlocs','mlocs')
-    g.add_map_job(peek.exact_strange_bins,'contact_split',requires=['mlocs'])
+    g.add_map_job(peek.exact_strange_bins, 'nebr_ids', requires=['mlocs'],
+                  reducer=gob.sum_reduce)
 
     g.add_map_job(peek.dirt_cheap_locals, 'nebr_ids',
               requires=['lookup_leafs'], procs=4,

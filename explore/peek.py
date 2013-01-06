@@ -184,16 +184,14 @@ def exact_strange_bins(uids,mlocs):
     # find the distance between every contact and every target user
     mlngs,mlats = np.transpose(mlocs)
     bins = utils.dist_bins(120)
-    counts = collections.defaultdict(int)
-    for contact in _paged_users(uids,fields=['gnp']):
-        clat = _tile(contact.geonames_place.lat)
-        clng = _tile(contact.geonames_place.lng)
+    counts = np.zeros(len(bins)-1)
+    for contact in _paged_users(set(uids),fields=['gnp']):
+        clat = contact.geonames_place.lat
+        clng = contact.geonames_place.lng
         dists= utils.np_haversine(clng, mlngs, clat, mlats)
-        for dist in dists:
-            bin = bisect.bisect(bins,dist)
-            counts[bin]+=1
-    return counts.iteritems()
-
+        hist,b = np.histogram(dists,bins)
+        counts+=hist
+    return enumerate(counts)
 
 
 def contact_curve(lm, a, b, c):

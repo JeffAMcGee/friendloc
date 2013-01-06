@@ -125,12 +125,13 @@ class Job(object):
 
     def output_files(self, env, reduced=True):
         if self.split_data or (not reduced and self.split_sources()):
-            self.split_data = any(j.split_data for j in self.sources)
+            # FIXME: why were we changing split_data here?
+            #self.split_data = any(j.split_data for j in self.sources)
             # FIXME: hasattr is ugly
             if hasattr(self,'encoding'):
-                return env.split_files(self.name, self.encoding)
+                return list(env.split_files(self.name, self.encoding))
             else:
-                return env.split_files(self.name)
+                return list(env.split_files(self.name))
         return [self.name,]
 
     def split_sources(self):
