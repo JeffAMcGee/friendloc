@@ -26,3 +26,16 @@ def connected_users(tweets,connected_ids):
         seen.add(uid)
         yield models.User.mod_id(uid),tweet['user']
 
+
+
+@gob.mapper(all_items=True,slurp={'connected_ids':set})
+def connected_ats(tweets,connected_ids):
+    # pick out the time of mentions between connected users
+    for tweet in tweets:
+        uid = tweet['user']['id']
+        if uid not in connected_ids:
+            continue
+        for mention in tweet['entities']['user_mentions']:
+            if mention['id'] in connected_ids:
+                yield uid,mention['id'],tweet['created_at']
+
