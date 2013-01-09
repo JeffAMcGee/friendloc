@@ -1,5 +1,6 @@
 from itertools import chain
 import networkx as nx
+import datetime
 
 from base import gob, utils, models
 
@@ -38,4 +39,13 @@ def connected_ats(tweets,connected_ids):
         for mention in tweet['entities']['user_mentions']:
             if mention['id'] in connected_ids:
                 yield uid,mention['id'],tweet['created_at']
+
+
+@gob.mapper(all_items=True)
+def daily_ats(connected_ats):
+    for frm, to, time in connected_ats:
+        format="%a %b %d %H:%M:%S +0000 %Y"
+        utc = datetime.datetime.strptime(time,format)
+        day = (utc-datetime.timedelta(hours=9)).strftime('%Y-%m-%d')
+        yield day,(frm,to)
 
