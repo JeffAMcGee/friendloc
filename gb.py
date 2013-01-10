@@ -203,6 +203,7 @@ def create_jobs(g):
     g.add_map_job(crowds.connected_ids, 'tweets')
     g.add_map_job(crowds.connected_users, 'tweets', requires=['connected_ids'], saver='split_save')
     g.add_map_job(crowds.disconnected_users, 'tweets', requires=['connected_ids'], saver='split_save')
+    g.add_map_job(full.cheap_predict,'disconnected_users')
     g.add_map_job(crowds.connected_ats, 'tweets', requires=['connected_ids'])
     g.add_map_job(crowds.daily_ats, 'connected_ats', saver='split_save')
     g.add_map_job(full.crawl_predict,'connected_users')

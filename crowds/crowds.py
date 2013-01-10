@@ -44,7 +44,6 @@ def disconnected_users(tweets,connected_ids):
         yield models.User.mod_id(uid),tweet['user']
 
 
-
 @gob.mapper(all_items=True,slurp={'connected_ids':set})
 def connected_ats(tweets,connected_ids):
     # pick out the time of mentions between connected users
