@@ -205,6 +205,8 @@ def create_jobs(g):
     g.add_map_job(crowds.connected_ats, 'tweets', requires=['connected_ids'])
     g.add_map_job(crowds.daily_ats, 'connected_ats', saver='split_save')
     g.add_map_job(full.crawl_predict,'connected_users')
+    g.add_map_job(crowds.user_locs, 'crawl_predict')
+    g.add_cat('user_locs_cat','user_locs')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

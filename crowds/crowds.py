@@ -49,3 +49,11 @@ def daily_ats(connected_ats):
         day = (utc-datetime.timedelta(hours=9)).strftime('%Y-%m-%d')
         yield day,(frm,to)
 
+
+@gob.mapper(all_items=True)
+def user_locs(users):
+    for user in users:
+        if 'ploc' in user:
+            yield user['_id'],user['ploc']
+
+
