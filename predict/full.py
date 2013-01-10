@@ -52,10 +52,12 @@ def cheap_predict(user_ds, env, mdists):
     gis.set_mdists(mdists)
 
     for user_d in user_ds:
-        if not user_d['loc']:
+        user = User(user_d)
+        if not user.location:
             continue
-        gnp = gis.twitter_loc(user_d['loc'])
+        gnp = gis.twitter_loc(user.location)
         if gnp and gnp.mdist<MAX_GNP_MDIST:
-            user_d['ploc'] = gnp.to_tup()
-            yield user_d
+            user.geonames_place = gnp
+            user.pred_loc = gnp.to_tup()
+            yield user.to_d()
 
