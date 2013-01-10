@@ -207,6 +207,8 @@ def create_jobs(g):
     g.add_map_job(full.crawl_predict,'connected_users')
     g.add_map_job(crowds.user_locs, 'crawl_predict')
     g.add_cat('user_locs_cat','user_locs')
+    g.add_map_job(crowds.near_edges, 'daily_ats', requires=['user_locs'])
+    g.add_map_job(crowds.mcl_edges, 'near_edges')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

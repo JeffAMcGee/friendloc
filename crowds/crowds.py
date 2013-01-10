@@ -1,6 +1,10 @@
-from itertools import chain
-import networkx as nx
+from itertools import chain, izip
 import datetime
+import tempfile
+import subprocess
+
+import networkx as nx
+import numpy as np
 
 from base import gob, utils, models
 
@@ -56,4 +60,37 @@ def user_locs(users):
         if 'ploc' in user:
             yield user['_id'],user['ploc']
 
+
+@gob.mapper(all_items=True,slurp={'user_locs_cat':dict})
+def near_edges(daily_ats,user_locs_cat):
+    edges = {
+        (frm,to)
+        for frm,to in daily_ats
+        if frm in user_locs_cat and to in user_locs_cat
+    }
+    def _as_array(is_to,is_lat):
+        return np.array([user_locs_cat[edge[is_to]][is_lat] for edge in edges])
+    flngs = _as_array(0,0)
+    flats = _as_array(0,1)
+    tlngs = _as_array(1,0)
+    tlats = _as_array(1,1)
+    dists = utils.np_haversine(flngs,tlngs,flats,tlats)
+    for dist,edge in izip(dists,edges):
+        if dist<500:
+            yield edge[0],edge[1],25/(25+dist)
+
+
+@gob.mapper(all_items=True,slurp={'user_locs_cat':dict})
+def mcl_edges(edges):
+    with tempfile.NamedTemporaryFile() as abc:
+        for edge in edges:
+            print>>abc, "%d %d %d"%edge
+        abc.flush()
+        out = subprocess.check_output(
+            ['mcl',abc.name,'--abc','-o','-'],
+        )
+    for line in out.split('\n'):
+        uids = line.split('\t')
+        if len(uids)>1:
+            yield [int(uid) for uid in uids]
 
