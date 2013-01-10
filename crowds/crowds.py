@@ -32,6 +32,18 @@ def connected_users(tweets,connected_ids):
         yield models.User.mod_id(uid),tweet['user']
 
 
+@gob.mapper(all_items=True,slurp={'connected_ids':set})
+def disconnected_users(tweets,connected_ids):
+    # FIXME: this only differs from connected_users by removing not from the if
+    seen = set()
+    for tweet in tweets:
+        uid = tweet['user']['id']
+        if uid in connected_ids or uid in seen:
+            continue
+        seen.add(uid)
+        yield models.User.mod_id(uid),tweet['user']
+
+
 
 @gob.mapper(all_items=True,slurp={'connected_ids':set})
 def connected_ats(tweets,connected_ids):
@@ -80,7 +92,7 @@ def near_edges(daily_ats,user_locs_cat):
             yield edge[0],edge[1],25/(25+dist)
 
 
-@gob.mapper(all_items=True,slurp={'user_locs_cat':dict})
+@gob.mapper(all_items=True)
 def mcl_edges(edges):
     with tempfile.NamedTemporaryFile() as abc:
         for edge in edges:
@@ -93,4 +105,15 @@ def mcl_edges(edges):
         uids = line.split('\t')
         if len(uids)>1:
             yield [int(uid) for uid in uids]
+
+@gob.mapper(all_items=True)
+def weak_edges(edges):
+    ats = nx.DiGraph()
+    for frm,to,dist in edges:
+        if dist>.5:
+            ats.add_edge(frm,to)
+    scc = nx.weakly_connected_components(ats)
+    return (c for c in scc if len(c)>1)
+
+
 
