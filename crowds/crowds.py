@@ -44,43 +44,47 @@ def disconnected_users(tweets,connected_ids):
         yield models.User.mod_id(uid),tweet['user']
 
 
-@gob.mapper(all_items=True,slurp={'connected_ids':set})
-def connected_ats(tweets,connected_ids):
-    # pick out the time of mentions between connected users
+@gob.mapper(all_items=True)
+def user_locs(predicted_users,cheap_users):
+    """Combine connected users with users who gave us a location"""
+    for users in (predicted_users,cheap_users):
+        for user in users:
+            if 'ploc' in user:
+                yield user['_id'],user['ploc']
+
+
+def _date_from_stamp(time):
+    format="%a %b %d %H:%M:%S +0000 %Y"
+    utc = datetime.datetime.strptime(time,format)
+    return (utc-datetime.timedelta(hours=9)).strftime('%Y-%m-%d')
+
+
+def _key_set(kvs):
+    return {k for k,v in kvs}
+
+
+@gob.mapper(all_items=True,slurp={'user_locs':_key_set})
+def daily_ats(tweets,user_locs):
+    """split up the mentions based on the day"""
     for tweet in tweets:
         uid = tweet['user']['id']
-        if uid not in connected_ids:
+        if uid not in user_locs:
             continue
         for mention in tweet['entities']['user_mentions']:
-            if mention['id'] in connected_ids:
-                yield uid,mention['id'],tweet['created_at']
+            if mention['id'] in user_locs:
+                day = _date_from_stamp(tweet['created_at'])
+                yield day,(uid,mention['id'])
 
 
-@gob.mapper(all_items=True)
-def daily_ats(connected_ats):
-    for frm, to, time in connected_ats:
-        format="%a %b %d %H:%M:%S +0000 %Y"
-        utc = datetime.datetime.strptime(time,format)
-        day = (utc-datetime.timedelta(hours=9)).strftime('%Y-%m-%d')
-        yield day,(frm,to)
-
-
-@gob.mapper(all_items=True)
-def user_locs(users):
-    for user in users:
-        if 'ploc' in user:
-            yield user['_id'],user['ploc']
-
-
-@gob.mapper(all_items=True,slurp={'user_locs_cat':dict})
-def near_edges(daily_ats,user_locs_cat):
+@gob.mapper(all_items=True,slurp={'user_locs':dict})
+def near_edges(daily_ats,user_locs):
     edges = {
         (frm,to)
         for frm,to in daily_ats
-        if frm in user_locs_cat and to in user_locs_cat
+        if frm in user_locs and to in user_locs
     }
     def _as_array(is_to,is_lat):
-        return np.array([user_locs_cat[edge[is_to]][is_lat] for edge in edges])
+        return np.array([user_locs[edge[is_to]][is_lat] for edge in edges])
     flngs = _as_array(0,0)
     flats = _as_array(0,1)
     tlngs = _as_array(1,0)
