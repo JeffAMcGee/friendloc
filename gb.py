@@ -159,6 +159,7 @@ def create_jobs(g):
               requires=['contact_count','contact_fit'])
     g.add_cat('stranger_prob_cat','stranger_prob')
     g.add_map_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
+    g.add_map_job(graph.graph_stranger_mat,'stranger_mat')
 
     def train_set(keys, clump):
         return int(keys[0])//20!=int(clump)
