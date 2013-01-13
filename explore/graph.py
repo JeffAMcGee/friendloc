@@ -212,11 +212,11 @@ def graph_vect_fit(vect_fit, in_paths, env):
 
 @gob.mapper(all_items=True)
 def graph_stranger_mat(stranger_mat):
-    mat = numpy.transpose(next(stranger_mat))[150:1650]
+    mat = numpy.transpose(next(stranger_mat))
     scaled = 1.1**mat
     fit = 255.999*(scaled-numpy.min(scaled))/numpy.ptp(scaled)
     buff = numpy.require(fit,numpy.uint8,['C_CONTIGUOUS'])
-    img = PIL.Image.frombuffer('L',(3600,1500),buff)
+    img = PIL.Image.frombuffer('L',(3600,1800),buff)
     img.save('stranger_mat.png')
 
 
