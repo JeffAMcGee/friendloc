@@ -87,7 +87,8 @@ class Last(Predictor):
 
 class FacebookMLE(Predictor):
     def predict(self,nebrs_d,vect_fit):
-        probs = np.sum(np.log(nebrs_d['contact_prob']),axis=0)
+        contact_prob = nebrs_d['contact_prob']
+        probs = np.sum(np.log(contact_prob/(1-contact_prob)),axis=0)
         return np.argmax(probs+nebrs_d['strange_prob'])
 
 class Median(Predictor):
@@ -124,8 +125,9 @@ class FriendLoc(Predictor):
         for index,pred in enumerate(nebrs_d['pred_dists']):
             curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
+        contact_prob = nebrs_d['contact_prob']
         total_probs = (
-            np.sum(np.log(probs),axis=0) +
+            np.sum(np.log(probs/(1-contact_prob)),axis=0) +
             self.strange_factor*nebrs_d['strange_prob'] +
             self.tz_factor*nebrs_d['tz_prob'] +
             self.loc_factor*nebrs_d['location_prob']
