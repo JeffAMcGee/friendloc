@@ -99,35 +99,13 @@ class Median(Predictor):
         dists = utils.np_haversine(mlng,lngs,mlat,lats)
         return np.argmin(dists)
 
+
 class Mode(Predictor):
     def predict(self,nebrs_d,vect_fit):
         spots = [(r['lng'],r['lat']) for r in nebrs_d['nebrs']]
         best,count = Counter(spots).most_common(1)[0]
         return spots.index(best)
 
-
-class NearestMLE(Predictor):
-    def __init__(self,count):
-        self.count = count
-
-    def predict(self,nebrs_d,vect_fit):
-        dists = sorted(
-                    enumerate(nebrs_d['pred_dists']),
-                    key=operator.itemgetter(1)
-                    )
-        best = [d[0] for d in dists[:self.count]]
-        probs_ =    (
-                    nebrs_d['contact_prob'][x][y]
-                    for x in xrange(len(dists))
-                    for y in xrange(len(dists))
-                    if x in best and y in best
-                    )
-        probs = np.fromiter(probs_,float)
-        probs.shape = len(best),len(best)
-
-        sums = np.sum(np.log10(probs),axis=0)
-        index, prob = max(enumerate(sums), key=operator.itemgetter(1))
-        return best[index]
 
 class FriendLoc(Predictor):
     def __init__(self,env,loc_factor=0,tz_factor=0,strange_factor=0,force_loc=False):
@@ -155,29 +133,6 @@ class FriendLoc(Predictor):
         return np.argmax(total_probs)
 
 
-class FriendLocWeights(Predictor):
-    def __init__(self,env,weights,vect_fit):
-        self.env = env
-        self.weights = weights
-
-    def predict(self,nebrs_d,vect_fit):
-        self.cutoffs,self.curves = zip(*vect_fit)
-        mat = nebrs_d['dist_mat']
-        probs = np.empty_like(mat)
-        for index,pred in enumerate(nebrs_d['pred_dists']):
-            curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
-            probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
-        prob_sum = np.sum(np.log(probs),axis=0)
-        w = self.weights
-        total_probs = (
-            w[0]*prob_sum +
-            w[1]*nebrs_d['location_prob'] +
-            w[2]*nebrs_d['strange_prob']/2 +
-            w[3]*nebrs_d['tz_prob']/2
-            )
-        return np.argmax(total_probs)
-
-
 def _calc_dists(nebrs_d):
     gnp = nebrs_d['gnp']
     lats = [r['lat'] for r in nebrs_d['nebrs']]
@@ -196,33 +151,19 @@ def predictions(nebrs_ds, env, in_paths, geo_ated, dirt_cheap_locals):
     return p.predictions(nebrs_ds,in_paths,geo_ated,dirt_cheap_locals)
 
 
-
 class Predictors(object):
     def __init__(self,env):
         self.env = env
         self.classifiers = dict(
             omni=Omni(),
             nearest=Nearest(),
-            median=Median(),
-            mode=Mode(),
-            last=Last(),
             backstrom=FacebookMLE(),
-            friendloc_plain=FriendLoc(env,0),
+            friendloc_nostrange=FriendLoc(env,0),
             friendloc_loc=FriendLoc(env,loc_factor=1,strange_factor=1),
             friendloc_tz=FriendLoc(env,tz_factor=1,strange_factor=1),
-            friendloc_strange=FriendLoc(env,strange_factor=1),
-            friendloc_cut0=FriendLoc(env,force_loc=True),
-            friendloc_cut=FriendLoc(env,tz_factor=1,strange_factor=1,force_loc=True),
-            friendloc_full=FriendLoc(env,1,1,1),
+            friendloc_basic=FriendLoc(env,strange_factor=1),
+            friendloc_cut=FriendLoc(env,strange_factor=1,force_loc=True),
         )
-        '''
-        steps = [0,.333,1,3]
-        self.classifiers = {
-            vect:FriendLocWeights(env,vect)
-            for vect in itertools.product(steps[1:],steps[1:],steps,steps)
-            if any(vect)
-        }
-        '''
 
     def _mdist_curves(self,clump):
         data = list(self.env.load('mdist_curves.'+clump,'mp'))
@@ -359,6 +300,7 @@ def eval_preds(preds):
             aed100 = _aed(1,vals),
         )
         yield key,results
+
 
 @gob.mapper(all_items=True)
 def eval_stats(stats):
