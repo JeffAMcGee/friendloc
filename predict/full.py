@@ -4,13 +4,16 @@ from base import gob, twitter, gisgraphy
 from explore import sprawl
 from predict import fl
 
+# this is the worst PLE that we are willing to accept
+MAX_GNP_MDIST = 25
+
 
 def _crawl_pred_one(user,twit,gis,pred):
     if user.location and not user.geonames_place:
         user.geonames_place = gis.twitter_loc(user.location)
 
     gnp = user.geonames_place
-    if gnp and gnp.mdist<25:
+    if gnp and gnp.mdist<MAX_GNP_MDIST:
         user.pred_loc = gnp.to_tup()
         return
 
@@ -37,4 +40,24 @@ def crawl_predict(user_ds, env, mdists):
             _crawl_pred_one(user,twit,gis,pred)
             user.merge()
         yield user.to_d()
+
+
+@gob.mapper(all_items=True,slurp={'mdists':next})
+def cheap_predict(user_ds, env, mdists):
+    """
+    takes a user dictionary, runs the geocoder without crawling, adds the
+    location if we can find one
+    """
+    gis = gisgraphy.GisgraphyResource()
+    gis.set_mdists(mdists)
+
+    for user_d in user_ds:
+        user = User(user_d)
+        if not user.location:
+            continue
+        gnp = gis.twitter_loc(user.location)
+        if gnp and gnp.mdist<MAX_GNP_MDIST:
+            user.geonames_place = gnp
+            user.pred_loc = gnp.to_tup()
+            yield user.to_d()
 

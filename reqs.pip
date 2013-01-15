@@ -5,11 +5,12 @@ ipdb==0.6.1
 matplotlib==1.1.0
 mock==0.8.0
 msgpack-python==0.1.13
-networkx==1.6
+networkx==1.7
 nose==1.1.2
 numpy==1.6.2
 pyflakes==0.5.0
 pymongo==2.3
+PIL==1.1.7
 restkit==3.3.2
 requests==0.13.2
 requests-oauth==0.4.1

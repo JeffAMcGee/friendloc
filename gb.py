@@ -160,6 +160,7 @@ def create_jobs(g):
               requires=['contact_count','contact_fit'])
     g.add_cat('stranger_prob_cat','stranger_prob')
     g.add_map_job(peek.stranger_mat,'stranger_prob_cat',encoding='npz')
+    g.add_map_job(graph.graph_stranger_mat,'stranger_mat')
 
     def train_set(keys, clump):
         return int(keys[0])//20!=int(clump)
@@ -203,7 +204,14 @@ def create_jobs(g):
     g.add_source(utils.read_tweets, name='tweets')
     g.add_map_job(crowds.connected_ids, 'tweets')
     g.add_map_job(crowds.connected_users, 'tweets', requires=['connected_ids'], saver='split_save')
+    g.add_map_job(crowds.disconnected_users, 'tweets', requires=['connected_ids'], saver='split_save')
+    g.add_map_job(full.cheap_predict,'disconnected_users')
     g.add_map_job(full.crawl_predict,'connected_users')
+    g.add_map_job(crowds.user_locs, ['crawl_predict','cheap_predict'])
+    g.add_map_job(crowds.daily_ats, 'tweets', requires=['user_locs'], saver='split_save')
+    g.add_map_job(crowds.near_edges, 'daily_ats', requires=['user_locs'])
+    g.add_map_job(crowds.mcl_edges, 'near_edges')
+    g.add_map_job(crowds.weak_edges, 'near_edges')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
