@@ -228,8 +228,8 @@ def gr_basic(preds):
         #median="Median Contact",
         #mode="Mode of Contacts",
         nearest=("Nearest Predicted Contact",'b','dashed',2),
-        friendloc_strange=("FriendlyLocation Basic",'k','solid',1),
-        friendloc_full=("FriendlyLocation Extended",'k','solid',3),
+        friendloc_basic=("FriendlyLocation Basic",'k','solid',1),
+        friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',3),
         #omni="Omniscient",
     )
     _gr_preds(preds,labels,'fl_basic.pdf')

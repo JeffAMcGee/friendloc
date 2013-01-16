@@ -165,6 +165,7 @@ class Predictors(object):
             friendloc_tz=FriendLoc(env,tz_factor=1,strange_factor=1),
             friendloc_basic=FriendLoc(env,strange_factor=1),
             friendloc_cut=FriendLoc(env,strange_factor=1,force_loc=True),
+            friendloc_cutloc=FriendLoc(env,strange_factor=1,loc_factor=1,force_loc=True),
         )
 
     def _mdist_curves(self,clump):
@@ -306,7 +307,7 @@ def eval_preds(preds):
 
 @gob.mapper(all_items=True)
 def eval_stats(stats):
-    for eval_key,groups in stats:
+    for eval_key,groups in sorted(stats):
         print eval_key
         row = []
         for stat_key in ('aed60','aed80','aed100','per'):
