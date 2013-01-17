@@ -126,8 +126,8 @@ class FriendLoc(Predictor):
         self.clf_key = clf_key
 
     def predict(self,nebrs_d,vect_fit):
-        cutoffs = [cut for v,cut,cur in vect_fit if v==self.vect_fit]
-        curves = [cur for v,cut,cur in vect_fit if v==self.vect_fit]
+        cutoffs = [cut for k,cut,cur in vect_fit if k==self.clf_key]
+        curves = [cur for k,cut,cur in vect_fit if k==self.clf_key]
 
         if self.force_loc and nebrs_d['gnp'] and nebrs_d['gnp']['mdist']<25:
             return len(nebrs_d['vects'])
@@ -178,6 +178,7 @@ class Predictors(object):
             friendloc_near=FriendLoc(env,strange_factor=1,clf_key='contact'),
             friendloc_cut=FriendLoc(env,strange_factor=1,force_loc=True),
             friendloc_cutloc=FriendLoc(env,strange_factor=1,loc_factor=1,force_loc=True),
+            friendloc_nearcut=FriendLoc(env,strange_factor=1,clf_key='contact',force_loc=True),
         )
 
     def _mdist_curves(self,clump):
