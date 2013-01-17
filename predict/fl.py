@@ -60,10 +60,17 @@ def vects_as_mat(vects):
 @gob.mapper(all_items=True)
 def nebr_clf(vects):
     X, y = vects_as_mat(vects)
-    # FIXME: I made up the number for min_samples_leaf
     clf = tree.DecisionTreeRegressor(min_samples_leaf=1000)
     clf.fit(X,y)
-    yield clf
+
+    # We want to ignore columns from X that depend on the leafs and crawling the
+    # tweets of the contacts.
+    #FIXME: the set of columns we are ignoring is fragile
+    for col in (1,2,9):
+        X[:,col] = 0
+    near_clf = tree.DecisionTreeRegressor(min_samples_leaf=1000)
+    near_clf.fit(X,y)
+    yield dict(leaf=clf,contact=near_clf)
 
 
 class Predictor(object):
@@ -79,7 +86,7 @@ class Omni(Predictor):
 
 class Nearest(Predictor):
     def predict(self,nebrs_d,vect_fit):
-        return np.argmin(nebrs_d['pred_dists'])
+        return np.argmin(nebrs_d['pred_dists']['leaf'])
 
 class Last(Predictor):
     def predict(self,nebrs_d,vect_fit):
@@ -109,12 +116,14 @@ class Mode(Predictor):
 
 
 class FriendLoc(Predictor):
-    def __init__(self,env,loc_factor=0,tz_factor=0,strange_factor=0,force_loc=False):
+    def __init__(self, env, loc_factor=0, tz_factor=0, strange_factor=0,
+                 force_loc=False, clf_key='leaf'):
         self.env = env
         self.loc_factor = loc_factor
         self.strange_factor = strange_factor
         self.tz_factor = tz_factor
         self.force_loc = force_loc
+        self.clf_key = clf_key
 
     def predict(self,nebrs_d,vect_fit):
         self.cutoffs,self.curves = zip(*vect_fit)
@@ -122,7 +131,7 @@ class FriendLoc(Predictor):
             return len(nebrs_d['vects'])
         mat = nebrs_d['dist_mat']
         probs = np.empty_like(mat)
-        for index,pred in enumerate(nebrs_d['pred_dists']):
+        for index,pred in enumerate(nebrs_d['pred_dists'][self.clf_key]):
             curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
         contact_prob = nebrs_d['contact_prob']
@@ -164,6 +173,7 @@ class Predictors(object):
             friendloc_loc=FriendLoc(env,loc_factor=1,strange_factor=1),
             friendloc_tz=FriendLoc(env,tz_factor=1,strange_factor=1),
             friendloc_basic=FriendLoc(env,strange_factor=1),
+            friendloc_near=FriendLoc(env,strange_factor=1,clf_key='contact'),
             friendloc_cut=FriendLoc(env,strange_factor=1,force_loc=True),
             friendloc_cutloc=FriendLoc(env,strange_factor=1,loc_factor=1,force_loc=True),
         )
@@ -218,7 +228,11 @@ class Predictors(object):
         vects = nebr_vect(nebrs_d,self.geo_ated,self.cheap_locals)
         nebrs_d['vects']=list(vects)
         X, y = vects_as_mat(nebrs_d['vects'])
-        nebrs_d['pred_dists'] = self.nebr_clf.predict(X)
+
+        nebrs_d['pred_dists'] = {
+                k:clf.predict(X) for k,clf in
+                self.nebr_clf.iteritems()
+            }
         nebrs_d['dist_mat'] = _calc_dists(nebrs_d)
         nebrs_d['contact_prob'] = utils.contact_prob(nebrs_d['dist_mat'])
 

@@ -172,8 +172,8 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
 def graph_vect_fit(vect_fit, in_paths, env):
     if in_paths[0][-1] != '0':
         return
-    ratios = (ratio for cutoff,ratio in env.load('vect_ratios.0'))
-    fits = (fit for cutoff,fit in vect_fit)
+    ratios = (ratio for vers,cutoff,ratio in env.load('vect_ratios.0'))
+    fits = (fit for vers,cutoff,fit in vect_fit)
 
     bins = dist_bins(120)
     miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])

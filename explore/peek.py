@@ -247,27 +247,28 @@ def vect_ratios(vects,in_paths,env,exact_strange_bins):
     # FIXME: Is there a nicer way to do this? We should be able to use two
     # inputs together.
     nebr_clf = next(env.load('nebr_clf.'+clump,'pkl'))
-    preds = nebr_clf.predict(X)
+    for version in ('contact','leaf'):
+        preds = nebr_clf[version].predict(X)
 
-    # sort (predicted, actual) tuples by predicted value
-    tups = zip(preds,y)
-    tups.sort(key=operator.itemgetter(0))
+        # sort (predicted, actual) tuples by predicted value
+        tups = zip(preds,y)
+        tups.sort(key=operator.itemgetter(0))
 
-    # unlogify the data from vects and break into chunks
-    dists = np.power(2,[tup[1] for tup in tups])-.01
-    splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
+        # unlogify the data from vects and break into chunks
+        dists = np.power(2,[tup[1] for tup in tups])-.01
+        splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
 
-    for index,chunk in enumerate(np.split(dists,splits)):
-        hist,b = np.histogram(chunk,bins)
-        ratio = hist[1:481]/strange_bins
-        cutoff = tups[len(tups)*index//CHUNKS][0]
-        yield (cutoff, tuple(ratio))
+        for index,chunk in enumerate(np.split(dists,splits)):
+            hist,b = np.histogram(chunk,bins)
+            ratio = hist[1:481]/strange_bins
+            cutoff = tups[len(tups)*index//CHUNKS][0]
+            yield (version, cutoff, tuple(ratio))
 
 
 @gob.mapper(all_items=True)
 def vect_fit(vect_ratios):
     miles = _miles()
-    for cutoff,ratio in vect_ratios:
+    for version,cutoff,ratio in vect_ratios:
         popt,pcov = optimize.curve_fit(
                         contact_curve,
                         miles,
@@ -276,8 +277,8 @@ def vect_fit(vect_ratios):
                         miles**-.8,
                         ftol=.0001,
                         )
-        print (cutoff,tuple(popt))
-        yield (cutoff,tuple(popt))
+        print (version,cutoff,tuple(popt))
+        yield (version,cutoff,tuple(popt))
 
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
