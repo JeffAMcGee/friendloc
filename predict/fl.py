@@ -126,13 +126,15 @@ class FriendLoc(Predictor):
         self.clf_key = clf_key
 
     def predict(self,nebrs_d,vect_fit):
-        self.cutoffs,self.curves = zip(*vect_fit)
+        cutoffs = [cut for v,cut,cur in vect_fit if v==self.vect_fit]
+        curves = [cur for v,cut,cur in vect_fit if v==self.vect_fit]
+
         if self.force_loc and nebrs_d['gnp'] and nebrs_d['gnp']['mdist']<25:
             return len(nebrs_d['vects'])
         mat = nebrs_d['dist_mat']
         probs = np.empty_like(mat)
         for index,pred in enumerate(nebrs_d['pred_dists'][self.clf_key]):
-            curve = self.curves[bisect.bisect(self.cutoffs,pred)-1]
+            curve = curves[bisect.bisect(cutoffs,pred)-1]
             probs[index,:] = explore.peek.contact_curve(mat[index,:],*curve)
         contact_prob = nebrs_d['contact_prob']
         total_probs = (
