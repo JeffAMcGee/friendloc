@@ -16,7 +16,7 @@ if OUTPUT_TYPE:
 
 import matplotlib.pyplot as plt
 import PIL
-import numpy
+import numpy as np
 
 from explore import peek
 #from base.models import *
@@ -54,11 +54,11 @@ def axes(path='', figsize=(12,8), legend_loc=4,
 def linhist(ax, row, bins, dist_scale=False, window=None, normed=False,
             marker='-', **hargs):
     "works like ax.hist, but without jagged edges"
-    hist,b = numpy.histogram(row,bins)
+    hist,b = np.histogram(row,bins)
     step_size = b[2]/b[1]
     hist = hist*(1.0*step_size/(step_size-1))
     if window is not None:
-        hist = numpy.convolve(hist,window,mode='same')/sum(window)
+        hist = np.convolve(hist,window,mode='same')/sum(window)
     if normed:
         hist = hist * (1.0/len(row))
     if dist_scale:
@@ -135,11 +135,11 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
             for k in ['weights','log','bins']:
                 if k in hargs:
                     del hargs[k]
-            hist,b = numpy.histogram(row,kwargs['bins'])
+            hist,b = np.histogram(row,kwargs['bins'])
             step_size = b[2]/b[1]
             hist = hist*(1.0*step_size/(step_size-1))
             if window is not None:
-                hist = numpy.convolve(hist,window,mode='same')/sum(window)
+                hist = np.convolve(hist,window,mode='same')/sum(window)
             if normed:
                 hist = hist*weight
             if logline_fn:
@@ -176,7 +176,7 @@ def graph_vect_fit(vect_fit, in_paths, env):
     fits = (fit for vers,cutoff,fit in vect_fit)
 
     bins = dist_bins(120)
-    miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+    miles = np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
 
     with axes('vect_fit',legend_loc=1) as ax:
         ax.set_xlim(1,10000)
@@ -202,8 +202,8 @@ def graph_vect_fit(vect_fit, in_paths, env):
                 color = ".6"
                 label = None
                 fitstyle='dotted'
-            window = numpy.bartlett(5)
-            smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
+            window = np.bartlett(5)
+            smooth_ratio = np.convolve(ratio,window,mode='same')/sum(window)
             if label:
                 ax.plot(miles, smooth_ratio, '-', color=color, label=label)
             ax.plot(miles, peek.contact_curve(miles,*fit), '-',
@@ -212,10 +212,10 @@ def graph_vect_fit(vect_fit, in_paths, env):
 
 @gob.mapper(all_items=True)
 def graph_stranger_mat(stranger_mat):
-    mat = numpy.transpose(next(stranger_mat))
+    mat = np.transpose(next(stranger_mat))
     scaled = 1.1**mat
-    fit = 255.999*(scaled-numpy.min(scaled))/numpy.ptp(scaled)
-    buff = numpy.require(fit,numpy.uint8,['C_CONTIGUOUS'])
+    fit = 255.999*(scaled-np.min(scaled))/np.ptp(scaled)
+    buff = np.require(fit,np.uint8,['C_CONTIGUOUS'])
     img = PIL.Image.frombuffer('L',(3600,1800),buff)
     img.save('stranger_mat.png')
 
@@ -258,7 +258,7 @@ def gr_parts(preds):
     _gr_preds(preds,labels,'fl_parts.pdf')
 
 def _aed(ratio,vals):
-    return numpy.average(sorted(vals)[:int(ratio*len(vals))])
+    return np.average(sorted(vals)[:int(ratio*len(vals))])
 
 def _gr_preds(preds,labels,path):
     preds_d = defaultdict(list)
@@ -469,7 +469,7 @@ def graph_locals_cmp(rfr_dists):
     good_dists = {}
     for key,label in zip(keys,labels):
         tups = ratio_dists[key]
-        med = numpy.median([ratio for ratio,dist in tups])
+        med = np.median([ratio for ratio,dist in tups])
         good_dists[label] = [dist for ratio,dist in tups if ratio>=med]
 
     for k,v in good_dists.iteritems():
@@ -506,7 +506,7 @@ def graph_leaf_data(leaf_data):
 
     good_dists = {}
     for key,tups in ratio_dists.iteritems():
-        avg = numpy.average(one_vals[key])
+        avg = np.average(one_vals[key])
         #tups.extend([(avg,d) for d in zero_dists[key]])
         lim = int(len(tups)*.5)
         tups.sort(key=itemgetter(0))
@@ -642,11 +642,11 @@ def graph_indep(rfr_indep):
     # This function is ugly.
 
     bins=dist_bins(120)
-    miles = numpy.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
+    miles = np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
     # FIXME: hardcoded values from _fit_stgrs in peek.py
-    fit_stgrs = 10**(1.034*(numpy.log10(miles))+6.207)
+    fit_stgrs = 10**(1.034*(np.log10(miles))+6.207)
 
-    data = defaultdict(lambda: numpy.zeros(602))
+    data = defaultdict(lambda: np.zeros(602))
     for quad in rfr_indep:
         for key,color in (('near','r'),('far','b')):
             d = coord_in_miles(quad['me']['loc'],quad[key]['gnp'])
@@ -660,8 +660,8 @@ def graph_indep(rfr_indep):
         ax.set_xlabel('distance in miles')
         ax.set_ylabel('probablility of being a contact')
 
-        #window = numpy.bartlett(5)
-        #smooth_ratio = numpy.convolve(ratio,window,mode='same')/sum(window)
+        #window = np.bartlett(5)
+        #smooth_ratio = np.convolve(ratio,window,mode='same')/sum(window)
         for key,vect in data.iteritems():
             ax.plot( miles, vect[2:482]/fit_stgrs, '-', label=key)
 
@@ -671,8 +671,8 @@ def plot_crowds(clusts):
     lngs, lats, mags = [],[],[]
     for clust in clusts:
         uids,spots = zip(*clust)
-        lng, lat = numpy.mean(spots,axis=0)
-        dlng, dlat = numpy.ptp(spots,axis=0)
+        lng, lat = np.mean(spots,axis=0)
+        dlng, dlat = np.ptp(spots,axis=0)
         if len(uids)>10 and 24<lat<50 and -126<lng<-66:
             lngs.append(lng)
             lats.append(lat)
