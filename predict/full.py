@@ -8,7 +8,7 @@ from predict import fl
 MAX_GNP_MDIST = 25
 
 
-def _crawl_pred_one(user,twit,gis,pred):
+def _crawl_pred_one(user,twit,gis,pred,fast):
     if user.location and not user.geonames_place:
         user.geonames_place = gis.twitter_loc(user.location)
 
@@ -17,13 +17,19 @@ def _crawl_pred_one(user,twit,gis,pred):
         user.pred_loc = gnp.to_tup()
         return
 
-    nebrs, ats, ated = sprawl.crawl_single(user,twit,gis)
+    nebrs, ats, ated = sprawl.crawl_single(user,twit,gis,fast=fast)
     if nebrs:
-        user.pred_loc = pred.predict( user, nebrs, ats, ated )
+        clf = 'friendloc_nearcut' if fast else 'friendloc_cut'
+        user.pred_loc = pred.predict( user, nebrs, ats, ated, clf)
 
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
-def crawl_predict(user_ds, env, mdists):
+def crawl_predict_fast(user_ds, env, mdists):
+    crawl_predict(user_ds, env, mdists, fast=True)
+
+
+@gob.mapper(all_items=True,slurp={'mdists':next})
+def crawl_predict(user_ds, env, mdists, fast=False):
     """
     takes a user dictionary, runs the crawler and predictor
     """
@@ -37,7 +43,7 @@ def crawl_predict(user_ds, env, mdists):
         user = User.get_id(user_d['id'])
         if not user or not user.pred_loc:
             user = User(user_d)
-            _crawl_pred_one(user,twit,gis,pred)
+            _crawl_pred_one(user,twit,gis,pred,fast=fast)
             user.merge()
         yield user.to_d()
 

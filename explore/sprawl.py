@@ -371,7 +371,7 @@ def _calc_lorat(nebrs,twit,gis):
 CrawlResults = collections.namedtuple("CrawlResults",['nebrs','ats','ated'])
 
 
-def crawl_single(user, twit, gis):
+def crawl_single(user, twit, gis, fast):
     """
     save a single user, contacts, and leafs to the database
 
@@ -390,16 +390,18 @@ def crawl_single(user, twit, gis):
     nebrs = [profiles[nid] for nid in user.neighbors]
 
     ated = set()
-    for nebr in nebrs:
-        ne,nt = _save_user_contacts(twit, nebr, _pick_best_contacts, limit=100)
-        if nt and nt.ats and user._id in nt.ats:
-            ated.add(nebr._id)
 
-    need_lorat = [nebr for nebr in nebrs if nebr.local_ratio is None]
-    _calc_lorat(need_lorat,twit,gis)
-    for nebr in need_lorat:
-        nebr.merge()
-    user.save()
+    if not fast:
+        for nebr in nebrs:
+            ne,nt = _save_user_contacts(twit, nebr, _pick_best_contacts, limit=100)
+            if nt and nt.ats and user._id in nt.ats:
+                ated.add(nebr._id)
+        need_lorat = [nebr for nebr in nebrs if nebr.local_ratio is None]
+        _calc_lorat(need_lorat,twit,gis)
+
+        for nebr in need_lorat:
+            nebr.merge()
+    user.merge()
 
     return CrawlResults(nebrs,tweets.ats if tweets else [],ated)
 

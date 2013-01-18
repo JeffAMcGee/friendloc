@@ -282,7 +282,7 @@ class Predictors(object):
                 results[key].append(dist)
         return results.iteritems()
 
-    def predict(self, user, nebrs, ats, ated):
+    def predict(self, user, nebrs, ats, ated, clf='friendloc_cut'):
         # this is an ugly way to deal with geo_ated and cheap_locals
         self.geo_ated = {user._id:ated}
         self.cheap_locals = {}
@@ -293,7 +293,7 @@ class Predictors(object):
         nebrs_d = prep.make_nebrs_d(user,nebrs,ats)
         self.prep_nebrs(nebrs_d)
 
-        index = self.classifiers['friendloc_full'].predict(nebrs_d,self.vect_fit)
+        index = self.classifiers[clf].predict(nebrs_d,self.vect_fit)
         if index==len(nebrs_d['nebrs']):
             return user.geonames_place.to_tup()
         else:
