@@ -665,3 +665,20 @@ def graph_indep(rfr_indep):
         for key,vect in data.iteritems():
             ax.plot( miles, vect[2:482]/fit_stgrs, '-', label=key)
 
+
+@gob.mapper(all_items=True)
+def plot_crowds(clusts):
+    lngs, lats, mags = [],[],[]
+    for clust in clusts:
+        uids,spots = zip(*clust)
+        lng, lat = numpy.mean(spots,axis=0)
+        dlng, dlat = numpy.ptp(spots,axis=0)
+        if len(uids)>10 and 24<lat<50 and -126<lng<-66:
+            lngs.append(lng)
+            lats.append(lat)
+            mags.append(1+100*dlng*dlat)
+
+    with axes('crowds') as ax:
+        ax.scatter(lngs,lats,mags,alpha=.1,edgecolor='none')
+
+

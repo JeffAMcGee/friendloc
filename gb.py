@@ -207,11 +207,13 @@ def create_jobs(g):
     g.add_map_job(crowds.disconnected_users, 'tweets', requires=['connected_ids'], saver='split_save')
     g.add_map_job(full.crawl_predict_fast,'disconnected_users')
     g.add_map_job(full.crawl_predict,'connected_users')
-    g.add_map_job(crowds.user_locs, ['crawl_predict','cheap_predict'])
+    g.add_map_job(crowds.user_locs, ['crawl_predict','crawl_predict_fast'])
     g.add_map_job(crowds.daily_ats, 'tweets', requires=['user_locs'], saver='split_save')
     g.add_map_job(crowds.near_edges, 'daily_ats', requires=['user_locs'])
+    g.add_cat('near_edges_cat','near_edges')
     g.add_map_job(crowds.mcl_edges, 'near_edges')
-    g.add_map_job(crowds.weak_edges, 'near_edges')
+    g.add_map_job(crowds.weak_edges, 'near_edges_cat')
+    g.add_map_job(graph.plot_crowds,'weak_edges')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
