@@ -285,10 +285,14 @@ class Predictors(object):
     def predict(self, user, nebrs, ats, ated, clf='friendloc_cut'):
         # this is an ugly way to deal with geo_ated and cheap_locals
         self.geo_ated = {user._id:ated}
-        self.cheap_locals = {}
-        for nebr in nebrs:
-            nan = math.isnan(nebr.local_ratio)
-            self.cheap_locals[nebr._id] = None if nan else nebr.local_ratio
+
+        def real_or_none(x):
+            return None if x is None or math.isnan(x) else x
+
+        self.cheap_locals = {
+            nebr._id : real_or_none(nebr.local_ratio)
+            for nebr in nebrs
+        }
 
         nebrs_d = prep.make_nebrs_d(user,nebrs,ats)
         self.prep_nebrs(nebrs_d)

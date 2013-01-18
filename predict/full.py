@@ -25,7 +25,7 @@ def _crawl_pred_one(user,twit,gis,pred,fast):
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def crawl_predict_fast(user_ds, env, mdists):
-    crawl_predict(user_ds, env, mdists, fast=True)
+    return crawl_predict(user_ds, env, mdists, fast=True)
 
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
