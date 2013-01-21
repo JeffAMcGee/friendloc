@@ -102,9 +102,10 @@ def mcl_edges(edges):
             print>>abc, "%d %d %d"%edge
         abc.flush()
         out = subprocess.check_output(
-            ['mcl',abc.name,'--abc','-o','-'],
+            ['mcl',abc.name,'-V','all','--abc','-o','-'],
         )
     for line in out.split('\n'):
+        if not line: continue
         uids = line.split('\t')
         if len(uids)>1:
             yield [int(uid) for uid in uids]
@@ -117,7 +118,7 @@ def weak_edges(edges,user_locs):
             ats.add_edge(frm,to)
     wcc = nx.weakly_connected_components(ats)
     return (
-            [(id,user_locs[id]) for id in clust]
+            [(id,user_locs[id],ats[id].keys()) for id in clust]
             for clust in wcc
             if len(clust)>2
         )
