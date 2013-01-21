@@ -82,6 +82,8 @@ def daily_ats(tweets,user_locs):
                     yield day,('at',uid,mention['id'])
 
 
+NearEdge = collections.namedtuple('NearEdge','frm to dist at rt')
+
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
 def near_edges(daily_ats,user_locs):
     edges = collections.defaultdict(lambda: collections.defaultdict(int))
@@ -97,11 +99,19 @@ def near_edges(daily_ats,user_locs):
     dists = utils.np_haversine(flngs,tlngs,flats,tlats)
     for dist,(frm,to) in izip(dists,edges):
         if dist<500:
-            yield frm, to, 25/(25+dist), edges[frm,to]
+            edge = edges[frm,to]
+            yield NearEdge(
+                frm,
+                to,
+                dist,
+                edge.get('at',0),
+                edge.get('rt',0),
+            )
 
 
 @gob.mapper(all_items=True)
 def mcl_edges(edges):
+    #BROKEN
     with tempfile.NamedTemporaryFile() as abc:
         for edge in edges:
             print>>abc, "%d %d %d"%edge
@@ -117,6 +127,7 @@ def mcl_edges(edges):
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
 def weak_edges(edges,user_locs):
+    #BROKEN
     ats = nx.DiGraph()
     for frm,to,dist in edges:
         if dist>.5:
