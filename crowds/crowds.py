@@ -82,10 +82,14 @@ def daily_ats(tweets,user_locs):
                     yield day,('at',uid,mention['id'])
 
 
-NearEdge = collections.namedtuple('NearEdge','frm to dist at rt')
+NearEdge = collections.namedtuple('NearEdge','frm to dist day at rt')
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
-def near_edges(daily_ats,user_locs):
+def near_edges(daily_ats, user_locs, in_paths):
+    # FIXME: I'm really starting to dislike in_paths
+    day_name = in_paths[0][-1]
+    day = datetime.date.strptime(day_name,"%Y-%m-%d") - datetime.date(2012,8,1)
+
     edges = collections.defaultdict(lambda: collections.defaultdict(int))
     for kind,frm,to in daily_ats:
         if frm in user_locs and to in user_locs:
@@ -98,12 +102,13 @@ def near_edges(daily_ats,user_locs):
     tlats = _as_array(1,1)
     dists = utils.np_haversine(flngs,tlngs,flats,tlats)
     for dist,(frm,to) in izip(dists,edges):
-        if dist<500:
+        if dist<100:
             edge = edges[frm,to]
             yield NearEdge(
                 frm,
                 to,
                 dist,
+                day,
                 edge.get('at',0),
                 edge.get('rt',0),
             )
