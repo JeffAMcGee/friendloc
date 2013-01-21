@@ -2,6 +2,7 @@ from itertools import chain, izip
 import datetime
 import tempfile
 import subprocess
+import collections
 
 import networkx as nx
 import numpy as np
@@ -83,11 +84,10 @@ def daily_ats(tweets,user_locs):
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
 def near_edges(daily_ats,user_locs):
-    edges = {
-        (frm,to)
-        for frm,to in daily_ats
-        if frm in user_locs and to in user_locs
-    }
+    edges = collections.defaultdict(lambda: collections.defaultdict(int))
+    for kind,frm,to in daily_ats:
+        if frm in user_locs and to in user_locs:
+            edges[frm,to][kind]+=1
     def _as_array(is_to,is_lat):
         return np.array([user_locs[edge[is_to]][is_lat] for edge in edges])
     flngs = _as_array(0,0)
@@ -95,9 +95,9 @@ def near_edges(daily_ats,user_locs):
     tlngs = _as_array(1,0)
     tlats = _as_array(1,1)
     dists = utils.np_haversine(flngs,tlngs,flats,tlats)
-    for dist,edge in izip(dists,edges):
+    for dist,(frm,to) in izip(dists,edges):
         if dist<500:
-            yield edge[0],edge[1],25/(25+dist)
+            yield frm, to, 25/(25+dist), edges[frm,to]
 
 
 @gob.mapper(all_items=True)
