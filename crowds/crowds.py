@@ -5,6 +5,7 @@ import subprocess
 import collections
 
 import networkx as nx
+from networkx.readwrite import json_graph
 import numpy as np
 
 from base import gob, utils, models
@@ -114,6 +115,24 @@ def near_edges(daily_ats, user_locs, in_paths):
                 edge.get('at',0),
                 edge.get('rt',0),
             )
+
+
+@gob.mapper(all_items=True,slurp={'user_locs':dict})
+def weak_comps(edges):
+    """convert near_edges into networkx format, keep the weakly-connected nodes"""
+    g = nx.DiGraph()
+    for edge in edges:
+        ne = NearEdge(*edge)
+        conv = (ne.day,ne.at,ne.rt)
+        if g.has_edge(ne.frm,ne.to):
+            g[ne.frm][ne.to]['conv'].append(conv)
+        else:
+            g.add_edge(ne.frm, ne.to, dist=ne.dist, conv=[conv])
+    for node in g.nodes_iter():
+        g.node[node]['loc'] = user_locs[node]
+    for subg in nx.weakly_connected_component_subgraphs(g):
+        if len(subg)>2:
+            yield json_graph.adjacency_data(g)
 
 
 @gob.mapper(all_items=True)

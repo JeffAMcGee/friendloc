@@ -211,9 +211,10 @@ def create_jobs(g):
     g.add_map_job(crowds.daily_ats, 'tweets', requires=['user_locs'], saver='split_save')
     g.add_map_job(crowds.near_edges, 'daily_ats', requires=['user_locs'])
     g.add_cat('near_edges_cat','near_edges')
-    g.add_map_job(crowds.mcl_edges, 'near_edges')
-    g.add_map_job(crowds.weak_edges, 'near_edges_cat')
-    g.add_map_job(graph.plot_crowds,'weak_edges')
+    g.add_map_job(crowds.weak_comps, 'near_edges_cat')
+    #g.add_map_job(crowds.mcl_edges, 'near_edges')
+    #g.add_map_job(crowds.weak_edges, 'near_edges_cat')
+    #g.add_map_job(graph.plot_crowds,'weak_edges')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
