@@ -65,15 +65,20 @@ def _key_set(kvs):
 
 @gob.mapper(all_items=True,slurp={'user_locs':_key_set})
 def daily_ats(tweets,user_locs):
-    """split up the mentions based on the day"""
+    """split up the mentions and retweets based on the day"""
     for tweet in tweets:
         uid = tweet['user']['id']
         if uid not in user_locs:
             continue
-        for mention in tweet['entities']['user_mentions']:
-            if mention['id'] in user_locs:
-                day = _date_from_stamp(tweet['created_at'])
-                yield day,(uid,mention['id'])
+        day = _date_from_stamp(tweet['created_at'])
+        rts = tweet.get('retweeted_status')
+        if rts:
+            if rts['user']['id'] in user_locs:
+                yield day,('rt',uid,rts['user']['id'])
+        else:
+            for mention in tweet['entities']['user_mentions']:
+                if mention['id'] in user_locs and mention['id']!=uid:
+                    yield day,('at',uid,mention['id'])
 
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
