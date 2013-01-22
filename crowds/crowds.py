@@ -118,7 +118,7 @@ def near_edges(daily_ats, user_locs, in_paths):
 
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
-def weak_comps(edges):
+def weak_comps(edges,user_locs):
     """convert near_edges into networkx format, keep the weakly-connected nodes"""
     g = nx.DiGraph()
     for edge in edges:
@@ -132,7 +132,7 @@ def weak_comps(edges):
         g.node[node]['loc'] = user_locs[node]
     for subg in nx.weakly_connected_component_subgraphs(g):
         if len(subg)>2:
-            yield json_graph.adjacency_data(g)
+            yield json_graph.adjacency_data(subg)
 
 
 @gob.mapper(all_items=True)
