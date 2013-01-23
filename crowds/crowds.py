@@ -105,7 +105,7 @@ def near_edges(daily_ats, user_locs, in_paths):
     dists = utils.np_haversine(flngs,tlngs,flats,tlats)
 
     for dist,(frm,to) in izip(dists,edges):
-        if dist<100:
+        if dist<50:
             edge = edges[frm,to]
             yield NearEdge(
                 frm,
@@ -119,7 +119,7 @@ def near_edges(daily_ats, user_locs, in_paths):
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
 def weak_comps(edges,user_locs):
-    """convert near_edges into networkx format, keep the weakly-connected nodes"""
+    """convert near_edges into networkx format, keep weakly-connected users"""
     g = nx.DiGraph()
     for edge in edges:
         ne = NearEdge(*edge)
@@ -128,6 +128,9 @@ def weak_comps(edges,user_locs):
             g[ne.frm][ne.to]['conv'].append(conv)
         else:
             g.add_edge(ne.frm, ne.to, dist=ne.dist, conv=[conv])
+    for frm,to,data in g.edges(data=True):
+        if not any(at for day,at,rt in data['conv']):
+            g.remove_edge(frm,to)
     for node in g.nodes_iter():
         g.node[node]['loc'] = user_locs[node]
     for subg in nx.weakly_connected_component_subgraphs(g):

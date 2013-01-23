@@ -231,7 +231,7 @@ def setup(args):
     Model.database = utils.mongo(args.mongo or settings.region)
     logging.basicConfig(level=logging.INFO)
     if numpy:
-        numpy.set_printoptions(precision=3, linewidth=160)
+        numpy.set_printoptions(precision=3, linewidth=160, edgeitems=6)
 
 
 def inspect(job_name, source_set):
