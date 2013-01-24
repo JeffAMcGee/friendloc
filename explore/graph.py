@@ -15,6 +15,7 @@ if OUTPUT_TYPE:
     matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
+from networkx.readwrite import json_graph
 import PIL
 import numpy as np
 
@@ -667,18 +668,18 @@ def graph_indep(rfr_indep):
 
 
 @gob.mapper(all_items=True)
-def plot_crowds(clusts):
-    lngs, lats, mags = [],[],[]
-    for clust in clusts:
-        uids,spots = zip(*clust)
-        lng, lat = np.mean(spots,axis=0)
-        dlng, dlat = np.ptp(spots,axis=0)
-        if len(uids)>10 and 24<lat<50 and -126<lng<-66:
-            lngs.append(lng)
-            lats.append(lat)
-            mags.append(1+100*dlng*dlat)
+def plot_crowds(crowds):
+    spots = []
 
+    for g_ in crowds:
+        g = json_graph.adjacency_graph(g_)
+        locs = [ data['loc'] for uid,data in g.nodes_iter(data=True) ]
+        lng,lat = np.mean(locs,axis=0)
+        if 24<lat<50 and -126<lng<-66:
+            spots.append((lng,lat,len(g)))
+
+    lngs,lats,mags = zip(*spots)
     with axes('crowds') as ax:
-        ax.scatter(lngs,lats,mags,alpha=.1,edgecolor='none')
+        ax.scatter(lngs,lats,mags,alpha=.02,edgecolor='none')
 
 

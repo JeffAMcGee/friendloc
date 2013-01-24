@@ -7,6 +7,7 @@ import collections
 import networkx as nx
 from networkx.readwrite import json_graph
 import numpy as np
+from sklearn import cluster
 
 from base import gob, utils, models
 import community
@@ -157,6 +158,42 @@ def find_crowds(weak_comps):
         else:
             g.graph['crowd'] = (crowd,0)
             yield json_graph.adjacency_data(g)
+
+
+@gob.mapper(all_items=True)
+def cluster_crowds(crowds):
+    gs = [json_graph.adjacency_graph(g) for g in crowds]
+    spots = []
+    for g in gs:
+        locs = [ data['loc'] for uid,data in g.nodes_iter(data=True) ]
+        lng,lat = np.mean(locs,axis=0)
+        g.graph['loc'] = lng,lat
+        spots.append((lng,lat))
+
+    sc = cluster.DBSCAN(.4,2)
+    clust_ids = sc.fit_predict(np.array(spots))
+    clusts = collections.defaultdict(list)
+    for clust_id,g in zip(clust_ids,gs):
+        clusts[clust_id].append(g)
+
+    clumps = [v for k,v in clusts.iteritems() if k!=-1]
+    # crowds that don't fit anywhere go into cluster -1
+    extras = [[crowd] for crowd in clusts[-1]]
+    clustered = clumps + extras
+
+    for index,clust in enumerate(clustered):
+        user_locs = [
+                data['loc']
+                for g in clust
+                for uid,data in g.nodes_iter(data=True)
+            ]
+        lng,lat = np.median(user_locs,axis=0)
+        yield dict(
+                id=index,
+                loc=(lng,lat),
+                size=len(user_locs),
+                crowds=[json_graph.adjacency_data(g) for g in clust],
+        )
 
 
 @gob.mapper(all_items=True)
