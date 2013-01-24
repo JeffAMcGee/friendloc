@@ -9,6 +9,7 @@ from networkx.readwrite import json_graph
 import numpy as np
 
 from base import gob, utils, models
+import community
 
 
 @gob.mapper(all_items=True)
@@ -136,6 +137,26 @@ def weak_comps(edges,user_locs):
     for subg in nx.weakly_connected_component_subgraphs(g):
         if len(subg)>2:
             yield json_graph.adjacency_data(subg)
+
+
+@gob.mapper(all_items=True)
+def find_crowds(weak_comps):
+    for crowd,weak_comp in enumerate(weak_comps):
+        g = json_graph.adjacency_graph(weak_comp)
+        dendo = community.generate_dendogram(nx.Graph(g))
+
+        if len(dendo)>=2:
+            partition = community.partition_at_level(dendo, 1 )
+            crowds = collections.defaultdict(list)
+            for uid,subcrowd in partition.iteritems():
+                crowds[subcrowd].append(uid)
+            for subcrowd,uids in sorted(crowds.iteritems()):
+                subg = nx.subgraph(g,uids)
+                subg.graph['crowd'] = (crowd,subcrowd)
+                yield json_graph.adjacency_data(subg)
+        else:
+            g.graph['crowd'] = (crowd,0)
+            yield json_graph.adjacency_data(g)
 
 
 @gob.mapper(all_items=True)
