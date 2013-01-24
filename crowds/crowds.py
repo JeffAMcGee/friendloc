@@ -139,7 +139,7 @@ def weak_comps(edges,user_locs):
             g.remove_edge(frm,to)
     for node in g.nodes_iter():
         g.node[node]['loc'] = user_locs[node]
-    for subg in nx.weakly_connected_component_subgraphs(g):
+    for subg in nx.weakly_connected_component_subgraphs(nx.k_core(g,2)):
         if len(subg)>2:
             yield json_graph.adjacency_data(subg)
 
