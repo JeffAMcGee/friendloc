@@ -214,7 +214,7 @@ def create_jobs(g):
     g.add_map_job(crowds.weak_comps, 'near_edges_cat')
     g.add_map_job(crowds.find_crowds, 'weak_comps')
     g.add_map_job(crowds.cluster_crowds, 'find_crowds')
-    g.add_map_job(graph.plot_crowds,'find_crowds')
+    g.add_map_job(graph.plot_crowds,'cluster_crowds')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

@@ -668,18 +668,23 @@ def graph_indep(rfr_indep):
 
 
 @gob.mapper(all_items=True)
-def plot_crowds(crowds):
+def plot_crowds(clusts):
+    centers = []
     spots = []
+    for clust in clusts:
+        lng,lat = clust['loc']
+        if not (24<lat<50 and -126<lng<-66):
+            continue
+        centers.append(clust['loc'])
 
-    for g_ in crowds:
-        g = json_graph.adjacency_graph(g_)
-        locs = [ data['loc'] for uid,data in g.nodes_iter(data=True) ]
-        lng,lat = np.mean(locs,axis=0)
-        if 24<lat<50 and -126<lng<-66:
-            spots.append((lng,lat,len(g)))
+        for crowd in clust['crowds']:
+            lng,lat = dict(crowd['graph'])['loc']
+            spots.append((lng,lat,len(crowd['nodes'])))
 
-    lngs,lats,mags = zip(*spots)
+    slngs,slats,mags = zip(*spots)
+    clngs,clats = zip(*centers)
     with axes('crowds') as ax:
-        ax.scatter(lngs,lats,mags,alpha=.02,edgecolor='none')
+        ax.scatter(slngs,slats,mags,alpha=.05,edgecolor='none')
+        ax.scatter(clngs,clats,c='k',marker='x',linewidth=.1)
 
 
