@@ -200,33 +200,3 @@ def cluster_crowds(crowds):
                 crowds=[json_graph.adjacency_data(g) for g in clust],
         )
 
-
-@gob.mapper(all_items=True)
-def mcl_edges(edges):
-    #BROKEN
-    with tempfile.NamedTemporaryFile() as abc:
-        for edge in edges:
-            print>>abc, "%d %d %d"%edge
-        abc.flush()
-        out = subprocess.check_output(
-            ['mcl',abc.name,'-V','all','--abc','-o','-'],
-        )
-    for line in out.split('\n'):
-        if not line: continue
-        uids = line.split('\t')
-        if len(uids)>1:
-            yield [int(uid) for uid in uids]
-
-@gob.mapper(all_items=True,slurp={'user_locs':dict})
-def weak_edges(edges,user_locs):
-    #BROKEN
-    ats = nx.DiGraph()
-    for frm,to,dist in edges:
-        if dist>.5:
-            ats.add_edge(frm,to)
-    wcc = nx.weakly_connected_components(ats)
-    return (
-            [(id,user_locs[id],ats[id].keys()) for id in clust]
-            for clust in wcc
-            if len(clust)>2
-        )
