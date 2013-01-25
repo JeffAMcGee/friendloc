@@ -1,7 +1,5 @@
 from itertools import chain, izip
 import datetime
-import tempfile
-import subprocess
 import collections
 
 import networkx as nx
@@ -169,10 +167,11 @@ def find_crowds(weak_comps):
 def cluster_crowds(crowds):
     gs = [json_graph.adjacency_graph(g) for g in crowds]
     spots = []
-    for g in gs:
+    for index,g in enumerate(gs):
         locs = [ data['loc'] for uid,data in g.nodes_iter(data=True) ]
         lng,lat = np.mean(locs,axis=0)
         g.graph['loc'] = lng,lat
+        g.graph['id'] = index
         spots.append((lng,lat))
 
     sc = cluster.DBSCAN(.2,1)
@@ -199,4 +198,18 @@ def cluster_crowds(crowds):
                 size=len(user_locs),
                 crowds=[json_graph.adjacency_data(g) for g in clust],
         )
+
+
+@gob.mapper(all_items=True)
+def save_crowds(clusters):
+    for clust in clusters:
+        for crowd in clust['crowds']:
+            c = models.Crowd(
+                    _id = crowd.graph['id'],
+                    loc = crowd.graph['loc'],
+                    size = len(crowd),
+                    edges = crowd.edges(),
+                    uids = crowd.nodes(),
+                )
+            c.save()
 
