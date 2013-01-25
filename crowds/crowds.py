@@ -203,11 +203,11 @@ def cluster_crowds(crowds):
 @gob.mapper(all_items=True)
 def save_crowds(clusters):
     for clust in clusters:
-        for crowd in clust['crowds']:
+        for crowd_ in clust['crowds']:
+            crowd = json_graph.adjacency_graph(crowd_)
             c = models.Crowd(
                     _id = crowd.graph['id'],
                     loc = crowd.graph['loc'],
-                    size = len(crowd),
                     edges = crowd.edges(),
                     uids = crowd.nodes(),
                 )

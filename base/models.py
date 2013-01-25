@@ -238,9 +238,7 @@ class LookupJobBody(JobBody):
 
 class Crowd(TwitterModel):
     _id = IntProperty('_id')
-    size = IntProperty('size')
     loc = Property('mloc') # longitude, latitude tuple
-    tweets = IntProperty('tweets')
     uids = ListProperty('uids')
     edges = ListProperty('edges')
     # consider other fields from crowdy
