@@ -126,6 +126,7 @@ def weak_comps(edges,user_locs):
     for edge in edges:
         ne = NearEdge(*edge)
         if 813286 in (ne.frm,ne.to):
+            # FIXME: hardcoding this is all kinds of ugly
             # 813286 is @BarackObama, we skip him because he breaks clustering
             # in D.C.
             continue
@@ -174,7 +175,7 @@ def cluster_crowds(crowds):
         g.graph['loc'] = lng,lat
         spots.append((lng,lat))
 
-    sc = cluster.DBSCAN(.3,2)
+    sc = cluster.DBSCAN(.2,1)
     clust_ids = sc.fit_predict(np.array(spots))
     clusts = collections.defaultdict(list)
     for clust_id,g in zip(clust_ids,gs):
