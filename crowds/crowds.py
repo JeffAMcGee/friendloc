@@ -214,18 +214,34 @@ def save_crowds(clusters):
             c.save()
 
 
-@gob.mapper(all_items=True,slurp={'cluster_crowds':list})
-def save_tweets(tweets,cluster_crowds):
+def _user_crowds(cluster_crowds):
+    "create a mapping from user ids to cluster ids given cluster_crowds"
     crowds = [
         json_graph.adjacency_graph(c)
         for clust in cluster_crowds
         for c in clust['crowds']
     ]
-    user_crowds = {
+    return {
         user:crowd.graph['id']
         for crowd in crowds
         for user in crowd
     }
+
+
+@gob.mapper(all_items=True,slurp={'cluster_crowds':list})
+def save_users(user_ds,cluster_crowds):
+    user_crowds = _user_crowds(cluster_crowds)
+    for user_d in user_ds:
+        if user_d['id'] not in user_crowds:
+            continue
+        user = models.User(user_d)
+        user.crowd_id = user_crowds[user._id]
+        user.merge()
+
+
+@gob.mapper(all_items=True,slurp={'cluster_crowds':list})
+def save_tweets(tweets,cluster_crowds):
+    user_crowds = _user_crowds(cluster_crowds)
     for tweet in tweets:
         uid = tweet['user']['id']
         if uid not in user_crowds or tweet.get('retweeted_status'):

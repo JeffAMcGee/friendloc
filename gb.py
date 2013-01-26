@@ -215,8 +215,9 @@ def create_jobs(g):
     g.add_map_job(crowds.find_crowds, 'weak_comps')
     g.add_map_job(crowds.cluster_crowds, 'find_crowds')
     g.add_map_job(crowds.save_crowds, 'cluster_crowds')
-    g.add_map_job(graph.plot_crowds,'cluster_crowds')
+    g.add_map_job(crowds.save_users, 'connected_users')
     g.add_map_job(crowds.save_tweets, 'tweets', requires=['cluster_crowds'])
+    g.add_map_job(graph.plot_crowds,'cluster_crowds')
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

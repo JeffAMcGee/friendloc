@@ -90,6 +90,7 @@ class User(TwitterModel):
     local_friends = FloatProperty('lofrd')
     local_followers = FloatProperty('lofol')
     local_ratio = FloatProperty('lorat')
+    crowd_id = IntProperty('cid')
 
     #properties from twitter
     verified = BoolProperty("ver")
@@ -161,7 +162,8 @@ class Tweet(TwitterModel):
     ignored = [
         'contributors', 'entities', 'in_reply_to_screen_name', 'source',
         'truncated', 'user', 'id', 'id_str', 'retweeted', 'retweeted_status',
-        'retweeted_count', 'retweet_count', 'favorited', 'geo', 'user_id_str'
+        'retweeted_count', 'retweet_count', 'favorited', 'geo', 'user_id_str',
+        'possibly_sensitive_editable', 'possibly_sensitive',
         ]
 
     #properties from twitter
