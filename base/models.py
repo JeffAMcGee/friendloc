@@ -161,7 +161,7 @@ class Tweet(TwitterModel):
     ignored = [
         'contributors', 'entities', 'in_reply_to_screen_name', 'source',
         'truncated', 'user', 'id', 'id_str', 'retweeted', 'retweeted_status',
-        'retweeted_count', 'favorited', 'geo', 'user_id_str'
+        'retweeted_count', 'retweet_count', 'favorited', 'geo', 'user_id_str'
         ]
 
     #properties from twitter
@@ -172,6 +172,9 @@ class Tweet(TwitterModel):
     place = Property('plc')
     text = TextProperty('tx')
     user_id = TwitterIdProperty('uid')
+
+    #properties from us
+    crowd_id = IntProperty('cid')
 
     def __init__(self, from_dict=None, **kwargs):
         TwitterModel.__init__(self, from_dict, **kwargs)
