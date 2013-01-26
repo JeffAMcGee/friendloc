@@ -201,6 +201,22 @@ def cluster_crowds(crowds):
 
 
 @gob.mapper(all_items=True)
+def save_topic(crowd_clusters):
+    clusts = []
+    for clust_d in crowd_clusters:
+        cids = [dict(crowd['graph'])['id'] for crowd in clust_d['crowds']]
+        clust = models.Cluster(
+                    _id = clust_d['id'],
+                    loc = clust_d['loc'],
+                    size = clust_d['size'],
+                    cids = cids,
+        )
+        clusts.append(clust)
+    topic = models.Topic( _id='conv', clusts = clusts )
+    topic.save()
+
+
+@gob.mapper(all_items=True)
 def save_crowds(clusters):
     for clust in clusters:
         for crowd_ in clust['crowds']:
