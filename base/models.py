@@ -247,3 +247,15 @@ class Crowd(TwitterModel):
     uids = ListProperty('uids')
     edges = ListProperty('edges')
     # consider other fields from crowdy
+
+
+class Cluster(ModelPart):
+    loc = Property('mloc') # longitude, latitude tuple
+    cids = ListProperty('cids')
+    size = IntProperty('size')
+
+
+class Topic(TwitterModel):
+    _id = IntProperty('_id')
+    clusters = ModelListProperty('cls',Cluster)
+
