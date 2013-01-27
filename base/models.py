@@ -256,6 +256,6 @@ class Cluster(ModelPart):
 
 
 class Topic(TwitterModel):
-    _id = IntProperty('_id')
+    _id = TextProperty('_id')
     clusters = ModelListProperty('cls',Cluster)
 

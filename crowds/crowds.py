@@ -212,7 +212,7 @@ def save_topic(crowd_clusters):
                     cids = cids,
         )
         clusts.append(clust)
-    topic = models.Topic( _id='conv', clusts = clusts )
+    topic = models.Topic( _id='conv', clusters = clusts )
     topic.save()
 
 
