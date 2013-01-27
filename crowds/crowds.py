@@ -228,9 +228,10 @@ def _user_crowds(cluster_crowds):
     }
 
 
-@gob.mapper(all_items=True,slurp={'cluster_crowds':list})
+@gob.mapper(all_items=True,slurp={'cluster_crowds':_user_crowds})
 def save_users(user_ds,cluster_crowds):
-    user_crowds = _user_crowds(cluster_crowds)
+    # FIXME: allow renaming slurped stuff
+    user_crowds = cluster_crowds
     for user_d in user_ds:
         if user_d['id'] not in user_crowds:
             continue
@@ -239,9 +240,10 @@ def save_users(user_ds,cluster_crowds):
         user.merge()
 
 
-@gob.mapper(all_items=True,slurp={'cluster_crowds':list})
+@gob.mapper(all_items=True,slurp={'cluster_crowds':_user_crowds})
 def save_tweets(tweets,cluster_crowds):
-    user_crowds = _user_crowds(cluster_crowds)
+    # FIXME: allow renaming slurped stuff
+    user_crowds = cluster_crowds
     for tweet in tweets:
         uid = tweet['user']['id']
         if uid not in user_crowds or tweet.get('retweeted_status'):
@@ -249,7 +251,7 @@ def save_tweets(tweets,cluster_crowds):
         cid = user_crowds[uid]
 
         neighbor_mentions = any(
-            user_crowds[mention['id']]==cid and mention['id']!=uid
+            user_crowds.get(mention['id'])==cid and mention['id']!=uid
             for mention in tweet['entities']['user_mentions']
         )
 
