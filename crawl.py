@@ -31,7 +31,6 @@ from settings import settings
 def store_tweets(config, output_file):
     # read tweets from Twitter's streaming API and write them to a file.
     filter_url = 'https://stream.twitter.com/1/statuses/filter.json'
-    import pdb; pdb.set_trace()
     r = requests.post(
             config.get('stream_url',filter_url),
             data=config.get('params',None),
@@ -56,6 +55,11 @@ def store_tweets(config, output_file):
 
 
 def process_vine_tweet(mdists,tweet):
+    if tweet.get('possibly_sensitive') or tweet.get('retweeted_status'):
+        return
+    urls = tweet['entities']['urls']
+    if not any('vine.co' in url['expanded_url'] for url in urls):
+        return
     located = tuple(full.cheap_predict([tweet['user']], mdists))
     if not located:
         return
