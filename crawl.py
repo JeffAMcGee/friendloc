@@ -12,9 +12,15 @@ import sys
 import time
 import json
 
-from predict import full
+from maroon import Model
+
+# import peek to resolve dependency issue
+import explore.peek
 import gb
-import models
+from predict import full
+from base import models
+from base import gob
+from base import utils
 
 import requests
 
@@ -25,6 +31,7 @@ from settings import settings
 def store_tweets(config, output_file):
     # read tweets from Twitter's streaming API and write them to a file.
     filter_url = 'https://stream.twitter.com/1/statuses/filter.json'
+    import pdb; pdb.set_trace()
     r = requests.post(
             config.get('stream_url',filter_url),
             data=config.get('params',None),
@@ -65,8 +72,10 @@ def main():
         format="%(levelname)s:%(module)s:%(asctime)s:%(message)s",
         level=logging.INFO,
     )
-    gb.main()
-    mdists = next(gb.env.load('mdists'))
+
+    Model.database = utils.mongo(settings.region)
+    env = gob.SimpleFileEnv('./data',log_crashes=True)
+    mdists = next(env.load('mdists'))
 
     logging.info("starting to crawl %s",label)
     while True:
