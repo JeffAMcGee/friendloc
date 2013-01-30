@@ -49,7 +49,7 @@ def crawl_predict(user_ds, env, mdists, fast=False):
 
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
-def cheap_predict(user_ds, env, mdists):
+def cheap_predict(user_ds, mdists):
     """
     takes a user dictionary, runs the geocoder without crawling, adds the
     location if we can find one
