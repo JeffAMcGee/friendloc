@@ -10,6 +10,7 @@ import os
 import signal
 import sys
 import time
+import re
 import json
 
 from maroon import Model
@@ -57,13 +58,20 @@ def store_tweets(config, output_file):
 def process_vine_tweet(mdists,tweet):
     if tweet.get('possibly_sensitive') or tweet.get('retweeted_status'):
         return
-    urls = tweet['entities']['urls']
-    if not any('vine.co' in url['expanded_url'] for url in urls):
+
+    for url in tweet['entities']['urls']:
+        if re.search('vine\.co\/v\/\w+', url['expanded_url']):
+            vine = url['expanded_url']
+            break
+    else:
         return
+
     located = tuple(full.cheap_predict([tweet['user']], mdists))
-    if not located:
+    if not located or located[0]['gnp']['mdist']>1000:
         return
+    del located[0]['gnp']
     tweet['user_d'] = located[0]
+    tweet['vine'] = vine
     models.Tweet(tweet).save()
 
 

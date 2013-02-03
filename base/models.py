@@ -63,6 +63,8 @@ class User(TwitterModel):
         'profile_sidebar_border_color', 'profile_sidebar_fill_color',
         'profile_text_color', 'profile_use_background_image',
         'show_all_inline_media', 'time_zone', 'status', 'notifications',
+        'default_profile', 'default_profile_image', 'profile_image_url_https',
+        'profile_background_image_url_https',
         'id', 'id_str', 'is_translator'
     ]
     NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
