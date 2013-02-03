@@ -23,27 +23,24 @@ def connected_ids(tweets):
     return chain.from_iterable( g for g in scc if len(g)>2 )
 
 
-@gob.mapper(all_items=True,slurp={'connected_ids':set})
-def connected_users(tweets,connected_ids):
+def _filter_users_from_tweets(tweets,filt):
     seen = set()
     for tweet in tweets:
         uid = tweet['user']['id']
-        if uid not in connected_ids or uid in seen:
+        if uid in seen or not filt(uid):
             continue
         seen.add(uid)
         yield models.User.mod_id(uid),tweet['user']
+
+
+@gob.mapper(all_items=True,slurp={'connected_ids':set})
+def connected_users(tweets,connected_ids):
+    return _filter_users_from_tweets(tweets, lambda uid: uid in connected_ids)
 
 
 @gob.mapper(all_items=True,slurp={'connected_ids':set})
 def disconnected_users(tweets,connected_ids):
-    # FIXME: this only differs from connected_users by removing not from the if
-    seen = set()
-    for tweet in tweets:
-        uid = tweet['user']['id']
-        if uid in connected_ids or uid in seen:
-            continue
-        seen.add(uid)
-        yield models.User.mod_id(uid),tweet['user']
+    return _filter_users_from_tweets(tweets, lambda uid: uid not in connected_ids)
 
 
 @gob.mapper(all_items=True)
