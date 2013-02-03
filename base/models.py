@@ -177,8 +177,12 @@ class Tweet(TwitterModel):
     text = TextProperty('tx')
     user_id = TwitterIdProperty('uid')
 
-    #properties from us
+    #properties for localcrowd
     crowd_id = IntProperty('cid')
+    profile_image_url = TextProperty('upiu')
+    user_sn = TextProperty('usn')
+    # entities is ignored by default, but localcrawl needs to keep it
+    ents = Property('ents')
 
     def __init__(self, from_dict=None, **kwargs):
         TwitterModel.__init__(self, from_dict, **kwargs)
@@ -217,7 +221,7 @@ class Edges(TwitterModel):
     followers = ListProperty('fols',int)
     #This is only used if many_edges is true for the user
     lookups = ListProperty('lkus',int)
-    
+
     @classmethod
     def get_for_user_id(cls, _id):
         return cls.get_id(_id)
