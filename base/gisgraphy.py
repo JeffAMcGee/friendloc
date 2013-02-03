@@ -3,6 +3,7 @@ import re
 import logging
 import time
 
+import restkit.errors
 from restkit import Resource
 from http_parser.http import NoMoreData
 
@@ -45,6 +46,11 @@ class GisgraphyResource(Resource):
             except NoMoreData:
                 logging.error("incomplete response from gisgraphy")
                 if delay==0:
+                    raise
+            except restkit.errors.RequestFailed as e:
+                if 'Empty query' in e.message:
+                    return []
+                else:
                     raise
             time.sleep(delay)
 
