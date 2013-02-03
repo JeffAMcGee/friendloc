@@ -102,7 +102,7 @@ def near_edges(daily_ats, user_locs, in_paths):
     dists = utils.np_haversine(flngs,tlngs,flats,tlats)
 
     for dist,(frm,to) in izip(dists,edges):
-        if dist<50:
+        if dist<25:
             edge = edges[frm,to]
             yield NearEdge(
                 frm,
@@ -135,7 +135,7 @@ def weak_comps(edges,user_locs):
             g.remove_edge(frm,to)
     for node in g.nodes_iter():
         g.node[node]['loc'] = user_locs[node]
-    for subg in nx.weakly_connected_component_subgraphs(nx.k_core(g,2)):
+    for subg in nx.weakly_connected_component_subgraphs(g):
         if len(subg)>2:
             yield json_graph.adjacency_data(subg)
 
@@ -263,13 +263,7 @@ def save_tweets(tweets,cluster_crowds):
             continue
         cid = user_crowds[uid]
 
-        neighbor_mentions = any(
-            user_crowds.get(mention['id'])==cid and mention['id']!=uid
-            for mention in tweet['entities']['user_mentions']
-        )
-
-        if neighbor_mentions:
-            t = models.Tweet(tweet)
-            t.crowd_id = cid
-            t.save()
+        t = models.Tweet(tweet)
+        t.crowd_id = cid
+        t.save()
 
