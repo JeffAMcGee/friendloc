@@ -154,7 +154,7 @@ def find_crowds(weak_comps):
             for uid,subcrowd in partition.iteritems():
                 crowd_ids[subcrowd].append(uid)
             for subcrowd,uids in sorted(crowd_ids.iteritems()):
-                subg = nx.subgraph(g,uids)
+                subg = nx.DiGraph(nx.subgraph(g,uids))
                 crowds.append(subg)
         else:
             crowds.append(g)
@@ -170,7 +170,7 @@ def find_crowds(weak_comps):
     for lng_lat,graphs in spots.iteritems():
         graphs.sort(key=len,reverse=True)
         for index,g in enumerate(graphs):
-            g.graph['zoom'] = int(math.floor(1+math.log(index,4))) if index else 1
+            g.graph['zoom'] = int(math.floor(1+math.log(index,4))) if index else 0
 
     return (json_graph.adjacency_data(g) for g in crowds)
 
