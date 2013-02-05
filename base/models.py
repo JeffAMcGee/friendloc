@@ -252,6 +252,7 @@ class Crowd(TwitterModel):
     loc = Property('mloc') # longitude, latitude tuple
     uids = ListProperty('uids')
     edges = ListProperty('edges')
+    zoom = IntProperty('zoom')
     # consider other fields from crowdy
 
 

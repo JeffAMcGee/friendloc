@@ -1,6 +1,7 @@
 from itertools import chain, izip
 import datetime
 import collections
+import math
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -142,98 +143,58 @@ def weak_comps(edges,user_locs):
 
 @gob.mapper(all_items=True)
 def find_crowds(weak_comps):
+    crowds = []
     for crowd,weak_comp in enumerate(weak_comps):
         g = json_graph.adjacency_graph(weak_comp)
         dendo = community.generate_dendogram(nx.Graph(g))
 
         if len(dendo)>=2:
             partition = community.partition_at_level(dendo, 1 )
-            crowds = collections.defaultdict(list)
+            crowd_ids = collections.defaultdict(list)
             for uid,subcrowd in partition.iteritems():
-                crowds[subcrowd].append(uid)
-            for subcrowd,uids in sorted(crowds.iteritems()):
+                crowd_ids[subcrowd].append(uid)
+            for subcrowd,uids in sorted(crowd_ids.iteritems()):
                 subg = nx.subgraph(g,uids)
-                subg.graph['crowd'] = (crowd,subcrowd)
-                yield json_graph.adjacency_data(subg)
+                crowds.append(subg)
         else:
-            g.graph['crowd'] = (crowd,0)
-            yield json_graph.adjacency_data(g)
+            crowds.append(g)
 
-
-@gob.mapper(all_items=True)
-def cluster_crowds(crowds):
-    gs = [json_graph.adjacency_graph(g) for g in crowds]
-    spots = []
-    for index,g in enumerate(gs):
+    spots = collections.defaultdict(list)
+    for index,g in enumerate(crowds):
         locs = [ data['loc'] for uid,data in g.nodes_iter(data=True) ]
         lng,lat = np.mean(locs,axis=0)
         g.graph['loc'] = lng,lat
         g.graph['id'] = index
-        spots.append((lng,lat))
+        spots[int(lng),int(lat)].append(g)
 
-    sc = cluster.DBSCAN(.2,1)
-    clust_ids = sc.fit_predict(np.array(spots))
-    clusts = collections.defaultdict(list)
-    for clust_id,g in zip(clust_ids,gs):
-        clusts[clust_id].append(g)
+    for lng_lat,graphs in spots.iteritems():
+        graphs.sort(key=len,reverse=True)
+        for index,g in enumerate(graphs):
+            g.graph['zoom'] = int(math.floor(1+math.log(index,4))) if index else 1
 
-    clumps = [v for k,v in clusts.iteritems() if k!=-1]
-    # crowds that don't fit anywhere go into cluster -1
-    extras = [[crowd] for crowd in clusts[-1]]
-    clustered = clumps + extras
-
-    for index,clust in enumerate(clustered):
-        user_locs = [
-                data['loc']
-                for g in clust
-                for uid,data in g.nodes_iter(data=True)
-            ]
-        lng,lat = np.median(user_locs,axis=0)
-        yield dict(
-                id=index,
-                loc=(lng,lat),
-                size=len(user_locs),
-                crowds=[json_graph.adjacency_data(g) for g in clust],
-        )
+    return (json_graph.adjacency_data(g) for g in crowds)
 
 
 @gob.mapper(all_items=True)
-def save_topic(crowd_clusters):
-    clusts = []
-    for clust_d in crowd_clusters:
-        cids = [dict(crowd['graph'])['id'] for crowd in clust_d['crowds']]
-        clust = models.Cluster(
-                    _id = clust_d['id'],
-                    loc = clust_d['loc'],
-                    size = clust_d['size'],
-                    cids = cids,
-        )
-        clusts.append(clust)
-    topic = models.Topic( _id='conv', clusters = clusts )
-    topic.save()
+def save_crowds(crowds):
+    for crowd_ in crowds:
+        crowd = json_graph.adjacency_graph(crowd_)
+        c = models.Crowd(
+                _id = crowd.graph['id'],
+                loc = crowd.graph['loc'],
+                zoom = crowd.graph['zoom'],
+                edges = crowd.edges(),
+                uids = crowd.nodes(),
+            )
+        c.save()
 
 
-@gob.mapper(all_items=True)
-def save_crowds(clusters):
-    for clust in clusters:
-        for crowd_ in clust['crowds']:
-            crowd = json_graph.adjacency_graph(crowd_)
-            c = models.Crowd(
-                    _id = crowd.graph['id'],
-                    loc = crowd.graph['loc'],
-                    edges = crowd.edges(),
-                    uids = crowd.nodes(),
-                )
-            c.save()
-
-
-def _user_crowds(cluster_crowds):
+def _user_crowds(crowds):
     "create a mapping from user ids to cluster ids given cluster_crowds"
-    crowds = [
+    crowds = (
         json_graph.adjacency_graph(c)
-        for clust in cluster_crowds
-        for c in clust['crowds']
-    ]
+        for c in crowds
+    )
     return {
         user:crowd.graph['id']
         for crowd in crowds
@@ -241,10 +202,10 @@ def _user_crowds(cluster_crowds):
     }
 
 
-@gob.mapper(all_items=True,slurp={'cluster_crowds':_user_crowds})
-def save_users(user_ds,cluster_crowds):
+@gob.mapper(all_items=True,slurp={'find_crowds':_user_crowds})
+def save_users(user_ds,find_crowds):
     # FIXME: allow renaming slurped stuff
-    user_crowds = cluster_crowds
+    user_crowds = find_crowds
     for user_d in user_ds:
         if user_d['id'] not in user_crowds:
             continue
@@ -253,10 +214,10 @@ def save_users(user_ds,cluster_crowds):
         user.merge()
 
 
-@gob.mapper(all_items=True,slurp={'cluster_crowds':_user_crowds})
-def save_tweets(tweets,cluster_crowds):
+@gob.mapper(all_items=True,slurp={'find_crowds':_user_crowds})
+def save_tweets(tweets,find_crowds):
     # FIXME: allow renaming slurped stuff
-    user_crowds = cluster_crowds
+    user_crowds = find_crowds
     for tweet in tweets:
         uid = tweet['user']['id']
         if uid not in user_crowds or tweet.get('retweeted_status'):
