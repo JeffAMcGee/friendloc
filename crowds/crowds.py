@@ -187,6 +187,9 @@ def save_crowds(crowds):
                 uids = crowd.nodes(),
             )
         c.save()
+    crowd_col = models.Crowd.database.Crowd
+    crowd_col.ensure_index([('mnoc','2d'),('zoom',1)],bits=20)
+    crowd_col.ensure_index('zoom')
 
 
 def _user_crowds(crowds):
@@ -230,4 +233,8 @@ def save_tweets(tweets,find_crowds):
         t.profile_image_url = tweet['user']['profile_image_url']
         t.ents = tweet['entities']
         t.save()
+    # I don't entirely like ensuring the index here. It might be cleaner to make
+    # it a separate command.
+    tweet_col = models.Tweet.database.Tweet
+    tweet_col.ensure_index('cid')
 
