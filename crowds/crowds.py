@@ -165,7 +165,7 @@ def find_crowds(weak_comps):
         lng,lat = np.mean(locs,axis=0)
         g.graph['loc'] = lng,lat
         g.graph['id'] = index
-        spots[int(lng),int(lat)].append(g)
+        spots[int(lng/2),int(lat/2)].append(g)
 
     for lng_lat,graphs in spots.iteritems():
         graphs.sort(key=len,reverse=True)
