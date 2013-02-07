@@ -188,7 +188,7 @@ def save_crowds(crowds):
             )
         c.save()
     crowd_col = models.Crowd.database.Crowd
-    crowd_col.ensure_index([('mnoc','2d'),('zoom',1)],bits=20)
+    crowd_col.ensure_index([('mloc','2d'),('zoom',1)],bits=20)
     crowd_col.ensure_index('zoom')
 
 
