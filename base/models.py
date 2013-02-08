@@ -55,6 +55,7 @@ class GeonamesPlace(ModelPart):
 
 
 class User(TwitterModel):
+
     _id = TwitterIdProperty('_id')
     ignored = [
         'contributors_enabled', 'follow_request_sent', 'following',
@@ -181,6 +182,8 @@ class Tweet(TwitterModel):
     crowd_id = IntProperty('cid')
     profile_image_url = TextProperty('upiu')
     user_sn = TextProperty('usn')
+    user_name = TextProperty('un')
+    user_loc = TextProperty('ul')
     # entities is ignored by default, but localcrawl needs to keep it
     ents = Property('ents')
 

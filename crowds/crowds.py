@@ -230,6 +230,8 @@ def save_tweets(tweets,find_crowds):
         t = models.Tweet(tweet)
         t.crowd_id = cid
         t.user_sn = tweet['user']['screen_name']
+        t.user_name = tweet['user']['name']
+        t.user_loc = tweet['user'].get('location','')
         t.profile_image_url = tweet['user']['profile_image_url']
         t.ents = tweet['entities']
         t.save()
