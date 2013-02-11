@@ -122,12 +122,6 @@ def weak_comps(edges,user_locs):
     g = nx.DiGraph()
     for edge in edges:
         ne = NearEdge(*edge)
-
-        # FIXME: hardcoding this is all kinds of ugly
-        # 813286 is @BarackObama, we skip him because he breaks clustering
-        # in D.C.
-        #if 813286 in (ne.frm,ne.to):
-        #    continue
         conv = (ne.day,ne.at,ne.rt)
         if g.has_edge(ne.frm,ne.to):
             g[ne.frm][ne.to]['conv'].append(conv)
@@ -137,8 +131,9 @@ def weak_comps(edges,user_locs):
     for frm,to,data in g.edges(data=True):
         if not any(at for day,at,rt in data['conv']):
             g.remove_edge(frm,to)
-    # remove nodes with a degree greater than 100
-    popular = [uid for uid,degree in g.degree_iter() if degree>100]
+    # remove nodes with a degree greater than 50
+    import pdb; pdb.set_trace()
+    popular = [uid for uid,degree in g.degree_iter() if degree>50]
     g.remove_nodes_from(popular)
     # add locations
     for node in g.nodes_iter():
@@ -163,7 +158,8 @@ def find_crowds(weak_comps):
                 crowd_ids[subcrowd].append(uid)
             for subcrowd,uids in sorted(crowd_ids.iteritems()):
                 subg = nx.DiGraph(nx.subgraph(g,uids))
-                crowds.append(subg)
+                if len(subg)>2:
+                    crowds.append(subg)
         else:
             crowds.append(g)
 
