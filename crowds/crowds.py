@@ -122,21 +122,28 @@ def weak_comps(edges,user_locs):
     g = nx.DiGraph()
     for edge in edges:
         ne = NearEdge(*edge)
-        if 813286 in (ne.frm,ne.to):
-            # FIXME: hardcoding this is all kinds of ugly
-            # 813286 is @BarackObama, we skip him because he breaks clustering
-            # in D.C.
-            continue
+
+        # FIXME: hardcoding this is all kinds of ugly
+        # 813286 is @BarackObama, we skip him because he breaks clustering
+        # in D.C.
+        #if 813286 in (ne.frm,ne.to):
+        #    continue
         conv = (ne.day,ne.at,ne.rt)
         if g.has_edge(ne.frm,ne.to):
             g[ne.frm][ne.to]['conv'].append(conv)
         else:
             g.add_edge(ne.frm, ne.to, dist=ne.dist, conv=[conv])
+    # remove edges that are only retweets
     for frm,to,data in g.edges(data=True):
         if not any(at for day,at,rt in data['conv']):
             g.remove_edge(frm,to)
+    # remove nodes with a degree greater than 100
+    popular = [uid for uid,degree in g.degree_iter() if degree>100]
+    g.remove_nodes_from(popular)
+    # add locations
     for node in g.nodes_iter():
         g.node[node]['loc'] = user_locs[node]
+    # yield weakly connected crowds
     for subg in nx.weakly_connected_component_subgraphs(g):
         if len(subg)>2:
             yield json_graph.adjacency_data(subg)
