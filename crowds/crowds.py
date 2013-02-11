@@ -8,6 +8,7 @@ import networkx as nx
 from networkx.readwrite import json_graph
 import numpy as np
 from sklearn import cluster
+import random
 
 from base import gob, utils, models
 import community
@@ -132,7 +133,6 @@ def weak_comps(edges,user_locs):
         if not any(at for day,at,rt in data['conv']):
             g.remove_edge(frm,to)
     # remove nodes with a degree greater than 50
-    import pdb; pdb.set_trace()
     popular = [uid for uid,degree in g.degree_iter() if degree>50]
     g.remove_nodes_from(popular)
     # add locations
@@ -163,11 +163,14 @@ def find_crowds(weak_comps):
         else:
             crowds.append(g)
 
+    def _blur(angle):
+        return random.triangular(angle-.02,angle+.02)
+
     spots = collections.defaultdict(list)
     for index,g in enumerate(crowds):
         uid,degree = max(g.degree_iter(),key=operator.itemgetter(1))
         lng,lat = g.node[uid]['loc']
-        g.graph['loc'] = lng,lat
+        g.graph['loc'] = _blur(lng),_blur(lat)
         g.graph['id'] = index
         spots[int(lng/2),int(lat/2)].append(g)
 
