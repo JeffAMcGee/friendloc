@@ -2,6 +2,7 @@ from itertools import chain, izip
 import datetime
 import collections
 import math
+import operator
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -161,8 +162,8 @@ def find_crowds(weak_comps):
 
     spots = collections.defaultdict(list)
     for index,g in enumerate(crowds):
-        locs = [ data['loc'] for uid,data in g.nodes_iter(data=True) ]
-        lng,lat = np.mean(locs,axis=0)
+        uid,degree = max(g.degree_iter(),key=operator.itemgetter(1))
+        lng,lat = g.node[uid]['loc']
         g.graph['loc'] = lng,lat
         g.graph['id'] = index
         spots[int(lng/2),int(lat/2)].append(g)
