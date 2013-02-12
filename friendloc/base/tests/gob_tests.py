@@ -6,8 +6,8 @@ import unittest
 import mock
 import msgpack
 
-from base import gob
-from base.gob import (Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv,
+from friendloc.base import gob
+from friendloc.base.gob import (Gob, SimpleEnv, SimpleFileEnv, MultiProcEnv,
                       join_reduce, set_reduce)
 
 

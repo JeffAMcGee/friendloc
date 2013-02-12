@@ -4,25 +4,25 @@ import json
 
 import mock
 
-from base import gob
-from base.models import User, Edges, Tweets
-from base.tests import SimpleGobTest
-from base.tests.models_tests import MockTwitterResource, MockGisgraphyResource
-from explore import sprawl
+from friendloc.base import gob
+from friendloc.base.models import User, Edges, Tweets
+from friendloc.base.tests import SimpleGobTest
+from friendloc.base.tests.models_tests import MockTwitterResource, MockGisgraphyResource
+from friendloc.explore import sprawl
 
 
 def _patch_twitter():
-    return mock.patch("base.twitter.TwitterResource",MockTwitterResource)
+    return mock.patch("friendloc.base.twitter.TwitterResource",MockTwitterResource)
 
 def _patch_gisgraphy():
-    return mock.patch("explore.sprawl.GisgraphyResource",MockGisgraphyResource)
+    return mock.patch("friendloc.base.gisgraphy.GisgraphyResource",MockGisgraphyResource)
 
 
 class TestSprawl(SimpleGobTest):
     @classmethod
     def setUpClass(cls):
         CWD = os.path.abspath(os.path.dirname(__file__))
-        path = os.path.join(CWD,'..','..','tests','geo_tweets.json')
+        path = os.path.join(CWD,'geo_tweets.json')
         with open(path) as file:
             cls.geotweets = [json.loads(l) for l in file]
 

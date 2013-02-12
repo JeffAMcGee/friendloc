@@ -4,7 +4,7 @@ from mock import patch
 from maroon import MockDB, Model
 
 from gb import create_jobs
-from base.gob import Gob, SimpleEnv
+from friendloc.base.gob import Gob, SimpleEnv
 
 
 class MockedMongoTest(unittest.TestCase):

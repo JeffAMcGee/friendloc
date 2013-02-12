@@ -2,8 +2,7 @@ from datetime import datetime
 
 from mock import MagicMock
 
-from base import twitter
-from base import models
+from friendloc.base import twitter, models
 
 
 class MockGisgraphyResource(object):

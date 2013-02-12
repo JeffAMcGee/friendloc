@@ -9,7 +9,7 @@ import requests
 import requests.models
 
 import friendloc
-from friendloc.models import Edges, User, Tweet
+from friendloc.base.models import Edges, User, Tweet
 
 
 class TwitterFailure(Exception):

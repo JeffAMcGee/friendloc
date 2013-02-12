@@ -1,5 +1,11 @@
+class _SettingsBunch(dict):
+    def __getattr__(self, name):
+        return self[name]
 
-settings = dict(
+    def __setattr__(self, name, value):
+        self[name] = value
+
+settings = _SettingsBunch(
     # FIXME: rename region to mongo_db; it is just the database name now
     region = "friendloc",
     db_host = "localhost",

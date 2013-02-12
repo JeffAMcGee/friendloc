@@ -1,9 +1,9 @@
 import math
 import mock
 
-from explore import peek
-from base import models, utils
-from base.tests import SimpleGobTest
+from friendloc.explore import peek
+from friendloc.base import models, utils
+from friendloc.base.tests import SimpleGobTest
 
 
 class TestPeek(SimpleGobTest):

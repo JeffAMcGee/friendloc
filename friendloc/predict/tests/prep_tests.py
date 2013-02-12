@@ -1,5 +1,5 @@
-from base.tests import SimpleGobTest
-from base.utils import use_mongo
+from friendloc.base.tests import SimpleGobTest
+from friendloc.base.utils import use_mongo
 
 
 class TestPrep(SimpleGobTest):

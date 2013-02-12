@@ -9,7 +9,7 @@ import numpy as np
 from friendloc.base import gob, utils
 from friendloc.base.utils import coord_in_miles
 from friendloc.predict import prep
-from friendloc.explore import peek
+import friendloc.explore.peek
 
 
 def logify(x,fudge=1):
@@ -134,7 +134,7 @@ class FriendLoc(Predictor):
         probs = np.empty_like(mat)
         for index,pred in enumerate(nebrs_d['pred_dists'][self.clf_key]):
             curve = curves[bisect.bisect(cutoffs,pred)-1]
-            probs[index,:] = peek.contact_curve(mat[index,:],*curve)
+            probs[index,:] = friendloc.explore.peek.contact_curve(mat[index,:],*curve)
         contact_prob = nebrs_d['contact_prob']
         total_probs = (
             np.sum(np.log(probs/(1-contact_prob)),axis=0) +
@@ -213,8 +213,8 @@ class Predictors(object):
         nebrs_d['location_prob'] = np.array(probs)
 
     def _stranger_prob(self,nebr):
-        lng_t = peek._tile(nebr['lng'])
-        lat_t_ = peek._tile(nebr['lat'])
+        lng_t = friendloc.explore.peek._tile(nebr['lng'])
+        lat_t_ = friendloc.explore.peek._tile(nebr['lat'])
         lat_t = max(-900,min(lat_t_,899))
         return self.stranger_mat[(lng_t+1800)%3600,lat_t+900]
 

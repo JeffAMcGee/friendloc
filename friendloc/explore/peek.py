@@ -12,7 +12,7 @@ from scipy import stats, optimize
 from friendloc.base.models import User, Tweets, Edges
 from friendloc.base.utils import coord_in_miles
 from friendloc.base import gob, utils
-from friendloc.predict import fl
+import friendloc.predict.fl
 
 def local_ratio(dists,cutoff=25):
     return sum(1.0 for d in dists if d<cutoff)/len(dists)
@@ -232,6 +232,8 @@ def contact_fit(strange_bins,nebr_bins):
     yield tuple(popt)
 
 
+# FIXME: should vect_ratios go into predict.fl? I don't like this module
+# depending on that module.
 @gob.mapper(all_items=True,slurp={'exact_strange_bins':_bin_counts})
 def vect_ratios(vects,in_paths,env,exact_strange_bins):
     CHUNKS = 10
@@ -241,7 +243,7 @@ def vect_ratios(vects,in_paths,env,exact_strange_bins):
     strange_bins = .8*exact_strange_bins
 
     #load and classify the vects
-    X, y = fl.vects_as_mat(vects)
+    X, y = friendloc.predict.fl.vects_as_mat(vects)
     clump = in_paths[0][-1]
     # FIXME: Is there a nicer way to do this? We should be able to use two
     # inputs together.

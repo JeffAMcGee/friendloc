@@ -10,7 +10,7 @@ import numpy as np
 from sklearn import cluster
 import random
 
-from base import gob, utils, models
+from friendloc.base import gob, utils, models
 import community
 
 

@@ -1,6 +1,6 @@
-from base.tests import SimpleGobTest
-from base.utils import use_mongo
-from predict import fl
+from friendloc.base.tests import SimpleGobTest
+from friendloc.base.utils import use_mongo
+from friendloc.predict import fl
 
 
 class TestFriendLoc(SimpleGobTest):

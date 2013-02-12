@@ -8,13 +8,13 @@ from restkit import Resource
 from http_parser.http import NoMoreData
 
 import friendloc
-from friendloc.models import GeonamesPlace
-from friendloc.utils import in_local_box
+from friendloc.base.models import GeonamesPlace
+from friendloc.base.utils import in_local_box
 
 class GisgraphyResource(Resource):
     COORD_RE = re.compile('(-?\d+\.\d+), *(-?\d+\.\d+)')
 
-    def __init__(self, settings):
+    def __init__(self, settings=None):
         if not settings:
             settings = friendloc.settings
         Resource.__init__(self,

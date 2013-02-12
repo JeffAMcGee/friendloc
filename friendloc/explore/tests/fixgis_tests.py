@@ -1,4 +1,4 @@
-from base.tests import SimpleGobTest
+from friendloc.base.tests import SimpleGobTest
 
 
 class TestSprawlToContacts(SimpleGobTest):

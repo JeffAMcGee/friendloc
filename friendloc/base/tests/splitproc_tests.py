@@ -1,8 +1,7 @@
 import unittest
 import time
-from base.splitproc import SplitProcess
+from friendloc.base.splitproc import SplitProcess
 
-from maroon import *
 
 class AdderSplitProc(SplitProcess):
     def __init__(self, delay, **kwargs):

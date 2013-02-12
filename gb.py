@@ -7,12 +7,12 @@ import itertools
 
 from maroon import Model
 
-from settings import settings
-from explore import peek, sprawl, fixgis, graph
-from predict import prep, fl, full
-from base import gob
 from crowds import crowds
-from base import utils
+import friendloc
+from friendloc.explore import peek, sprawl, fixgis, graph
+from friendloc.predict import prep, fl, full
+from friendloc.base import gob
+from friendloc.base import utils
 
 try:
     import networkx as nx
@@ -229,7 +229,7 @@ def make_gob(args):
 
 
 def setup(args):
-    Model.database = utils.mongo(args.mongo or settings.region)
+    Model.database = utils.mongo(args.mongo or friendloc.settings.region)
     logging.basicConfig(level=logging.INFO)
     if numpy:
         numpy.set_printoptions(precision=3, linewidth=160, edgeitems=6)
