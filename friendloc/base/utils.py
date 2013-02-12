@@ -5,23 +5,13 @@ import sys
 import math
 import logging
 import functools
-from collections import defaultdict
+import json # Why not ujson?
 
 import numpy as np
-
-try:
-    import simplejson as json
-except:
-    import json
-
-from settings import settings
-from models import *
-from maroon import MongoDB, Model
 from pymongo.read_preferences import ReadPreference
+from maroon import MongoDB, Model
 
-
-def all_users():
-    return User.get_all()
+import friendloc
 
 
 def grouper(n, iterable, fillvalue=None, dontfill=False):
@@ -43,23 +33,14 @@ def use_mongo(name):
 
 def mongo(name):
     return MongoDB(name=name,
-            host=settings.db_host,
+            host=friendloc.settings.db_host,
             read_preference=ReadPreference.NEAREST
             )
 
 
 def in_local_box(place):
-    box = settings.local_box
+    box = friendloc.settings.local_box
     return all(box[d][0]<place[d]<box[d][1] for d in ('lat','lng'))
-
-def tri_users_dict_set(users_path):
-    users = dict((int(d['id']),d) for d in _read_json(users_path))
-    return users,set(users)
-
-
-def read_gis_locs(path=None):
-    for u in _read_json(path or "hou_tri_users"):
-        yield u['lng'],u['lat']
 
 
 def noisy(ray,scale):
@@ -68,28 +49,6 @@ def noisy(ray,scale):
 def median_2d(spots):
     return [np.median(x) for x in zip(*spots)]
 
-def triangle_set(strict=True):
-    Model.database = connect('houtx_user')
-    users = Model.database.paged_view('_all_docs',include_docs=True,endkey="_")
-    for row in users:
-        user = row['doc']
-        if user['prot'] or user['prob']==.5:
-            continue
-        if user['frdc']>2000 and user['folc']>2000:
-            continue
-        if strict and (user['prob']==0 or user['gnp'].get('pop',0)>1000000):
-            continue
-        yield user
-
-
-def parse_ats(ats_path):
-    ats =defaultdict(lambda: defaultdict(int))
-    ated =defaultdict(lambda: defaultdict(int))
-    for line in open(ats_path):
-        uid,at = [int(i) for i in line.strip().split('\t')]
-        ats[uid][at]+=1
-        ated[at][uid]+=1
-    return ats,ated
 
 def mkdir_p(path):
     try:
@@ -97,18 +56,6 @@ def mkdir_p(path):
     except OSError as ex:
         if ex.errno!=errno.EEXIST:
             raise
-
-def mainstream_edges(edges):
-    return [ e for e in edges
-        if 47<=e['lmfrd']+e['lmfol']<=300
-        if 101<=e['lyfrd']+e['lyfol']<=954
-        ]
-
-
-def split_tri_counts(counts_path):
-    edges = list(mainstream_edges(read_json(counts_path)))
-    third = len(edges)/3
-    return (edges[:third],edges[2*third:3*third],edges[third:2*third])
 
 
 def _coord_delta(p1,p2):
@@ -190,7 +137,7 @@ def read_json(path=None):
     for l in file:
         try:
             yield json.loads(l)
-        except ValueError as e:
+        except ValueError:
             logging.exception("bad json line: %s",l)
 
 def write_json(it, path=None):

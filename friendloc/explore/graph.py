@@ -15,14 +15,26 @@ if OUTPUT_TYPE:
     matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
-from networkx.readwrite import json_graph
 import PIL
 import numpy as np
 
-from explore import peek
-#from base.models import *
-from base.utils import dist_bins, coord_in_miles
-from base import gob
+from friendloc.explore import peek
+from friendloc.base.utils import dist_bins, coord_in_miles
+from friendloc.base import gob
+
+
+CONTACT_GROUPS = dict(
+    jfol = ('just followers','b','dashed',2),
+    jfrd = ('just friends','b','dotted',2),
+    rfrd = ('recip friends','b','solid',1),
+    jat = ('just mentioned','b','dashdot',2),
+)
+#CONTACT_GROUPS = dict(
+#    jfol = ('just followers','g','dashed',2),
+#    jfrd = ('just friends','r','dotted',2),
+#    rfrd = ('recip friends','k','solid',1),
+#    jat = ('just mentioned','b','dashdot',2),
+#)
 
 
 @contextlib.contextmanager
@@ -78,7 +90,7 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
     else:
         fig = plt.figure(figsize=figsize)
         ax = fig.add_subplot(111)
-    
+
     if not isinstance(data,dict):
         data = {"":data}
 
@@ -235,13 +247,6 @@ def gr_basic(preds):
     )
     _gr_preds(preds,labels,'fl_basic.pdf')
 
-CONTACT_GROUPS = dict(
-    jfol = ('just followers','g','dashed',2),
-    jfrd = ('just friends','r','dotted',2),
-    rfrd = ('recip friends','k','solid',1),
-    jat = ('just mentioned','b','dashdot',2),
-)
-
 
 @gob.mapper(all_items=True)
 def gr_parts(preds):
@@ -279,14 +284,6 @@ def _gr_preds(preds,labels,path):
             )
 
 
-CONTACT_GROUPS = dict(
-    jfol = ('just followers','g','dashed',2),
-    jfrd = ('just friends','r','dotted',2),
-    rfrd = ('recip friends','k','solid',1),
-    jat = ('just mentioned','b','dashdot',2),
-)
-
-
 @gob.mapper(all_items=True)
 def graph_edge_types_cuml(edge_dists):
     data = defaultdict(list)
@@ -321,7 +318,7 @@ def graph_edge_types_prot(edge_dists):
         conf = CONTACT_GROUPS[key[0]]
         fill = 'solid' if key[-1] else 'dotted'
         label,color,oldfill,width = conf
-        data[(lable,color,fill)].extend(dists)
+        data[(label,color,fill)].extend(dists)
 
     for k,v in data.iteritems():
         print k,round(100*sum(1.0 for x in v if x<25)/len(v)),len(v)
@@ -507,7 +504,7 @@ def graph_leaf_data(leaf_data):
 
     good_dists = {}
     for key,tups in ratio_dists.iteritems():
-        avg = np.average(one_vals[key])
+        #avg = np.average(one_vals[key])
         #tups.extend([(avg,d) for d in zero_dists[key]])
         lim = int(len(tups)*.5)
         tups.sort(key=itemgetter(0))
@@ -581,13 +578,6 @@ def graph_com_types(edge_dists):
         ax.set_title(titles[edge_type])
     fig.savefig("../www/com_types.pdf",bbox_inches='tight')
 
-
-CONTACT_GROUPS = dict(
-    jfol = ('just followers','b','dashed',2),
-    jfrd = ('just friends','b','dotted',2),
-    rfrd = ('recip friends','b','solid',1),
-    jat = ('just mentioned','b','dashdot',2),
-)
 
 @gob.mapper(all_items=True)
 def graph_mloc_mdist(mloc_mdists):

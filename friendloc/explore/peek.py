@@ -9,11 +9,10 @@ from itertools import chain
 import numpy as np
 from scipy import stats, optimize
 
-#from base.gisgraphy import GisgraphyResource
-from base.models import User, Tweets, Edges
-from base.utils import coord_in_miles
-from base import gob, utils
-from predict import fl
+from friendloc.base.models import User, Tweets, Edges
+from friendloc.base.utils import coord_in_miles
+from friendloc.base import gob, utils
+from friendloc.predict import fl
 
 def local_ratio(dists,cutoff=25):
     return sum(1.0 for d in dists if d<cutoff)/len(dists)

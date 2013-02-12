@@ -8,8 +8,8 @@ from oauth_hook import OAuthHook
 import requests
 import requests.models
 
-from settings import settings
-from models import Edges, User, Tweet
+import friendloc
+from friendloc.models import Edges, User, Tweet
 
 
 class TwitterFailure(Exception):
@@ -25,7 +25,9 @@ class TwitterResource(object):
     # 15 to 240 seconds.
     backoff_seconds = [20,60,180,540,0]
 
-    def __init__(self):
+    def __init__(self, settings=None):
+        if not settings:
+            settings = friendloc.settings
         oauth_hook = OAuthHook(
                         settings.token_key,
                         settings.token_secret,

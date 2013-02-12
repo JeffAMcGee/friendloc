@@ -1,8 +1,8 @@
 
-from base.models import User
-from base import gob, twitter, gisgraphy
-from explore import sprawl
-from predict import fl
+from friendloc.base.models import User
+from friendloc.base import gob, twitter, gisgraphy
+from friendloc.explore import sprawl
+from friendloc.predict import fl
 
 # this is the worst PLE that we are willing to accept
 MAX_GNP_MDIST = 25

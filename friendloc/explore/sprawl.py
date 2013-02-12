@@ -5,12 +5,9 @@ import logging
 import itertools
 import collections
 
-from base import gob
-from base.models import Edges, User, Tweets
-from base import twitter
-from base.gisgraphy import GisgraphyResource
-from collections import defaultdict
-import base.utils as utils
+from friendloc.base import gob
+from friendloc.base.models import Edges, User, Tweets
+from friendloc.base import gisgraphy, twitter, utils
 
 
 NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
@@ -36,7 +33,7 @@ def parse_geotweets(tweets):
 
 def _untangle_users_and_coords(users_and_coords):
     users = {}
-    locs = defaultdict(list)
+    locs = collections.defaultdict(list)
     for user_or_coord in users_and_coords:
         if isinstance(user_or_coord,dict):
             users[user_or_coord['id']] = user_or_coord
@@ -66,7 +63,7 @@ def mloc_users(users_and_coords):
 
 @gob.mapper(all_items=True)
 def mloc_reject_count(users_and_coords):
-    results = defaultdict(int)
+    results = collections.defaultdict(int)
     users, locs = _untangle_users_and_coords(users_and_coords)
     for uid,user in users.iteritems():
         spots = locs[uid]
@@ -160,7 +157,7 @@ def _my_contacts(user):
 
 @gob.mapper(all_items=True)
 def find_contacts(user_ds):
-    gis = GisgraphyResource()
+    gis = gisgraphy.GisgraphyResource()
     twit = twitter.TwitterResource()
     for user_d in itertools.islice(user_ds,2600):
         user = User.get_id(user_d['id'])
@@ -248,7 +245,7 @@ def saved_users():
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def lookup_contacts(contact_uids,mdists,env):
     twit = twitter.TwitterResource()
-    gis = GisgraphyResource()
+    gis = gisgraphy.GisgraphyResource()
     gis.set_mdists(mdists)
 
     # FIXME: we need a better way to know which file we are on.
@@ -304,7 +301,7 @@ def pick_nebrs(mloc_uid):
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def fix_mloc_mdists(mloc_uids,mdists):
-    gis = GisgraphyResource()
+    gis = gisgraphy.GisgraphyResource()
     gis.set_mdists(mdists)
     # We didn't have mdists at the time the mloc users were saved. This
     # function could be avoided by running the mdist calculation before

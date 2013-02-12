@@ -1,9 +1,13 @@
 import json
 from itertools import chain
 
-from maroon import *
+from maroon import (
+    Model, ModelPart, ModelProperty, Property,
+    BoolProperty, IntProperty, FloatProperty, TextProperty,
+    ModelListProperty, ListProperty, DateTimeProperty,
+)
 
-from settings import settings
+import friendloc
 
 __all__ = [
     'TwitterModel',
@@ -126,7 +130,7 @@ class User(TwitterModel):
     @classmethod
     def mod_id(cls, user_or_id):
         if isinstance(user_or_id, User):
-            id = user._id
+            id = user_or_id._id
         elif isinstance(user_or_id, dict):
             id = user_or_id['id']
         else:
@@ -236,7 +240,8 @@ class Edges(TwitterModel):
 
 class JobBody(ModelPart):
     def put(self, stalk):
-        stalk.put(json.dumps(self.to_d()),ttr=settings.beanstalkd_ttr)
+        stalk.put(json.dumps(self.to_d()),
+                  ttr=friendloc.settings.beanstalkd_ttr)
 
     @classmethod
     def from_job(cls, job):

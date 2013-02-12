@@ -6,8 +6,8 @@ from itertools import chain
 
 import numpy as np
 
-from base import utils, gob
-from base.models import User, Tweets, Edges
+from friendloc.base import utils, gob
+from friendloc.base.models import User, Tweets
 
 
 NEBR_FLAGS = {

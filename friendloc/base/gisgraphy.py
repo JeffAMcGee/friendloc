@@ -7,14 +7,16 @@ import restkit.errors
 from restkit import Resource
 from http_parser.http import NoMoreData
 
-from settings import settings
-from models import GeonamesPlace
-from utils import in_local_box
+import friendloc
+from friendloc.models import GeonamesPlace
+from friendloc.utils import in_local_box
 
 class GisgraphyResource(Resource):
     COORD_RE = re.compile('(-?\d+\.\d+), *(-?\d+\.\d+)')
 
-    def __init__(self):
+    def __init__(self, settings):
+        if not settings:
+            settings = friendloc.settings
         Resource.__init__(self,
                 settings.gisgraphy_url,
                 client_opts={'timeout':60},

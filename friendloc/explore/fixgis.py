@@ -4,8 +4,8 @@ import itertools
 
 import numpy
 
-from base import utils,gob
-from base.gisgraphy import GisgraphyResource
+from friendloc.base import utils,gob
+from friendloc.base.gisgraphy import GisgraphyResource
 
 
 @gob.mapper(all_items=True)

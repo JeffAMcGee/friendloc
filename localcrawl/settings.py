@@ -6,34 +6,16 @@ class SettingsBunch(dict):
         self[name] = value
 
 settings = SettingsBunch(
-    local_box = dict(lat=(29,30.5),lng=(-96,-94.5)),
-    region = "houtx",
-    slaves = 8,
-    db = "mongo",
+    # FIXME: rename region to mongo_db; it is just the database name now
+    region = "friendloc",
     db_host = "localhost",
     gisgraphy_url = "http://services.gisgraphy.com",
-    beanstalk_host = 'localhost',
-    beanstalk_port = 11300,
-    beanstalkd_ttr = 7200,
     mongo_host = 'localhost',
-    couchdb_root = 'http://localhost:5984/',
-    mention_weight = .5,
-    crawl_ratio = .1,
     log_dir = 'logs',
     log_crashes = True,
 
-    #for predictor
-    local_max_dist = 25,
-    fol_count_buckets = 8,
-    default_loc = dict(
-        mdist=1159.8,
-        name="United States",
-        code="PCLI",
-        lng=-98.5,
-        lat=39.76,
-        ),
-
     #just for localcrawl
+    slaves = 8,
     utc_offset = -21600,
     non_local_cutoff = 13,
     min_cutoff = 2,
@@ -43,7 +25,12 @@ settings = SettingsBunch(
     tweets_per_crawl = 200,
     max_hours = 360,  # 15 days
     min_tweet_id = 25000000000000000,
-
+    beanstalk_host = 'localhost',
+    beanstalk_port = 11300,
+    beanstalkd_ttr = 7200,
+    mention_weight = .5,
+    crawl_ratio = .1,
+    local_box = dict(lat=(29,30.5),lng=(-96,-94.5)),
 )
 
 try:

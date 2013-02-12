@@ -24,7 +24,7 @@ class SplitProcess(object):
     * I am worried that under certain conditions not all of the results
       get passed to consume.  You could make self._done a JoinableQueue .
     """
-    def __init__(self, label="proc", slaves=8, buffer_size=0, 
+    def __init__(self, label="proc", slaves=8, buffer_size=0,
             log_path="logs", log_level=None, debug=False, *args, **kwargs):
         self.slave_id = -1
         self.halting = multiprocessing.Event()
