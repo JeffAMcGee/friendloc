@@ -1,0 +1,8 @@
+{"id": 1, "user": {"followers_count":33, "friends_count":37, "id":51839104, "screen_name":"just_one"}, "coordinates": {"type":"Point", "coordinates":[-122,37]}}
+{"id": 2, "user": {"followers_count":0, "friends_count":0, "id":5183910, "screen_name":"lonely"}, "coordinates": {"type":"Point", "coordinates":[-122,37]}}
+{"id": 3, "user": {"followers_count":0, "friends_count":0, "id":5183910, "screen_name":"lonely"}, "coordinates": {"type":"Point", "coordinates":[-122,37]}}
+{"id": 4, "user": {"followers_count":33, "friends_count":37, "id":518391, "screen_name":"flyer"}, "coordinates": {"type":"Point", "coordinates":[-122.1,37.2]}}
+{"id": 5, "user": {"followers_count":33, "friends_count":37, "id":518391, "screen_name":"flyer"}, "coordinates": {"type":"Point", "coordinates":[-95.1,29.2]}}
+{"id": 6, "user": {"followers_count":33, "friends_count":37, "id":51839, "screen_name":"good", "location":"Houston"}, "coordinates": {"type":"Point", "coordinates":[-95.2,29.1]}}
+{"id": 7, "user": {"followers_count":33, "friends_count":37, "id":51839, "screen_name":"good", "location":"Houston"}, "coordinates": {"type":"Point", "coordinates":[-95.3,29.2]}}
+{"id": 8, "user": {"followers_count":33, "friends_count":37, "id":51839, "screen_name":"good", "location":"Houston"}, "coordinates": {"type":"Point", "coordinates":[-105.3,40.1]}}
