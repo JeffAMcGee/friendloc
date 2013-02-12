@@ -7,11 +7,10 @@ import operator
 import networkx as nx
 from networkx.readwrite import json_graph
 import numpy as np
-from sklearn import cluster
 import random
 
 from friendloc.base import gob, utils, models
-import community
+from crowds import community
 
 
 @gob.mapper(all_items=True)
