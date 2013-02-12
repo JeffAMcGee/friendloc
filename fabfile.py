@@ -2,14 +2,17 @@ import os.path
 
 from fabric.api import local, lcd
 
+from maroon import Model
+from base import utils
+from base.tests import models_tests
+
 
 CWD = os.path.abspath(os.path.dirname(__file__))
 
 
 def fixture():
-    with lcd(CWD):
-        # this is stupid
-        local("./do.py save_fixtures -m fl_fixture")
+    Model.database = utils.mongo('fl_fixture')
+    models_tests.save_fixtures()
 
 
 def mongod():
