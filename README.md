@@ -32,6 +32,12 @@ You will also need to go through the three-legged oauth to get the information
 that goes in settings_dev.py .  This will help you:
     http://benoitc.github.com/restkit/authentication.html#oauth
 
+All the data you need to do location prediction is here:
+http://infolab.tamu.edu/static/users/jeff/friendloc_data.tgz
+
+Starting
+----------
+
 To get the crawling process started you will need tweets from Twitter's
 streaming API.  I used @bde's https://github.com/bde/TwitterStreamSaver to
 collect them.
