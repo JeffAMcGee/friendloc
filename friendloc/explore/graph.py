@@ -197,7 +197,7 @@ def graph_vect_fit(vect_fit, in_paths, env):
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_xlabel('distance in miles')
-        ax.set_ylabel('probablility of being a contact')
+        ax.set_ylabel('probability of being a contact')
 
         colors = iter('rgbkm')
         labels = iter([
@@ -278,7 +278,7 @@ def _gr_preds(preds,labels,path):
             normed=True,
             label_len=True,
             kind="cumulog",
-            ylabel = "fraction of users",
+            ylabel = "fraction of target users",
             xlabel = "error in prediction (miles)",
             bins = dist_bins(120),
             )
@@ -303,8 +303,8 @@ def graph_edge_types_cuml(edge_dists):
             normed=True,
             label_len=True,
             kind="cumulog",
-            ylabel = "fraction of users",
-            xlabel = "distance to contact in miles",
+            ylabel = "fraction of edges",
+            xlabel = "length of edge in miles",
             bins = dist_bins(120),
             )
 
@@ -330,7 +330,7 @@ def graph_edge_types_prot(edge_dists):
             label_len=True,
             kind="cumulog",
             ylabel = "fraction of users",
-            xlabel = "distance to contact in miles",
+            xlabel = "length of edge in miles",
             bins = dist_bins(80),
             )
 
@@ -391,8 +391,8 @@ def graph_edge_count(rfr_dists):
             label_len=True,
             kind="cumulog",
             normed=True,
-            xlabel = "distance between edges in miles",
-            ylabel = "fraction of users",
+            xlabel = "length of edge in miles",
+            ylabel = "fraction of edges",
             )
     fig.savefig("../www/edge_counts.pdf",bbox_inches='tight')
 
@@ -416,8 +416,8 @@ def graph_local_groups(edges):
             normed=True,
             label_len=True,
             kind="cumulog",
-            ylabel = "fraction of users",
-            xlabel = "distance to contact in miles",
+            ylabel = "fraction of edges",
+            xlabel = "length of edge in miles",
             bins = dist_bins(120),
             )
 
@@ -444,8 +444,8 @@ def graph_locals_10(rfr_dists):
         label_len=True,
         kind="cumulog",
         normed=True,
-        xlabel = "distance between edges in miles",
-        ylabel = "fraction of users",
+        xlabel = "length of edge in miles",
+        ylabel = "fraction of edges",
         )
 
 
@@ -477,11 +477,12 @@ def graph_locals_cmp(rfr_dists):
         'locals_cmp.pdf',
         bins=dist_bins(120),
         xlim=(1,15000),
+        figsize=(12,6),
         label_len=True,
         kind="cumulog",
         normed=True,
-        xlabel = "distance between edges in miles",
-        ylabel = "fraction of users",
+        xlabel = "length of edge in miles",
+        ylabel = "fraction of edges",
         key_order = labels,
         )
 
@@ -522,8 +523,8 @@ def graph_leaf_data(leaf_data):
         label_len=True,
         kind="cumulog",
         normed=True,
-        xlabel = "distance between edges in miles",
-        ylabel = "fraction of users",
+        xlabel = "length of edge in miles",
+        ylabel = "fraction of edges",
         )
 
 
@@ -572,8 +573,8 @@ def graph_com_types(edge_dists):
                 xlim=(1,15000),
                 normed=True,
                 label_len=True,
-                xlabel = "distance between edges in miles",
-                ylabel = "number of users",
+                xlabel = "length of edge in miles",
+                ylabel = "number of edges",
                 )
         ax.set_title(titles[edge_type])
     fig.savefig("../www/com_types.pdf",bbox_inches='tight')
@@ -649,7 +650,7 @@ def graph_indep(rfr_indep):
         ax.set_xscale('log')
         ax.set_yscale('log')
         ax.set_xlabel('distance in miles')
-        ax.set_ylabel('probablility of being a contact')
+        ax.set_ylabel('probability of being a contact')
 
         #window = np.bartlett(5)
         #smooth_ratio = np.convolve(ratio,window,mode='same')/sum(window)
