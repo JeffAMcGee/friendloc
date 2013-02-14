@@ -596,3 +596,20 @@ def rfr_indep(user_d):
             )
         return [d]
     return []
+
+
+@gob.mapper(all_items=True)
+def eval_rfrd_mdist(edges_d):
+    data = collections.defaultdict(list)
+    labels = ["",'0--10','10--100','100--1000']
+
+    for edge_d in edges_d:
+        amigo = edge_d.get('rfrd')
+        if not amigo:
+            continue
+        dist = coord_in_miles(edge_d['mloc'],amigo)
+        bin = len(str(int(amigo['mdist'])))
+        data[labels[bin]].append(dist)
+
+    for label, dists in data:
+        print label,local_ratio(dists),len(dists)
