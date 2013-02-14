@@ -683,7 +683,7 @@ def plot_crowds(clusts):
 @gob.mapper(all_items=True)
 def graph_rfrd_mdist(edges_d):
     data = defaultdict(list)
-    labels = ["",'0-10','10-100','100-1000']
+    labels = ["",'0<=MLE<10','10<=MLE<100','100<=MLE<1000']
 
     for edge_d in edges_d:
         amigo = edge_d.get('rfrd')
@@ -691,7 +691,7 @@ def graph_rfrd_mdist(edges_d):
             continue
         dist = coord_in_miles(edge_d['mloc'],amigo)
         bin = len(str(int(amigo['mdist'])))
-        width = .3*2**bin
+        width = .3*2.5**bin
         data[labels[bin],'b','solid',width].append(dist)
 
     for label, dists in data.iteritems():
@@ -707,5 +707,6 @@ def graph_rfrd_mdist(edges_d):
             xlabel = "length of edge in miles",
             figsize=(12,6),
             bins = dist_bins(120),
+            key_order = sorted(data,key=itemgetter(3)),
             )
 
