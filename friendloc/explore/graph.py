@@ -679,3 +679,33 @@ def plot_crowds(clusts):
         ax.scatter(clngs,clats,c='k',marker='x',linewidth=.1)
 
 
+
+@gob.mapper(all_items=True)
+def graph_rfrd_mdist(edges_d):
+    data = defaultdict(list)
+    labels = ["",'0-10','10-100','100-1000']
+
+    for edge_d in edges_d:
+        amigo = edge_d.get('rfrd')
+        if not amigo:
+            continue
+        dist = coord_in_miles(edge_d['mloc'],amigo)
+        bin = len(str(int(amigo['mdist'])))
+        width = .3*2**bin
+        data[labels[bin],'b','solid',width].append(dist)
+
+    for label, dists in data.iteritems():
+        print label,peek.local_ratio(dists),peek.local_ratio(dists,1000),len(dists)
+
+    ugly_graph_hist(data,
+            "rfrd_mdist.pdf",
+            xlim= (1,15000),
+            normed=True,
+            label_len=True,
+            kind="cumulog",
+            ylabel = "fraction of edges",
+            xlabel = "length of edge in miles",
+            figsize=(12,6),
+            bins = dist_bins(120),
+            )
+

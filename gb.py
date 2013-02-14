@@ -124,7 +124,7 @@ def create_jobs(g):
     g.add_map_job(graph.graph_locals_cmp,'cat_rfrd_dists')
     g.add_cat('cat_edges_d','edges_d')
     g.add_map_job(graph.graph_local_groups,'cat_edges_d')
-    g.add_map_job(peek.eval_rfrd_mdist,'cat_edges_d')
+    g.add_map_job(graph.graph_rfrd_mdist,'cat_edges_d')
 
     g.add_map_job(peek.rfr_triads,'pred_users')
     g.add_cat('cat_rfr_triads','rfr_triads')
