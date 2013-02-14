@@ -611,5 +611,5 @@ def eval_rfrd_mdist(edges_d):
         bin = len(str(int(amigo['mdist'])))
         data[labels[bin]].append(dist)
 
-    for label, dists in data:
-        print label,local_ratio(dists),len(dists)
+    for label, dists in data.iteritems():
+        print label,local_ratio(dists),local_ratio(dists,1000),len(dists)

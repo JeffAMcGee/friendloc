@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from itertools import chain, izip
 import datetime
 import collections
@@ -10,7 +12,7 @@ import numpy as np
 import random
 
 from friendloc.base import gob, utils, models
-from crowds import community
+import crowds.community
 
 
 @gob.mapper(all_items=True)
@@ -148,10 +150,10 @@ def find_crowds(weak_comps):
     crowds = []
     for crowd,weak_comp in enumerate(weak_comps):
         g = json_graph.adjacency_graph(weak_comp)
-        dendo = community.generate_dendogram(nx.Graph(g))
+        dendo = crowds.community.generate_dendogram(nx.Graph(g))
 
         if len(dendo)>=2:
-            partition = community.partition_at_level(dendo, 1 )
+            partition = crowds.community.partition_at_level(dendo, 1 )
             crowd_ids = collections.defaultdict(list)
             for uid,subcrowd in partition.iteritems():
                 crowd_ids[subcrowd].append(uid)
