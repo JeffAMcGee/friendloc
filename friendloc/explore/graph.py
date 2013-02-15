@@ -102,6 +102,8 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
         hargs['log']=True
     elif kind == 'linear':
         pass
+    elif kind == 'logsquare':
+        ax.set_xscale('log')
     elif kind == 'logline':
         ax.set_xscale('log')
         if legend_loc is None:
@@ -339,6 +341,28 @@ def graph_edge_types_prot(edge_dists):
             xlabel = "length of edge in miles",
             bins = dist_bins(80),
             )
+
+@gob.mapper(all_items=True)
+def graph_rfrd_norm(edge_dists):
+    data = defaultdict(list)
+    for key,dists in edge_dists:
+        if key[0]!='rfrd':
+            continue
+        data[key[0]].extend(dists)
+
+    ugly_graph_hist({"recip friends":data['rfrd']},
+        'rfrd_norm.pdf',
+        bins=dist_bins(40),
+        xlim=(1,15000),
+        ylim=(0,3100),
+        figsize=(12,5),
+        label_len=True,
+        legend_loc=2,
+        kind="logsquare",
+        xlabel = "length of edge in miles",
+        ylabel = "number of users",
+        )
+
 
 @gob.mapper(all_items=True)
 def graph_edge_types_norm(edge_dists):
