@@ -23,18 +23,18 @@ from friendloc.base.utils import dist_bins, coord_in_miles
 from friendloc.base import gob
 
 
-CONTACT_GROUPS = dict(
-    jfol = ('just followers','b','dashed',2),
-    jfrd = ('just friends','b','dotted',2),
-    rfrd = ('recip friends','b','solid',1),
-    jat = ('just mentioned','b','dashdot',2),
-)
 #CONTACT_GROUPS = dict(
-#    jfol = ('just followers','g','dashed',2),
-#    jfrd = ('just friends','r','dotted',2),
-#    rfrd = ('recip friends','k','solid',1),
+#    jfol = ('just followers','b','dashed',2),
+#    jfrd = ('just friends','b','dotted',2),
+#    rfrd = ('recip friends','b','solid',1),
 #    jat = ('just mentioned','b','dashdot',2),
 #)
+CONTACT_GROUPS = dict(
+    jfol = ('just followers','g','dashed',2),
+    jfrd = ('just friends','r','dotted',2),
+    rfrd = ('recip friends','k','solid',1),
+    jat = ('just mentioned','b','dashdot',2),
+)
 
 
 @contextlib.contextmanager
@@ -185,8 +185,10 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
 def graph_vect_fit(vect_fit, in_paths, env):
     if in_paths[0][-1] != '0':
         return
-    ratios = (ratio for vers,cutoff,ratio in env.load('vect_ratios.0'))
-    fits = (fit for vers,cutoff,fit in vect_fit)
+    ratios = (ratio
+              for vers,cutoff,ratio in env.load('vect_ratios.0')
+              if vers=='leaf')
+    fits = (fit for vers,cutoff,fit in vect_fit if vers=='leaf')
 
     bins = dist_bins(120)
     miles = np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
@@ -242,7 +244,7 @@ def gr_basic(preds):
         #mode="Mode of Contacts",
         nearest=("Nearest Predicted Contact",'b','dashed',2),
         friendloc_basic=("FriendlyLocation Basic",'k','solid',1),
-        friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',3),
+        #friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',3),
         #omni="Omniscient",
     )
     _gr_preds(preds,labels,'fl_basic.pdf')
@@ -278,6 +280,7 @@ def _gr_preds(preds,labels,path):
             normed=True,
             label_len=True,
             kind="cumulog",
+            figsize=(12,6),
             ylabel = "fraction of target users",
             xlabel = "error in prediction (miles)",
             bins = dist_bins(120),
@@ -303,6 +306,7 @@ def graph_edge_types_cuml(edge_dists):
             normed=True,
             label_len=True,
             kind="cumulog",
+            figsize=(12,6),
             ylabel = "fraction of edges",
             xlabel = "length of edge in miles",
             bins = dist_bins(120),
@@ -444,6 +448,7 @@ def graph_locals_10(rfr_dists):
         label_len=True,
         kind="cumulog",
         normed=True,
+        figsize=(12,6),
         xlabel = "length of edge in miles",
         ylabel = "fraction of edges",
         )
