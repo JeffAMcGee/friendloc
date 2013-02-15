@@ -61,6 +61,7 @@ def axes(path='', figsize=(12,8), legend_loc=4,
     if legend_loc:
         ax.legend(loc=legend_loc)
     if OUTPUT_TYPE:
+        fig.tight_layout()
         fig.savefig('../www/'+path+'.'+OUTPUT_TYPE,bbox_inches='tight')
 
 
@@ -177,6 +178,7 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
     ax.set_xlabel(kwargs.get('xlabel'))
     ax.set_ylabel(kwargs.get('ylabel'))
     if fig is not None:
+        fig.tight_layout()
         fig.savefig('../www/'+path,bbox_inches='tight')
 
 
@@ -367,6 +369,7 @@ def graph_edge_types_norm(edge_dists):
         ax.set_xscale('log')
         if spot!=3:
             ax.get_xaxis().set_ticklabels([])
+    fig.tight_layout()
     fig.savefig("../www/edge_types_norm.pdf",bbox_inches='tight')
 
 
@@ -375,7 +378,7 @@ def graph_edge_count(rfr_dists):
     frd_data = defaultdict(list)
     fol_data = defaultdict(list)
     labels = ["",'1-9','10-99','100-999','1000-9999','10000+']
-    key_labels = dict(frdc='Friends',folc='Followers')
+    key_labels = dict(frdc='Frds',folc='Fols')
 
     for amigo in rfr_dists:
         for color,key,data in (('r','folc',fol_data),('b','frdc',frd_data)):
@@ -384,7 +387,7 @@ def graph_edge_count(rfr_dists):
             # 1.6**(bin-1) is the line width calculation
             data[label,color,'solid',1.6**(bin-2)].append(amigo['dist'])
 
-    fig = plt.figure(figsize=(18,6))
+    fig = plt.figure(figsize=(18,5))
     for spot,data in enumerate((fol_data,frd_data)):
         ax = fig.add_subplot(1,2,1+spot)
         ugly_graph_hist(data,
@@ -393,11 +396,13 @@ def graph_edge_count(rfr_dists):
             bins=dist_bins(120),
             xlim=(1,15000),
             label_len=True,
+            legend_loc=2,
             kind="cumulog",
             normed=True,
             xlabel = "length of edge in miles",
             ylabel = "fraction of edges",
             )
+    fig.tight_layout()
     fig.savefig("../www/edge_counts.pdf",bbox_inches='tight')
 
 
@@ -582,6 +587,7 @@ def graph_com_types(edge_dists):
                 ylabel = "number of edges",
                 )
         ax.set_title(titles[edge_type])
+    fig.tight_layout()
     fig.savefig("../www/com_types.pdf",bbox_inches='tight')
 
 
