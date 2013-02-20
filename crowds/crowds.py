@@ -248,3 +248,25 @@ def save_tweets(tweets,find_crowds):
     tweet_col = models.Tweet.database.Tweet
     tweet_col.ensure_index('cid')
 
+
+@gob.mapper(all_items=True)
+def count_topics(crowds):
+    #FIXME: don't hardcode political details here
+    topics = dict(
+        red = ('romney','mitt','gop'),
+        blue = ('obama','barack','dnc','charlottein2012'),
+    )
+    for crowd_ in crowds:
+        crowd = json_graph.adjacency_graph(crowd_)
+        query = {'cid':int(crowd.graph['id'])}
+        counts = collections.defaultdict(int)
+        for tweet in models.Tweet.find(query):
+            for label,terms in topics.iteritems():
+                text = tweet.text.lower()
+                if any(term in text for term in terms):
+                    counts[label]+=1
+        crowd.topics = dict(counts)
+        crowd.save()
+
+
+

@@ -4,7 +4,7 @@ from itertools import chain
 from maroon import (
     Model, ModelPart, ModelProperty, Property,
     BoolProperty, IntProperty, FloatProperty, TextProperty,
-    ModelListProperty, ListProperty, DateTimeProperty,
+    ModelListProperty, ListProperty, DateTimeProperty, DictProperty,
 )
 
 import friendloc
@@ -261,6 +261,7 @@ class Crowd(TwitterModel):
     uids = ListProperty('uids')
     edges = ListProperty('edges')
     zoom = IntProperty('zoom')
+    topics = DictProperty('tpcs')
     # consider other fields from crowdy
 
 
