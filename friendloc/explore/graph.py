@@ -187,6 +187,7 @@ def ugly_graph_hist(data,path,kind="sum",figsize=(12,8),legend_loc=None,normed=F
 
 @gob.mapper(all_items=True)
 def graph_vect_fit(vect_fit, in_paths, env):
+    """ graph four example pContact curves and all the curves of best fit """
     if in_paths[0][-1] != '0':
         return
     ratios = (ratio
@@ -231,6 +232,10 @@ def graph_vect_fit(vect_fit, in_paths, env):
 
 @gob.mapper(all_items=True)
 def graph_stranger_mat(stranger_mat):
+    """
+    create an image from pStranger---the probability that a user lives at a
+    place based on the contacts the user is not connected to
+    """
     mat = np.transpose(next(stranger_mat))
     scaled = 1.1**mat
     fit = 255.999*(scaled-np.min(scaled))/np.ptp(scaled)
@@ -241,6 +246,7 @@ def graph_stranger_mat(stranger_mat):
 
 @gob.mapper(all_items=True)
 def gr_basic(preds):
+    """graph for evaluation"""
     labels = dict(
         backstrom=("Backstrom Baseline",'r','dotted',2),
         #last="Random Contact",
@@ -256,6 +262,7 @@ def gr_basic(preds):
 
 @gob.mapper(all_items=True)
 def gr_parts(preds):
+    """graph for all the evaluations"""
     labels = dict(
         backstrom="Backstrom Baseline",
         friendloc_plain="FriendlyLocation Basic",
@@ -293,6 +300,9 @@ def _gr_preds(preds,labels,path):
 
 @gob.mapper(all_items=True)
 def graph_edge_types_cuml(edge_dists):
+    """
+    graph CDF of distance from target user to contact split by contact type
+    """
     data = defaultdict(list)
 
     for key,dists in edge_dists:
@@ -318,6 +328,7 @@ def graph_edge_types_cuml(edge_dists):
 
 @gob.mapper(all_items=True)
 def graph_edge_types_prot(edge_dists):
+    """ graph CDF of distance to protected vs public accounts """
     data = defaultdict(list)
 
     for key,dists in edge_dists:
@@ -344,6 +355,7 @@ def graph_edge_types_prot(edge_dists):
 
 @gob.mapper(all_items=True)
 def graph_rfrd_norm(edge_dists):
+    """ graph of distribution of distance to recip friends """
     data = defaultdict(list)
     for key,dists in edge_dists:
         if key[0]!='rfrd':
@@ -366,6 +378,7 @@ def graph_rfrd_norm(edge_dists):
 
 @gob.mapper(all_items=True)
 def graph_edge_types_norm(edge_dists):
+    """ graph of distribution of distance to four types of friends """
     data = defaultdict(list)
     for key,dists in edge_dists:
         if key[0]=='usa':
@@ -399,6 +412,10 @@ def graph_edge_types_norm(edge_dists):
 
 @gob.mapper(all_items=True)
 def graph_edge_count(rfr_dists):
+    """
+    graph CDF of distance to recip friends split into bins based on number
+    of friends or followers
+    """
     frd_data = defaultdict(list)
     fol_data = defaultdict(list)
     labels = ["",'1-9','10-99','100-999','1000-9999','10000+']
@@ -431,33 +448,11 @@ def graph_edge_count(rfr_dists):
 
 
 @gob.mapper(all_items=True)
-def graph_local_groups(edges):
-    data=defaultdict(list)
-    for edge in edges:
-        for key,conf in CONTACT_GROUPS.iteritems():
-            if key not in edge:
-                continue
-            amigo = edge.get(key)
-            if amigo['lofol'] is None or amigo['lofol']<.5:
-                continue
-            dist = coord_in_miles(edge['mloc'],amigo)
-            data[conf].append(dist)
-
-    ugly_graph_hist(data,
-            "local_groups.pdf",
-            xlim= (1,15000),
-            normed=True,
-            label_len=True,
-            kind="cumulog",
-            ylabel = "fraction of edges",
-            xlabel = "length of edge in miles",
-            bins = dist_bins(120),
-            )
-
-
-
-@gob.mapper(all_items=True)
 def graph_locals_10(rfr_dists):
+    """
+    graph comparison of recip friends split into bins based on the friend's
+    local contact ratio. (LCR is based on only 10 leafs here.)
+    """
     labels = [ ".0<=lcr<.25", ".25<=lcr<.5", ".5<=lcr<.75", ".75<=lcr<=1" ]
     data = defaultdict(list)
 
@@ -485,6 +480,11 @@ def graph_locals_10(rfr_dists):
 
 @gob.mapper(all_items=True)
 def graph_locals_cmp(rfr_dists):
+    """
+    graph to determine optimal number of leafs to include in local contact
+    ratio calculation. LCR is calculated for 10, 20, and 100 leafs. We plot the
+    distances to contacts who have a better-than-median LCR.
+    """
     ratio_dists = defaultdict(list)
     for amigo in rfr_dists:
         for key in ('dirt','aint','cheap'):
@@ -522,48 +522,10 @@ def graph_locals_cmp(rfr_dists):
 
 
 @gob.mapper(all_items=True)
-def graph_leaf_data(leaf_data):
-    ratio_dists = defaultdict(list)
-    one_vals = defaultdict(list)
-    zero_dists = defaultdict(list)
-    for ld in leaf_data:
-        for key in ('lorat','logavg','clip','median'):
-            if ld['key']!='rfriends':
-                continue
-            if ld['len']:
-                ratio_dists[key].append((ld[key],ld['dist']))
-                if ld['len']==1:
-                    one_vals[key].append(ld[key])
-        if ld['len']==0:
-            zero_dists[key].append(ld['dist'])
-
-    good_dists = {}
-    for key,tups in ratio_dists.iteritems():
-        #avg = np.average(one_vals[key])
-        #tups.extend([(avg,d) for d in zero_dists[key]])
-        lim = int(len(tups)*.5)
-        tups.sort(key=itemgetter(0))
-        med = tups[lim][0]
-        print key,med
-        good_dists[key] = [dist for ratio,dist in tups[:lim]]
-
-    for k,v in good_dists.iteritems():
-        print k,sum(1.0 for x in v if x<25)/len(v)
-
-    ugly_graph_hist(good_dists,
-        'leaf_data.png',
-        bins=dist_bins(120),
-        xlim=(1,15000),
-        label_len=True,
-        kind="cumulog",
-        normed=True,
-        xlabel = "length of edge in miles",
-        ylabel = "fraction of edges",
-        )
-
-
-@gob.mapper(all_items=True)
 def graph_com_types(edge_dists):
+    """
+    graph of distance to contacts split based on communication patterns
+    """
     data = defaultdict(lambda: defaultdict(list))
 
     for key,dists in edge_dists:
@@ -617,13 +579,17 @@ def graph_com_types(edge_dists):
 
 @gob.mapper(all_items=True)
 def graph_mloc_mdist(mloc_mdists):
+    """
+    graph of location error for target users when they are split into bins based
+    on their median location error
+    """
     dists = defaultdict(list)
     labels = ["",'0-10','10-100','100-1000','1000+']
     for mloc,mdist in mloc_mdists:
             bin = min(4,len(str(int(mdist))))
             width = .6*1.8**(bin-1)
             dists[labels[bin],'b','solid',width].append(mloc)
-            dists[('PLE','k','dashed',1)].append(mdist)
+            dists[('MLE','k','dashed',1)].append(mdist)
     for key,vals in dists.iteritems():
         print key,sum(1 for v in vals if v<1000)
 
@@ -641,6 +607,10 @@ def graph_mloc_mdist(mloc_mdists):
 
 @gob.mapper(all_items=True)
 def near_triads(rfr_triads):
+    """
+    Comparison of distance to mutual friend (labeled our) vs non-mutual friend
+    (labeled my).
+    """
     labels = ["",'0-10','10-100','100-1000','1000+']
     data = defaultdict(list)
 
@@ -665,58 +635,11 @@ def near_triads(rfr_triads):
 
 
 @gob.mapper(all_items=True)
-def graph_indep(rfr_indep):
-    # This function is ugly.
-
-    bins=dist_bins(120)
-    miles = np.sqrt([bins[x-1]*bins[x] for x in xrange(2,482)])
-    # FIXME: hardcoded values from _fit_stgrs in peek.py
-    fit_stgrs = 10**(1.034*(np.log10(miles))+6.207)
-
-    data = defaultdict(lambda: np.zeros(602))
-    for quad in rfr_indep:
-        for key,color in (('near','r'),('far','b')):
-            d = coord_in_miles(quad['me']['loc'],quad[key]['gnp'])
-            data[key][bisect.bisect(bins,d)]+=1
-
-    with axes('indep',legend_loc=1) as ax:
-        ax.set_xlim(1,15000)
-        #ax.set_ylim(1e-8,2e-3)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_xlabel('distance in miles')
-        ax.set_ylabel('probability of being a contact')
-
-        #window = np.bartlett(5)
-        #smooth_ratio = np.convolve(ratio,window,mode='same')/sum(window)
-        for key,vect in data.iteritems():
-            ax.plot( miles, vect[2:482]/fit_stgrs, '-', label=key)
-
-
-@gob.mapper(all_items=True)
-def plot_crowds(clusts):
-    centers = []
-    spots = []
-    for clust in clusts:
-        lng,lat = clust['loc']
-        if not (24<lat<50 and -126<lng<-66):
-            continue
-        centers.append(clust['loc'])
-
-        for crowd in clust['crowds']:
-            lng,lat = dict(crowd['graph'])['loc']
-            spots.append((lng,lat,len(crowd['nodes'])))
-
-    slngs,slats,mags = zip(*spots)
-    clngs,clats = zip(*centers)
-    with axes('crowds') as ax:
-        ax.scatter(slngs,slats,mags,alpha=.05,edgecolor='none')
-        ax.scatter(clngs,clats,c='k',marker='x',linewidth=.1)
-
-
-
-@gob.mapper(all_items=True)
 def graph_rfrd_mdist(edges_d):
+    """
+    graph CDF of distance to recip friend split into bins based on median
+    location error
+    """
     data = defaultdict(list)
     labels = ["",'0<=MLE<10','10<=MLE<100','100<=MLE<1000']
 

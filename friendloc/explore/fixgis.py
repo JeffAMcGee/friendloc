@@ -10,6 +10,7 @@ from friendloc.base.gisgraphy import GisgraphyResource
 
 @gob.mapper(all_items=True)
 def gnp_gps(users):
+    "find home location and geocoded location for geocoded users"
     gis = GisgraphyResource()
     for user in itertools.islice(users,2600,None):
         gnp = gis.twitter_loc(user['location'])
@@ -19,6 +20,7 @@ def gnp_gps(users):
 
 @gob.mapper(all_items=True)
 def mdists(gnp_gps):
+    "find median location error and save to a dict using geocoded users"
     item_cutoff=2
     kind_cutoff=5
     mdist = {}

@@ -19,6 +19,7 @@ def local_ratio(dists,cutoff=25):
 
 
 def _tile(deg):
+    """break earth into .1x.1 degree tiles"""
     return int(math.floor(10*deg))
 
 
@@ -33,6 +34,9 @@ def _paged_users(uids, **find_kwargs):
 
 @gob.mapper(all_items=True)
 def contact_count(uids):
+    """
+    count the number of contacts in each .1x.1 degree tile
+    """
     counts = collections.defaultdict(int)
     for contact in _paged_users(uids,fields=['gnp']):
         if contact.geonames_place and contact.geonames_place.mdist<1000:
@@ -44,12 +48,16 @@ def contact_count(uids):
 
 @gob.mapper(all_items=True)
 def contact_mdist(uids):
+    """fetch median location error for a set of user ids"""
     for contact in _paged_users(uids,fields=['gnp']):
         yield contact.geonames_place.mdist if contact.geonames_place else None
 
 
 @gob.mapper(all_items=True)
 def diff_mloc_mdist(uids):
+    """
+    for each target user return the location error and median location error
+    """
     for contact in _paged_users(uids,fields=['gnp','mloc']):
         if contact.geonames_place:
             dist = coord_in_miles(contact.geonames_place.to_d(),contact.median_loc)
@@ -58,12 +66,18 @@ def diff_mloc_mdist(uids):
 
 @gob.mapper(all_items=True)
 def mlocs(uids):
+    """
+    fetch the home locations for all the target users
+    """
     for target in _paged_users(uids,fields=['mloc']):
         yield target.median_loc
 
 
 @gob.mapper(all_items=True)
 def mloc_tile(mloc_uids):
+    """
+    split the target users into tiles based on their home location
+    """
     users = User.find(User._id.is_in(tuple(mloc_uids)),fields=['mloc','nebrs'])
     for user in users:
         if not user.neighbors:
@@ -74,6 +88,9 @@ def mloc_tile(mloc_uids):
 
 @gob.mapper()
 def nebr_dists(mloc_tile):
+    """
+    find the distances from target users to their contacts
+    """
     nebrs = User.find(User._id.is_in(mloc_tile['nebrs']),fields=['gnp'])
     for nebr in nebrs:
         dist = coord_in_miles(mloc_tile['mloc'], nebr.geonames_place.to_d())
@@ -84,6 +101,7 @@ def nebr_dists(mloc_tile):
 
 @gob.mapper(all_items=True)
 def tile_split(groups):
+    """split tiles into seperate files"""
     # FIXME this is evil boilerplate!
     for group,tiled_users in groups:
         for tiled_user in tiled_users:
@@ -106,6 +124,10 @@ def _dists_for_lat(lat):
 
 @gob.mapper(all_items=True,slurp={'contact_count':dict})
 def stranger_dists(mloc_tile, contact_count):
+    """
+    find the distances from every target user to every contact (even between
+    pairs with no relationship.)
+    """
     mlocs = [m['mloc'] for m in mloc_tile]
     lat = mlocs[0][1]
     assert all(_tile(m[1])==_tile(lat) for m in mlocs)
@@ -134,8 +156,23 @@ def _contact_mat(contact_count):
     return mat
 
 
+@gob.mapper()
+def lat_tile():
+    """divide the earth into 180 slices to calculate stranger_prob """
+    for tile in xrange(-900,900):
+        yield abs(tile)//10,tile
+
+
 @gob.mapper(slurp={'contact_count':_contact_mat})
 def stranger_prob(lat_tile,contact_count):
+    """
+    Calculate pStrangers for every longitude tile at a specific latitude.
+    pStrangers is the probability that a user lives at a location given the
+    locations of people they are not connected to. This step of FreindlyLocation
+    took about 2 weeks on a machine with 8 cores.
+        lat_tile should be between -900 and 900 and represents a latitude
+        contact_count is a matrix of the locations of the contacts
+    """
     lat_range = np.linspace(-89.95,89.95,1800)
     lng_range = np.linspace(.05,359.95,3600)
     lat_grid,lng_grid = np.meshgrid(lat_range, lng_range)
@@ -155,6 +192,9 @@ def stranger_prob(lat_tile,contact_count):
 
 @gob.mapper(all_items=True)
 def stranger_mat(spots):
+    """
+    combine all the values from stranger_prob in a matrix
+    """
     mat = np.zeros((3600,1800),np.float32)
     for lng_lat,val in spots:
         if not np.isnan(val):
@@ -162,14 +202,12 @@ def stranger_mat(spots):
     yield mat
 
 
-@gob.mapper()
-def lat_tile():
-    for tile in xrange(-900,900):
-        yield abs(tile)//10,tile
-
-
 @gob.mapper(all_items=True)
 def strange_nebr_bins(dist_counts):
+    """
+    count the number of strangers or contacts at a specific distance from a
+    target user
+    """
     counts = collections.defaultdict(int)
     bins = utils.dist_bins(120)
     for dist, count in dist_counts:
@@ -180,7 +218,7 @@ def strange_nebr_bins(dist_counts):
 
 @gob.mapper(all_items=True,slurp={'mlocs':list})
 def exact_strange_bins(uids,mlocs):
-    # find the distance between every contact and every target user
+    """find the distance between every contact and every target user"""
     mlngs,mlats = np.transpose(mlocs)
     bins = utils.dist_bins(120)
     counts = np.zeros(len(bins)-1)
@@ -219,13 +257,15 @@ def _fit_stgrs(miles, stgrs):
 
 @gob.mapper(slurp={'strange_bins':_bin_counts,'nebr_bins':_bin_counts})
 def contact_fit(strange_bins,nebr_bins):
+    """
+    fit the porportion of strangers at a certain distance who are contacts to a
+    curve.
+    """
     miles = _miles()
     fit_stgrs = _fit_stgrs(miles,strange_bins)
     ratios = nebr_bins/fit_stgrs
 
-    # fit the porportion of strangers who are contacts to a curve.
     def curve(lm, a, b):
-        # FIXME: what happened to c here?
         return a/(lm+b)
     popt,pcov = optimize.curve_fit(curve,miles,ratios,(.01,3))
     print popt
@@ -236,7 +276,10 @@ def contact_fit(strange_bins,nebr_bins):
 # depending on that module.
 @gob.mapper(all_items=True,slurp={'exact_strange_bins':_bin_counts})
 def vect_ratios(vects,in_paths,env,exact_strange_bins):
-    CHUNKS = 10
+    """
+    find the proportion of contacts who fit in a quantile
+    """
+    QUANTILES = 10
     bins = utils.dist_bins(120)
     # FIXME: exact_strange_bins was created from the whole dataset, but vects is
     # only based on the training set. This is fragile.
@@ -255,19 +298,22 @@ def vect_ratios(vects,in_paths,env,exact_strange_bins):
         tups = zip(preds,y)
         tups.sort(key=operator.itemgetter(0))
 
-        # unlogify the data from vects and break into chunks
+        # unlogify the data from vects and break into quantiles
         dists = np.power(2,[tup[1] for tup in tups])-.01
-        splits = [len(tups)*x//CHUNKS for x in xrange(1,CHUNKS)]
+        splits = [len(tups)*x//QUANTILES for x in xrange(1,QUANTILES)]
 
         for index,chunk in enumerate(np.split(dists,splits)):
             hist,b = np.histogram(chunk,bins)
             ratio = hist[1:481]/strange_bins
-            cutoff = tups[len(tups)*index//CHUNKS][0]
+            cutoff = tups[len(tups)*index//QUANTILES][0]
             yield (version, cutoff, tuple(ratio))
 
 
 @gob.mapper(all_items=True)
 def vect_fit(vect_ratios):
+    """
+    fit the curve for the probability of being a contact (pContact)
+    """
     miles = _miles()
     for version,cutoff,ratio in vect_ratios:
         popt,pcov = optimize.curve_fit(
@@ -284,16 +330,25 @@ def vect_fit(vect_ratios):
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
 def dirt_cheap_locals(nebr_ids,mloc_uids):
+    """
+    local contact ratio based on 10 leafs
+    """
     return cheap_locals(nebr_ids,mloc_uids,10)
 
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
 def aint_cheap_locals(nebr_ids,mloc_uids):
+    """
+    local contact ratio based on 100 leafs
+    """
     return cheap_locals(nebr_ids,mloc_uids,100)
 
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
 def cheap_locals(nebr_ids,mloc_uids,cutoff=20):
+    """
+    local contact ratio based on 20 leafs
+    """
     seen = set()
     # There can be duplicates because nebr_ids is created by clumping nebr_split
     for nebr_id in nebr_ids:
@@ -326,110 +381,10 @@ def cheap_locals(nebr_ids,mloc_uids,cutoff=20):
 
 
 @gob.mapper()
-def first_contacts(pred_user):
-    me = User(pred_user)
-    if not me.neighbors:
-        return
-    nebrs = set(me.neighbors)
-
-    for key in User.NEBR_KEYS:
-        amigos = [a for a in getattr(me,key) if a in nebrs]
-        if not amigos:
-            continue
-        yield User.mod_id(amigos[0]),amigos[0]
-
-
-@gob.mapper(all_items=True,slurp={'mloc_uids':set})
-def leaf_dists(nebr_ids,mloc_uids):
-    seen = set()
-    # There can be duplicates because nebr_ids is created by clumping nebr_split
-    for nebr_id in nebr_ids:
-        if nebr_id in seen:
-            continue
-        seen.add(nebr_id)
-
-        user = User.get_id(nebr_id)
-        user_loc = user.geonames_place.to_d()
-
-        cids = [
-            cid
-            for cid in user.rfriends or ()
-            if cid not in mloc_uids
-            ]
-        if not cids:
-            continue
-        random.shuffle(cids)
-        leafs = User.find(User._id.is_in(cids), fields=['gnp'])
-
-        def leaf_dist(leaf):
-            if leaf.has_place():
-                return coord_in_miles(user_loc,leaf.geonames_place.to_d())
-            else:
-                return None
-
-        yield nebr_id, map(leaf_dist,leafs)
-
-
-def _dist_dict(leaf_dists):
-    res = {}
-    for ld in leaf_dists:
-        for key in ['rfriends','just_followers','just_friends']:
-            leafs = [dist for dist in ld.get(key,[]) if dist is not None]
-            res[ld['_id'],key] = np.array(leafs)
-    return res
-
-
-@gob.mapper(all_items=True,slurp={'old_leaf_dists':_dist_dict})
-def leaf_data(edge_ds,old_leaf_dists):
-    for edge_d in edge_ds:
-        amigo = edge_d.get('rfrd')
-        if not amigo:
-            continue
-
-        for key in ['rfriends','just_followers','just_friends']:
-            leafs = old_leaf_dists[amigo['_id'],key]
-            dist = coord_in_miles(edge_d['mloc'],amigo)
-            res = dict( dist=dist, key=key, len=len(leafs) )
-            if len(leafs):
-                res['lorat']=-local_ratio(leafs)
-                res['logavg']=np.average(np.log(leafs+1))
-                res['cutlogavg']=np.average(np.log(10+np.minimum(leafs+1,1000)))
-                res['clip']=np.average(np.log10(np.clip(leafs,10,100)))
-                res['median']=np.median(leafs)
-            yield res
-
-
-@gob.mapper()
-def contact_blur(nebr_id):
-    leafs = {}
-    user = User.get_id(nebr_id)
-    if user.local_friends is not None or user.local_followers is not None:
-        return
-    for key in ['rfriends','just_followers','just_friends']:
-        cids = getattr(user,key)
-        if cids:
-            contacts = User.find(User._id.is_in(cids), fields=['gnp'])
-            leafs[key] = [u for u in contacts if u.has_place()]
-        else:
-            leafs[key] = []
-    user_loc = user.geonames_place.to_d()
-    for kind in ('friends','followers'):
-        contacts = leafs['rfriends'] + leafs['just_'+kind]
-        dists = [
-            coord_in_miles(user_loc,contact.geonames_place.to_d())
-            for contact in contacts]
-        if dists:
-            blur = sum(1.0 for d in dists if d<25)/len(dists)
-            yield len(dists),blur
-        else:
-            blur = None
-            logging.info('no %s for %s - %d',kind,user.screen_name,user._id)
-        setattr(user,'local_'+kind,blur)
-    user.save()
-
-
-@gob.mapper()
 def geo_ats():
+    """
+    fetch all at mentions from database
+    """
     for tweets in Tweets.find({},fields=['ats']):
         if tweets.ats:
             uid = tweets._id
@@ -438,6 +393,10 @@ def geo_ats():
 
 @gob.mapper()
 def at_tuples(geo_at):
+    """
+    create (mentioned user, tweet creator) pairs from geo_ats, and split based
+    on user id of mentioned user
+    """
     uid,ats = geo_at
     for at in ats:
         yield User.mod_id(at), (at,uid)
@@ -445,6 +404,10 @@ def at_tuples(geo_at):
 
 @gob.mapper(all_items=True,slurp={'mloc_uids':set})
 def geo_ated(at_tuples,mloc_uids):
+    """
+    create dictionary mapping target user ids to contacts who mentioned the
+    taregt users
+    """
     ated = collections.defaultdict(list)
     for to, frm in at_tuples:
         if to in mloc_uids:
@@ -462,6 +425,10 @@ def _in_usa(lng,lat):
 
 @gob.mapper(slurp={'geo_ats':dict})
 def edges_d(user_d, geo_ats):
+    """
+    create one dict per target user with information about one selected contact
+    for each of the four types of contact
+    """
     me = User(user_d)
     if not me.neighbors:
         return []
@@ -501,6 +468,10 @@ def edges_d(user_d, geo_ats):
 
 @gob.mapper()
 def edge_dists(edge_d):
+    """
+    distill an edge_d into a smaller amount of information about each of the
+    types of edges
+    """
     keys = ('jfol','jfrd','rfrd','jat')
     for key in keys:
         amigo = edge_d.get(key)
@@ -514,6 +485,10 @@ def edge_dists(edge_d):
 
 @gob.mapper(slurp={'dirt_cheap_locals':dict,'cheap_locals':dict,'aint_cheap_locals':dict})
 def rfrd_dists(edge_d,dirt_cheap_locals,cheap_locals,aint_cheap_locals):
+    """
+    get the three different local contact ratios for recip friends, combine with
+    actual distance from target to recip friend
+    """
     amigo = edge_d.get('rfrd')
     if amigo:
         amigo['dist'] = coord_in_miles(edge_d['mloc'],amigo)
@@ -524,25 +499,17 @@ def rfrd_dists(edge_d,dirt_cheap_locals,cheap_locals,aint_cheap_locals):
 
 
 @gob.mapper()
-def edge_leaf_dists(edge_d):
-    #FIXME: why does this exist?
-    #FIXME: limit to contacts in 20..29 for now
-    if not edge_d.get('rfrd') or str(edge_d['rfrd'])[-2]!='2':
-        return
-    rfrd = User.get_id(edge_d['rfrd']['_id'])
-    edge_dist = coord_in_miles(edge_d['mloc'],edge_d['rfrd'])
-    contacts = User.find(User._id.is_in(rfrd.contacts), fields=['gnp'])
-    dists = [
-        coord_in_miles(edge_d['rfrd'],contact.geonames_place.to_d())
-        for contact in contacts
-        if contact.has_place()
-        ]
-    if dists:
-        yield edge_dist,dists
-
-
-@gob.mapper()
 def rfr_triads(user_d):
+    """
+    find a target users with a social triangle and a recip friend not in that
+    triangle. Return info about all four users.
+    """
+    # We are looking for this structure in the social graph:
+    # my  you---our
+    #   \  |  /
+    #      me
+    # me is a target user, the other users are contacts, and the edges are all
+    # reciprocal.
     me = User(user_d)
     me_rfr = set(me.rfriends or []).intersection(me.neighbors or [])
     if len(me_rfr)<3:
@@ -566,33 +533,4 @@ def rfr_triads(user_d):
                 gnp.pop('zipcode',None)
                 v['loc'] = gnp
             return [d]
-    return []
-
-
-@gob.mapper()
-def rfr_indep(user_d):
-    me = User(user_d)
-    me_rfr = set(me.rfriends or []).intersection(me.neighbors or [])
-    if len(me_rfr)<3:
-        return []
-    nebrs = list(User.find(User._id.is_in(list(me_rfr)), fields=['gnp']))
-    lats = np.array([nebr.geonames_place.lat for nebr in nebrs])
-    lngs = np.array([nebr.geonames_place.lng for nebr in nebrs])
-    for nebr in nebrs:
-        gnp = nebr.geonames_place
-        dists = utils.np_haversine(gnp.lng, lngs, gnp.lat, lats)
-        near = dists<25
-        far = dists>250
-        if not any(near) or not any(far):
-            continue
-        near_nebr = nebrs[random.choice(near.nonzero()[0])]
-        far_nebr = nebrs[random.choice(far.nonzero()[0])]
-
-        d = dict(
-            me = dict(_id=me._id,loc=me.median_loc),
-            nebr = nebr.to_d(),
-            near = near_nebr.to_d(),
-            far = far_nebr.to_d(),
-            )
-        return [d]
     return []

@@ -15,8 +15,12 @@ NEBR_KEYS = ['rfriends','just_followers','just_friends','just_mentioned']
 
 @gob.mapper(all_items=True)
 def parse_geotweets(tweets):
-    # USAGE:
-    # gunzip -c ~/may/*/*.gz | ./gb.py -s parse_geotweets
+    """
+    read tweets from Twitter's streaming API and save users and their tweets
+    USAGE: gunzip -c ~/may/*/*.gz | ./gb.py -s parse_geotweets
+    """
+    # We save users and locations intermingled because this data is too big to
+    # fit in memory, and we do not want to do two passes.
     users = set()
     for i,t in enumerate(tweets):
         if i%10000 ==0:
@@ -45,6 +49,9 @@ def _untangle_users_and_coords(users_and_coords):
 
 @gob.mapper(all_items=True)
 def mloc_users(users_and_coords):
+    """
+    pick users with good home locations from geotweets
+    """
     users, locs = _untangle_users_and_coords(users_and_coords)
     selected = []
     for uid,user in users.iteritems():
@@ -63,6 +70,10 @@ def mloc_users(users_and_coords):
 
 @gob.mapper(all_items=True)
 def mloc_reject_count(users_and_coords):
+    """
+    count the number of users we ignored in mloc_users. (This job was done to
+    calculate a number for the paper, and is almost trash.)
+    """
     results = collections.defaultdict(int)
     users, locs = _untangle_users_and_coords(users_and_coords)
     for uid,user in users.iteritems():
@@ -157,6 +168,9 @@ def _my_contacts(user):
 
 @gob.mapper(all_items=True)
 def find_contacts(user_ds):
+    """
+    for each target user, fetch edges and tweets, pick 100 located contact ids
+    """
     gis = gisgraphy.GisgraphyResource()
     twit = twitter.TwitterResource()
     for user_d in itertools.islice(user_ds,2600):
@@ -173,6 +187,9 @@ def find_contacts(user_ds):
 
 @gob.mapper()
 def find_leafs(uid):
+    """
+    for each contact, fetch edges and tweets, pick 100 leaf ids
+    """
     twit = twitter.TwitterResource()
     user = User.get_id(uid)
     _save_user_contacts(twit, user, _pick_random_contacts, limit=100)
@@ -181,6 +198,9 @@ def find_leafs(uid):
 
 @gob.mapper(all_items=True)
 def total_contacts(user_ds):
+    """
+    count the total number of contacts (to include in the paper)
+    """
     for user_d in itertools.islice(user_ds,2600):
         user = User.get_id(user_d['id'])
 
@@ -200,6 +220,9 @@ def total_contacts(user_ds):
 
 @gob.mapper(all_items=True)
 def mloc_uids(user_ds):
+    """
+    pick 2500 target users who have locations and good contacts
+    """
     retrieved = [u['id'] for u in itertools.islice(user_ds,2600)]
     users = User.find(User._id.is_in(retrieved))
     good_ = { u._id for u in users if any(getattr(u,k) for k in NEBR_KEYS)}
@@ -228,22 +251,22 @@ def trash_extra_mloc(mloc_uids):
     db.User.remove({'_id':{'$in':trash}})
 
 
-@gob.mapper(all_items=True)
-def contact_split(groups):
-    # FIXME this is now identical to nebr_split
-    for group,ids in groups:
-        for id in ids:
-            yield group,id
-
-
 @gob.mapper()
 def saved_users():
+    """
+    Create set of ids already already in the database so that lookup_contacts
+    can skip these users.  Talking to the database in lookup_contacts to check
+    if users are in the database is too slow.
+    """
     users = User.database.User.find({},fields=[],timeout=False)
     return ((User.mod_id(u['_id']),u['_id']) for u in users)
 
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def lookup_contacts(contact_uids,mdists,env):
+    """
+    lookup user profiles for contacts or leafs
+    """
     twit = twitter.TwitterResource()
     gis = gisgraphy.GisgraphyResource()
     gis.set_mdists(mdists)
@@ -292,6 +315,9 @@ def _pick_neighbors(user):
 
 @gob.mapper()
 def pick_nebrs(mloc_uid):
+    """
+    For each target user, pick the 25 located contacts.
+    """
     # reads predict.prep.mloc_uids, requires lookup_contacts, but don't read it.
     user = User.get_id(mloc_uid)
     user.neighbors = _pick_neighbors(user)
@@ -301,6 +327,9 @@ def pick_nebrs(mloc_uid):
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def fix_mloc_mdists(mloc_uids,mdists):
+    """
+    Add the median location error to profiles of contacts and target users.
+    """
     gis = gisgraphy.GisgraphyResource()
     gis.set_mdists(mdists)
     # We didn't have mdists at the time the mloc users were saved. This
@@ -318,7 +347,10 @@ def fix_mloc_mdists(mloc_uids,mdists):
 
 
 @gob.mapper(all_items=True)
-def nebr_split(groups):
+def uid_split(groups):
+    """
+    after a set reduce, split up the user ids into seperate files
+    """
     # This method should really be built into gob somehow.
     return (
         (group, id)

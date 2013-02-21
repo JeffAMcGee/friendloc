@@ -47,7 +47,7 @@ def create_jobs(g):
     g.add_map_job(sprawl.find_contacts,'mloc_users',
               reducer=gob.set_reduce)
     g.add_map_job(sprawl.total_contacts,'mloc_users')
-    g.add_map_job(sprawl.contact_split,'find_contacts',saver='split_save')
+    g.add_map_job(sprawl.uid_split,'find_contacts',name="contact_split",saver='split_save')
 
     g.add_map_job(fixgis.gnp_gps,'mloc_users')
     g.add_cat('cat_gnp_gps','gnp_gps')
@@ -62,7 +62,7 @@ def create_jobs(g):
                         'fix_mloc_mdists'],
               reducer=gob.set_reduce,
               )
-    g.add_map_job(sprawl.nebr_split, 'pick_nebrs', saver='split_save')
+    g.add_map_job(sprawl.uid_split, 'pick_nebrs', name="nebr_split", saver='split_save')
     g.add_map_job(sprawl.find_leafs,'nebr_split',reducer=gob.set_reduce)
     g.add_map_job(sprawl.contact_split,'find_leafs',
               name='leaf_split',saver='split_save')
@@ -79,7 +79,6 @@ def create_jobs(g):
                 source='nebr_split', name='nebr_ids')
 
     g.add_map_job(peek.mlocs,'mloc_uids')
-    g.add_cat('cat_mlocs','mlocs')
     g.add_map_job(peek.exact_strange_bins, 'nebr_ids', requires=['mlocs'],
                   reducer=gob.sum_reduce)
 
@@ -106,14 +105,8 @@ def create_jobs(g):
                   requires=['contact_blur','cheap_locals',
                             'dirt_cheap_locals','aint_cheap_locals'])
     g.add_cat('cat_rfrd_dists','rfrd_dists')
-    g.add_map_job(peek.edge_leaf_dists,'edges_d')
 
     g.add_map_job(peek.first_contacts,'pred_users',reducer=gob.set_reduce)
-    g.add_map_job(sprawl.contact_split,'first_contacts',name='split_first',saver='split_save')
-    g.add_map_job(peek.leaf_dists, 'split_first', name='old_leaf_dists') #BOGUS
-    g.add_map_job(peek.leaf_data,'edges_d',requires=['old_leaf_dists'])
-    g.add_cat('cat_leaf_data','leaf_data')
-    g.add_map_job(graph.graph_leaf_data,'cat_leaf_data')
 
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
@@ -124,16 +117,11 @@ def create_jobs(g):
     g.add_map_job(graph.graph_locals_10,'cat_rfrd_dists')
     g.add_map_job(graph.graph_locals_cmp,'cat_rfrd_dists')
     g.add_cat('cat_edges_d','edges_d')
-    g.add_map_job(graph.graph_local_groups,'cat_edges_d')
     g.add_map_job(graph.graph_rfrd_mdist,'cat_edges_d')
 
     g.add_map_job(peek.rfr_triads,'pred_users')
     g.add_cat('cat_rfr_triads','rfr_triads')
     g.add_map_job(graph.near_triads,'cat_rfr_triads')
-
-    g.add_map_job(peek.rfr_indep,'pred_users')
-    g.add_cat('cat_rfr_indep','rfr_indep')
-    g.add_map_job(graph.graph_indep,'cat_rfr_indep')
 
     g.add_map_job(peek.diff_mloc_mdist,'mloc_uids')
     g.add_cat('cat_diff_mloc_mdist','diff_mloc_mdist')

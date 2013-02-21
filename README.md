@@ -54,3 +54,16 @@ The lo-calorie twitter neighborhood crawler.
 
 This was started as a seperate project, but it is now contained in the
 localcrawl subdirectory. It is probably broken.
+
+Nomenclature
+------------
+In the process of writing the FriendlyLocation paper, I renamed a few things.
+This code still uses the old names.
+
+paper                   | code
+++++++++++++++++++++++++++++++++++++++++++++++++
+target users            | mloc users
+home location           | mloc, median_loc
+contact                 | neighbor
+median location error   | mdist
+pContact                | vect_ratios
