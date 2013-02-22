@@ -25,13 +25,18 @@ def _crawl_pred_one(user,twit,gis,pred,fast):
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def crawl_predict_fast(user_ds, env, mdists):
+    """
+    takes a user dictionary, runs the crawler and predictor without using
+    information from leafs or edges of contacts
+    """
     return crawl_predict(user_ds, env, mdists, fast=True)
 
 
 @gob.mapper(all_items=True,slurp={'mdists':next})
 def crawl_predict(user_ds, env, mdists, fast=False):
     """
-    takes a user dictionary, runs the crawler and predictor
+    takes a user dictionary, runs the crawler and predictor using information
+    from leafs
     """
     twit = twitter.TwitterResource()
     gis = gisgraphy.GisgraphyResource()

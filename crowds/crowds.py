@@ -17,6 +17,10 @@ import crowds.community
 
 @gob.mapper(all_items=True)
 def connected_ids(tweets):
+    """
+    read in tweets and pick out user ids in strongly connected component
+    USAGE: zcat /spare/twitwatch/conv/*/*.gz | ./gb.py -s connected_ids
+    """
     ats = nx.DiGraph()
     for tweet in tweets:
         uid = tweet['user']['id']
@@ -39,11 +43,20 @@ def _filter_users_from_tweets(tweets,filt):
 
 @gob.mapper(all_items=True,slurp={'connected_ids':set})
 def connected_users(tweets,connected_ids):
+    """
+    read in tweets and return user dicts for user ids in connected_ids
+    USAGE: zcat /spare/twitwatch/conv/*/*.gz | ./gb.py -s connected_users
+    """
+    # FIXME: rearrange this so we make fewer passes over the data
     return _filter_users_from_tweets(tweets, lambda uid: uid in connected_ids)
 
 
 @gob.mapper(all_items=True,slurp={'connected_ids':set})
 def disconnected_users(tweets,connected_ids):
+    """
+    read in tweets and return user dicts for user ids not in connected_ids
+    USAGE: zcat /spare/twitwatch/conv/*/*.gz | ./gb.py -s disconnected_users
+    """
     return _filter_users_from_tweets(tweets, lambda uid: uid not in connected_ids)
 
 
@@ -68,7 +81,10 @@ def _key_set(kvs):
 
 @gob.mapper(all_items=True,slurp={'user_locs':_key_set})
 def daily_ats(tweets,user_locs):
-    """split up the mentions and retweets based on the day"""
+    """
+    split up the mentions and retweets based on the day
+    USAGE: zcat /spare/twitwatch/conv/*/*.gz | ./gb.py -s disconnected_users
+    """
     for tweet in tweets:
         uid = tweet['user']['id']
         if uid not in user_locs:
@@ -88,6 +104,9 @@ NearEdge = collections.namedtuple('NearEdge','frm to dist day at rt')
 
 @gob.mapper(all_items=True,slurp={'user_locs':dict})
 def near_edges(daily_ats, user_locs, in_paths):
+    """
+    keep edges from daily_ats between users who live within 25 miles
+    """
     # FIXME: I'm really starting to dislike in_paths
     day_name = in_paths[0].split('.')[-1]
     dt = datetime.datetime.strptime(day_name,"%Y-%m-%d")
@@ -147,6 +166,11 @@ def weak_comps(edges,user_locs):
 
 @gob.mapper(all_items=True)
 def find_crowds(weak_comps):
+    """
+    break up big connected components using crowd detection algorithm, add
+    details to crowds
+    """
+    #FIXME: I think the crowds = [] definition hides the import crowds.community
     crowds = []
     for crowd,weak_comp in enumerate(weak_comps):
         g = json_graph.adjacency_graph(weak_comp)
@@ -185,6 +209,9 @@ def find_crowds(weak_comps):
 
 @gob.mapper(all_items=True)
 def save_crowds(crowds):
+    """
+    save crowds to mongo
+    """
     for crowd_ in crowds:
         crowd = json_graph.adjacency_graph(crowd_)
         c = models.Crowd(
@@ -215,6 +242,9 @@ def _user_crowds(crowds):
 
 @gob.mapper(all_items=True,slurp={'find_crowds':_user_crowds})
 def save_users(user_ds,find_crowds):
+    """
+    save users to mongo
+    """
     # FIXME: allow renaming slurped stuff
     user_crowds = find_crowds
     for user_d in user_ds:
@@ -227,6 +257,10 @@ def save_users(user_ds,find_crowds):
 
 @gob.mapper(all_items=True,slurp={'find_crowds':_user_crowds})
 def save_tweets(tweets,find_crowds):
+    """
+    save tweets to mongo from streaming api files
+    USAGE: zcat /spare/twitwatch/conv/*/*.gz | ./gb.py -s save_tweets
+    """
     # FIXME: allow renaming slurped stuff
     user_crowds = find_crowds
     for tweet in tweets:
@@ -251,6 +285,10 @@ def save_tweets(tweets,find_crowds):
 
 @gob.mapper(all_items=True)
 def count_topics(crowds):
+    """
+    Analyze the topics a crowd is discussing.  (Currently only sorts between
+    democratic and republican terms.)
+    """
     #FIXME: don't hardcode political details here
     topics = dict(
         red = ('romney','mitt','gop'),

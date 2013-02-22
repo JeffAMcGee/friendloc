@@ -26,6 +26,9 @@ def _load_geo_ated(geo_ated):
 
 @gob.mapper(slurp={'geo_ated':_load_geo_ated,'dirt_cheap_locals':dict})
 def nebr_vect(user,geo_ated,dirt_cheap_locals):
+    """
+    create a vector for each edge from a target to a contact
+    """
     mentioned = geo_ated.get(user['_id'],())
     for nebr in user['nebrs']:
         # I really don't like the way I did these flags.
@@ -44,7 +47,9 @@ def nebr_vect(user,geo_ated,dirt_cheap_locals):
 
 
 def vects_as_mat(vects):
-    # convert vects to a scaled numpy array
+    """
+    convert nebr_vects to a scaled numpy array
+    """
     vects_ = np.fromiter( chain.from_iterable(vects), np.float32 )
     vects_.shape = (len(vects_)//12),12
     X = np.array(vects_[:,:-1])
@@ -58,6 +63,10 @@ def vects_as_mat(vects):
 
 @gob.mapper(all_items=True)
 def nebr_clf(vects):
+    """
+    train two classifiers from nebr_vect data: one using information from leafs,
+    and one without.
+    """
     X, y = vects_as_mat(vects)
     clf = tree.DecisionTreeRegressor(min_samples_leaf=1000)
     clf.fit(X,y)
@@ -158,6 +167,10 @@ def _calc_dists(nebrs_d):
 
 @gob.mapper(all_items=True,slurp={'geo_ated':_load_geo_ated,'dirt_cheap_locals':dict})
 def predictions(nebrs_ds, env, in_paths, geo_ated, dirt_cheap_locals):
+    """
+    predict location for target users using a variety of methods, including a
+    few baselines
+    """
     # This function is a stepping-stone to removing a useless class.
     p = Predictors(env)
     return p.predictions(nebrs_ds,in_paths,geo_ated,dirt_cheap_locals)
@@ -313,6 +326,9 @@ def _aed(ratio,vals):
 
 @gob.mapper(all_items=True)
 def eval_preds(preds):
+    """
+    evaluate the predictions using average error distance and accuracy
+    """
     for key,vals in preds:
         local = sum(1 for v in vals if v<25)
         results = dict(
@@ -327,6 +343,10 @@ def eval_preds(preds):
 
 @gob.mapper(all_items=True)
 def eval_stats(stats):
+    """
+    combine the results from the five folds to get average and standard
+    deviation of the results
+    """
     for eval_key,groups in sorted(stats):
         print eval_key
         row = []

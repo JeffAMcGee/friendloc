@@ -205,7 +205,7 @@ def create_jobs(g):
     g.add_map_job(crowds.find_crowds, 'weak_comps')
     g.add_map_job(crowds.save_crowds, 'find_crowds')
     g.add_map_job(crowds.count_topics, 'find_crowds', requires=['save_crowds'])
-    g.add_map_job(crowds.save_users, 'connected_users')
+    g.add_map_job(crowds.save_users, 'connected_users',requires=['find_crowds'])
     g.add_map_job(crowds.save_tweets, 'tweets', requires=['find_crowds'])
 
 def make_gob(args):

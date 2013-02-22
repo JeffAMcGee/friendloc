@@ -19,6 +19,9 @@ NEBR_FLAGS = {
 
 @gob.mapper(all_items=True)
 def pred_users(uids):
+    """
+    fetch target users from database
+    """
     for g in utils.grouper(100,uids,dontfill=True):
         ids_group = tuple(g)
         for u in User.find(User._id.is_in(ids_group)):
@@ -84,6 +87,9 @@ def make_nebrs_d(user,nebrs,ats):
 
 @gob.mapper(slurp={'mloc_blur':tuple})
 def nebrs_d(user_d,mloc_blur):
+    """
+    create dict with lots of information about a target user's located contacts
+    """
     mb = MlocBlur(*mloc_blur)
     user = User(user_d)
     nebrs = User.find(User._id.is_in(user_d['nebrs']))
@@ -97,6 +103,11 @@ def nebrs_d(user_d,mloc_blur):
 
 @gob.mapper()
 def mloc_blur(env):
+    """
+    Target users provide more specific locations in their profile.  Add noise to
+    geocoded locations (not home locations) of target users so that the median
+    location error matches the distribution of the contacts' MLE.
+    """
     cutoff = 250000
     mdists = {}
     for key in ('mloc','contact'):
@@ -122,6 +133,9 @@ def mloc_blur(env):
 
 @gob.mapper(all_items=True)
 def utc_offset(nebrs_d):
+    """
+    compare utc offset of target users to longitude
+    """
     lngs = []
     utcos = []
     for u in nebrs_d:
@@ -138,6 +152,10 @@ def utc_offset(nebrs_d):
 
 @gob.mapper(all_items=True)
 def mdist_real(nebrs_d):
+    """
+    compare median location error to the actual location error for the target
+    users after adding noise to home location in mloc_blur
+    """
     data = collections.defaultdict(list)
     for nebr_d in nebrs_d:
         if not nebr_d['gnp']:
@@ -156,6 +174,9 @@ def mdist_real(nebrs_d):
 
 @gob.mapper(all_items=True)
 def mdist_curves(mdist_real):
+    """
+    fit curve comparing median location error to the actual location error
+    """
     CHUNKS = 10
     dists_ = np.array(list(mdist_real))
     dists = dists_[dists_[:,0].argsort()]
