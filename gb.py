@@ -7,7 +7,8 @@ import itertools
 
 from maroon import Model
 
-from crowds import crowds
+from crowds import crowds, msl
+from crowds import msl
 import friendloc
 from friendloc.explore import peek, sprawl, fixgis, graph
 from friendloc.predict import prep, fl, full
@@ -201,6 +202,10 @@ def create_jobs(g):
     g.add_map_job(crowds.count_topics, 'find_crowds', requires=['save_crowds'])
     g.add_map_job(crowds.save_users, 'connected_users',requires=['find_crowds'])
     g.add_map_job(crowds.save_tweets, 'tweets', requires=['find_crowds'])
+
+    g.add_map_job(msl.msl_users, 'tweets', saver='split_save')
+    g.add_map_job(full.crawl_predict_fast, 'msl_users', name='msl_locs')
+
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')
