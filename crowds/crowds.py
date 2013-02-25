@@ -257,10 +257,10 @@ def count_topics(crowds):
         blue = ('obama','barack','dnc','charlottein2012'),
     )
     for crowd_ in crowds:
-        crowd = json_graph.adjacency_graph(crowd_)
-        query = {'cid':int(crowd.graph['id'])}
+        crowd_id = dict(crowd_['graph'])['id']
+        crowd = models.Crowd.get_id(crowd_id)
         counts = collections.defaultdict(int)
-        for tweet in models.Tweet.find(query):
+        for tweet in models.Tweet.find({'cid':crowd_id}):
             for label,terms in topics.iteritems():
                 text = tweet.text.lower()
                 if any(term in text for term in terms):
