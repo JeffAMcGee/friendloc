@@ -367,7 +367,7 @@ def graph_rfrd_norm(edge_dists):
         bins=dist_bins(40),
         xlim=(1,15000),
         ylim=(0,3100),
-        figsize=(12,5),
+        figsize=(12,4),
         label_len=True,
         legend_loc=2,
         kind="logsquare",
