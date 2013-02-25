@@ -1,3 +1,6 @@
+#FIXME: move this to settings.py
+
+
 class _SettingsBunch(dict):
     def __getattr__(self, name):
         return self[name]
