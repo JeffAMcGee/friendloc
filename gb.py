@@ -64,14 +64,12 @@ def create_jobs(g):
               )
     g.add_map_job(sprawl.uid_split, 'pick_nebrs', name="nebr_split", saver='split_save')
     g.add_map_job(sprawl.find_leafs,'nebr_split',reducer=gob.set_reduce)
-    g.add_map_job(sprawl.contact_split,'find_leafs',
+    g.add_map_job(sprawl.uid_split,'find_leafs',
               name='leaf_split',saver='split_save')
     g.add_map_job(sprawl.saved_users,saver='split_save')
     g.add_map_job(sprawl.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
-    g.add_map_job(peek.contact_blur,'nebr_split',
-                  requires=['lookup_leafs'],reducer=gob.avg_reduce)
     def nebr_clump(keys, clump):
         return keys[1]==clump
 
@@ -91,7 +89,6 @@ def create_jobs(g):
     g.add_map_job(peek.aint_cheap_locals, 'nebr_ids',
               requires=['lookup_leafs'], procs=4,
               )
-    g.add_map_job(peek.leaf_dists, 'nebr_ids', requires=['lookup_leafs'], procs=3)
 
     # the graphs
     g.add_map_job(peek.geo_ats,saver='split_save',requires=['find_leafs'])
@@ -102,11 +99,8 @@ def create_jobs(g):
     g.add_map_job(peek.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.rfrd_dists,'edges_d',
-                  requires=['contact_blur','cheap_locals',
-                            'dirt_cheap_locals','aint_cheap_locals'])
+                  requires=['cheap_locals','dirt_cheap_locals','aint_cheap_locals'])
     g.add_cat('cat_rfrd_dists','rfrd_dists')
-
-    g.add_map_job(peek.first_contacts,'pred_users',reducer=gob.set_reduce)
 
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
@@ -160,7 +154,7 @@ def create_jobs(g):
 
     # prep
     g.add_map_job(prep.nebrs_d,'pred_users',
-              requires=['mloc_blur','lookup_leafs','contact_blur'])
+              requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, folds, 'nebrs_d', name='nebrs_train')
     g.add_clump(eval_set, folds, 'nebrs_d', name='nebrs_eval')
 
