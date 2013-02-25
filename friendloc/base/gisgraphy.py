@@ -78,17 +78,14 @@ class GisgraphyResource(Resource):
             res.mdist = self.mdist(res)
             return res
         # try splitting q in half
-        found = None
         for splitter in ('and','or','/'):
             parts = q.split(splitter)
             if len(parts)==2:
                 for part in parts:
                     res = self.twitter_loc(part)
-                    if res and in_local_box(res.to_d()):
-                        return res
                     if res:
-                        found = res
-        return found
+                        return res
+        return None
 
 if __name__ == '__main__':
     res = GisgraphyResource()
