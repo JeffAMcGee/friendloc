@@ -20,7 +20,7 @@ import numpy as np
 
 from friendloc.explore import peek
 from friendloc.base.utils import dist_bins, coord_in_miles
-from friendloc.base import gob
+from friendloc.base import gob, utils
 
 
 #CONTACT_GROUPS = dict(
@@ -242,6 +242,38 @@ def graph_stranger_mat(stranger_mat):
     buff = np.require(fit,np.uint8,['C_CONTIGUOUS'])
     img = PIL.Image.frombuffer('L',(3600,1800),buff)
     img.save('stranger_mat.png')
+
+
+@gob.mapper(all_items=True)
+def graph_example_probs(vect_fit, in_paths):
+    """
+    create an example of maximum likeliehood estimation for four friends
+    """
+    if in_paths[0][-1] != '0':
+        return
+    curves = [fit for vers,cutoff,fit in vect_fit if vers=='leaf']
+
+    lat_range = np.linspace(27.01,32.99,5*60)
+    lng_range = np.linspace(-100.99,-93.01,5*80)
+    lat_grid, lng_grid = np.meshgrid(lat_range, lng_range)
+    print lat_range, lng_range
+
+    probs = np.zeros_like(lat_grid)
+
+    spots = (
+        (-95.31, 29.73, 0), # Houston
+        (-96.37, 30.67, 1), # Bryan, TX
+        (-99.25, 31.25, 5), # Texas
+        (-97.74, 30.27, 3), # Austin
+    )
+    for lng, lat, curve in spots:
+        dists = utils.np_haversine(lng, lng_grid, lat, lat_grid)
+        probs+=np.log(peek.contact_curve(dists,*(curves[curve])))
+
+    clipped = 255.999*(np.max(probs)-probs)/np.ptp(probs)
+    buff = np.require(np.transpose(clipped),np.uint8,['C_CONTIGUOUS'])
+    img = PIL.Image.frombuffer('L',(clipped.shape),buff)
+    img.save('example_probs.png')
 
 
 @gob.mapper(all_items=True)
