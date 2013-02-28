@@ -176,7 +176,6 @@ def create_jobs(g):
               requires=['strange_bins','nebr_clf'] )
     g.add_map_job(peek.vect_fit, 'vect_ratios')
     g.add_map_job(graph.graph_vect_fit,'vect_fit')
-    g.add_map_job(graph.graph_example_probs,'vect_fit')
     g.add_map_job(fl.predictions,'nebrs_eval',
               requires=['stranger_mat','mdist_curves','vect_fit','utc_offset','contact_fit'])
     g.add_cat('preds_cat','predictions')
@@ -186,6 +185,9 @@ def create_jobs(g):
     #g.add_map_job(graph.gr_usonly,'preds_us')
     g.add_map_job(fl.eval_preds,'predictions',reducer=gob.join_reduce)
     g.add_map_job(fl.eval_stats,'eval_preds')
+
+    g.add_map_job(graph.graph_example_probs,'vect_fit')
+    g.add_map_job(graph.graph_example_contacts,())
 
     g.add_source(utils.read_tweets, name='tweets')
     g.add_map_job(crowds.connected_ids, 'tweets')
@@ -203,6 +205,7 @@ def create_jobs(g):
     g.add_map_job(crowds.count_topics, 'find_crowds', requires=['save_crowds'])
     g.add_map_job(crowds.save_users, 'connected_users',requires=['find_crowds'])
     g.add_map_job(crowds.save_tweets, 'tweets', requires=['find_crowds'])
+
 
     g.add_map_job(msl.msl_users, 'tweets', saver='split_save')
     g.add_map_job(full.crawl_predict_fast, 'msl_users', name='msl_locs')
