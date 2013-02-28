@@ -24,8 +24,8 @@ def msl_users(tweets):
 def msl_id_locs(msl_locs):
     """create mapping from user id to location"""
     for user in msl_locs:
-        if 'ploc' in user:
-            yield user['_id'],user['ploc']
+        if user.get('ploc'):
+            yield user['id'],user['ploc']
 
 
 @gob.mapper(all_items=True,slurp={'msl_id_locs':dict})

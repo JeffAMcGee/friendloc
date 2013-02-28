@@ -205,10 +205,9 @@ def create_jobs(g):
     g.add_map_job(crowds.save_users, 'connected_users',requires=['find_crowds'])
     g.add_map_job(crowds.save_tweets, 'tweets', requires=['find_crowds'])
 
-
     g.add_map_job(msl.msl_users, 'tweets', saver='split_save')
     g.add_map_job(full.crawl_predict_fast, 'msl_users', name='msl_locs')
-    g.add_map_job(msl.msl_id_locs, 'msl_users', name='msl_locs')
+    g.add_map_job(msl.msl_id_locs, 'msl_locs')
     g.add_map_job(msl.msl_tweet_locs, 'tweets', requires=['msl_id_locs'])
 
 
