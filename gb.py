@@ -8,7 +8,6 @@ import itertools
 from maroon import Model
 
 from crowds import crowds, msl
-from crowds import msl
 import friendloc
 from friendloc.explore import peek, sprawl, fixgis, graph
 from friendloc.predict import prep, fl, full
@@ -209,6 +208,8 @@ def create_jobs(g):
 
     g.add_map_job(msl.msl_users, 'tweets', saver='split_save')
     g.add_map_job(full.crawl_predict_fast, 'msl_users', name='msl_locs')
+    g.add_map_job(msl.msl_id_locs, 'msl_users', name='msl_locs')
+    g.add_map_job(msl.msl_tweet_locs, 'tweets', requires=['msl_id_locs'])
 
 
 def make_gob(args):
