@@ -29,11 +29,14 @@ from friendloc.base import gob, utils
 #    rfrd = ('recip friends','b','solid',1),
 #    jat = ('just mentioned','b','dashdot',2),
 #)
+FL_BLUE = '#1875d5'
+FL_GREEN = '#1cf437'
+FL_PURP = '#c71fe2'
 CONTACT_GROUPS = dict(
-    jfol = ('just followers','g','dashed',2),
-    jfrd = ('just friends','r','dotted',2),
+    jfol = ('just followers',FL_GREEN,'dashed',2),
+    jfrd = ('just friends',FL_PURP,'dotted',2),
     rfrd = ('recip friends','k','solid',1),
-    jat = ('just mentioned','b','dashdot',2),
+    jat = ('just mentioned',FL_GREEN,'dashdot',2),
 )
 
 
@@ -206,7 +209,7 @@ def graph_vect_fit(vect_fit, in_paths, env):
         ax.set_xlabel('distance in miles')
         ax.set_ylabel('probability of being a contact')
 
-        colors = iter('rgbkm')
+        colors = iter([FL_PURP,FL_BLUE,FL_GREEN,'k'])
         labels = iter([
             'edges predicted in nearest 10%',
             'edges in 60th to 70th percentile',
@@ -280,16 +283,16 @@ def graph_example_probs(vect_fit, in_paths):
 def gr_basic(preds):
     """graph for evaluation"""
     labels = dict(
-        backstrom=("Backstrom Baseline",'r','dotted',2),
+        backstrom=("Backstrom Baseline",FL_PURP,'solid',1),
         #last="Random Contact",
         #median="Median Contact",
         #mode="Mode of Contacts",
-        nearest=("Nearest Predicted Contact",'b','dashed',2),
-        friendloc_basic=("FriendlyLocation Basic",'k','solid',1),
-        #friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',3),
+        nearest=("Nearest Predicted Contact",FL_GREEN,'solid',2),
+        friendloc_basic=("FriendlyLocation Basic",FL_BLUE,'solid',1),
+        friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',1),
         #omni="Omniscient",
     )
-    _gr_preds(preds,labels,'fl_basic.pdf')
+    _gr_preds(preds,labels,'fl_basic.png')
 
 
 @gob.mapper(all_items=True)
@@ -323,7 +326,7 @@ def _gr_preds(preds,labels,path):
             normed=True,
             label_len=True,
             kind="cumulog",
-            figsize=(12,6),
+            #figsize=(12,6),
             ylabel = "fraction of target users",
             xlabel = "error in prediction (miles)",
             bins = dist_bins(120),
@@ -347,7 +350,7 @@ def graph_edge_types_cuml(edge_dists):
         print k,sum(1.0 for x in v if x<25)/len(v)
 
     ugly_graph_hist(data,
-            "edge_types_cuml.pdf",
+            "edge_types_cuml.png",
             xlim= (1,15000),
             normed=True,
             label_len=True,
@@ -451,10 +454,10 @@ def graph_edge_count(rfr_dists):
     frd_data = defaultdict(list)
     fol_data = defaultdict(list)
     labels = ["",'1-9','10-99','100-999','1000-9999','10000+']
-    key_labels = dict(frdc='Frds',folc='Fols')
+    key_labels = dict(frdc='Friends',folc='Followers')
 
     for amigo in rfr_dists:
-        for color,key,data in (('r','folc',fol_data),('b','frdc',frd_data)):
+        for color,key,data in ((FL_PURP,'folc',fol_data),(FL_GREEN,'frdc',frd_data)):
             bin = min(5,len(str(int(amigo[key]))))
             label = '%s %s'%(labels[bin],key_labels[key])
             # 1.6**(bin-1) is the line width calculation
@@ -476,7 +479,7 @@ def graph_edge_count(rfr_dists):
             ylabel = "fraction of edges",
             )
     fig.tight_layout()
-    fig.savefig("../www/edge_counts.pdf",bbox_inches='tight')
+    fig.savefig("../www/edge_counts.png",bbox_inches='tight')
 
 
 @gob.mapper(all_items=True)
@@ -485,20 +488,25 @@ def graph_locals_10(rfr_dists):
     graph comparison of recip friends split into bins based on the friend's
     local contact ratio. (LCR is based on only 10 leafs here.)
     """
-    labels = [ ".0<=lcr<.25", ".25<=lcr<.5", ".5<=lcr<.75", ".75<=lcr<=1" ]
+    labels = [
+        (".0<=lcr<.25",FL_BLUE),
+        (".25<=lcr<.5",FL_GREEN),
+        (".5<=lcr<.75",FL_PURP),
+        (".75<=lcr<=1",'k'),
+    ]
     data = defaultdict(list)
 
     for amigo in rfr_dists:
         if amigo['dirt'] is None:
-            data[('No leafs','k','dotted',2)].append(amigo['dist'])
+            data[('No leafs','.5','dashed',2)].append(amigo['dist'])
         else:
             label = labels[min(3,int(math.floor(amigo['dirt']*4)))]
             data[label].append(amigo['dist'])
-        if amigo['dirt']==.25:
-            data['lcr==.25','.5','dashed'].append(amigo['dist'])
+        #if amigo['dirt']==.25:
+        #    data['lcr==.25','.5','dashed'].append(amigo['dist'])
 
     ugly_graph_hist(data,
-        'locals_10.pdf',
+        'locals_10.png',
         bins=dist_bins(120),
         xlim=(1,15000),
         label_len=True,
@@ -682,13 +690,13 @@ def graph_rfrd_mdist(edges_d):
         dist = coord_in_miles(edge_d['mloc'],amigo)
         bin = len(str(int(amigo['mdist'])))
         width = .3*2.5**bin
-        data[labels[bin],'b','solid',width].append(dist)
+        data[labels[bin],FL_PURP,'solid',width].append(dist)
 
     for label, dists in data.iteritems():
         print label,peek.local_ratio(dists),peek.local_ratio(dists,1000),len(dists)
 
     ugly_graph_hist(data,
-            "rfrd_mdist.pdf",
+            "rfrd_mdist.png",
             xlim= (1,15000),
             normed=True,
             label_len=True,
