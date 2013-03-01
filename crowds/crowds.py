@@ -305,6 +305,3 @@ def count_topics(crowds):
                     counts[label]+=1
         crowd.topics = dict(counts)
         crowd.save()
-
-
-

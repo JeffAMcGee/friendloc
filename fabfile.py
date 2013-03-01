@@ -3,8 +3,8 @@ import os.path
 from fabric.api import local, lcd
 
 from maroon import Model
-from base import utils
-from base.tests import models_tests
+from friendloc.base import utils
+from friendloc.base.tests import models_tests
 
 
 CWD = os.path.abspath(os.path.dirname(__file__))

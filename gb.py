@@ -7,7 +7,7 @@ import itertools
 
 from maroon import Model
 
-from crowds import crowds
+from crowds import crowds, msl
 import friendloc
 from friendloc.explore import peek, sprawl, fixgis, graph
 from friendloc.predict import prep, fl, full
@@ -64,14 +64,12 @@ def create_jobs(g):
               )
     g.add_map_job(sprawl.uid_split, 'pick_nebrs', name="nebr_split", saver='split_save')
     g.add_map_job(sprawl.find_leafs,'nebr_split',reducer=gob.set_reduce)
-    g.add_map_job(sprawl.contact_split,'find_leafs',
+    g.add_map_job(sprawl.uid_split,'find_leafs',
               name='leaf_split',saver='split_save')
     g.add_map_job(sprawl.saved_users,saver='split_save')
     g.add_map_job(sprawl.lookup_contacts, 'leaf_split',
               name='lookup_leafs',requires=['saved_users'])
 
-    g.add_map_job(peek.contact_blur,'nebr_split',
-                  requires=['lookup_leafs'],reducer=gob.avg_reduce)
     def nebr_clump(keys, clump):
         return keys[1]==clump
 
@@ -91,7 +89,6 @@ def create_jobs(g):
     g.add_map_job(peek.aint_cheap_locals, 'nebr_ids',
               requires=['lookup_leafs'], procs=4,
               )
-    g.add_map_job(peek.leaf_dists, 'nebr_ids', requires=['lookup_leafs'], procs=3)
 
     # the graphs
     g.add_map_job(peek.geo_ats,saver='split_save',requires=['find_leafs'])
@@ -102,11 +99,8 @@ def create_jobs(g):
     g.add_map_job(peek.edges_d,'pred_users',requires=['geo_ats'],procs=4)
     g.add_map_job(peek.edge_dists,'edges_d',reducer=gob.join_reduce)
     g.add_map_job(peek.rfrd_dists,'edges_d',
-                  requires=['contact_blur','cheap_locals',
-                            'dirt_cheap_locals','aint_cheap_locals'])
+                  requires=['cheap_locals','dirt_cheap_locals','aint_cheap_locals'])
     g.add_cat('cat_rfrd_dists','rfrd_dists')
-
-    g.add_map_job(peek.first_contacts,'pred_users',reducer=gob.set_reduce)
 
     g.add_map_job(graph.graph_edge_types_cuml,'edge_dists')
     g.add_map_job(graph.graph_edge_types_prot,'edge_dists')
@@ -160,7 +154,7 @@ def create_jobs(g):
 
     # prep
     g.add_map_job(prep.nebrs_d,'pred_users',
-              requires=['mloc_blur','lookup_leafs','contact_blur'])
+              requires=['mloc_blur','lookup_leafs'])
     g.add_clump(train_set, folds, 'nebrs_d', name='nebrs_train')
     g.add_clump(eval_set, folds, 'nebrs_d', name='nebrs_eval')
 
@@ -191,6 +185,9 @@ def create_jobs(g):
     g.add_map_job(fl.eval_preds,'predictions',reducer=gob.join_reduce)
     g.add_map_job(fl.eval_stats,'eval_preds')
 
+    g.add_map_job(graph.graph_example_probs,'vect_fit')
+    g.add_map_job(graph.graph_example_contacts,())
+
     g.add_source(utils.read_tweets, name='tweets')
     g.add_map_job(crowds.connected_ids, 'tweets')
     g.add_map_job(crowds.connected_users, 'tweets', requires=['connected_ids'], saver='split_save')
@@ -207,6 +204,13 @@ def create_jobs(g):
     g.add_map_job(crowds.count_topics, 'find_crowds', requires=['save_crowds'])
     g.add_map_job(crowds.save_users, 'connected_users',requires=['find_crowds'])
     g.add_map_job(crowds.save_tweets, 'tweets', requires=['find_crowds'])
+
+    g.add_map_job(msl.msl_users, 'tweets', saver='split_save')
+    g.add_map_job(full.crawl_predict_fast, 'msl_users', name='msl_locs')
+    g.add_map_job(msl.msl_id_locs, 'msl_locs')
+    g.add_map_job(msl.msl_tweet_locs, 'tweets', requires=['msl_id_locs'])
+    g.add_map_job(msl.msl_pngs, 'msl_tweet_locs')
+
 
 def make_gob(args):
     path = os.path.join(os.path.dirname(__file__),'data')

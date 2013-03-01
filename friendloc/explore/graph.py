@@ -1,9 +1,9 @@
 OUTPUT_TYPE = 'pdf'#, 'pdf', or None
-#OUTPUT_TYPE = 'png'
+OUTPUT_TYPE = 'png'
+#OUTPUT_TYPE = None
 
 import random
 import contextlib
-import bisect
 import math
 from collections import defaultdict
 from operator import itemgetter
@@ -20,7 +20,7 @@ import numpy as np
 
 from friendloc.explore import peek
 from friendloc.base.utils import dist_bins, coord_in_miles
-from friendloc.base import gob
+from friendloc.base import gob, utils
 
 
 #CONTACT_GROUPS = dict(
@@ -29,11 +29,14 @@ from friendloc.base import gob
 #    rfrd = ('recip friends','b','solid',1),
 #    jat = ('just mentioned','b','dashdot',2),
 #)
+FL_BLUE = '#1875d5'
+FL_GREEN = '#1cf437'
+FL_PURP = '#c71fe2'
 CONTACT_GROUPS = dict(
-    jfol = ('just followers','g','dashed',2),
-    jfrd = ('just friends','r','dotted',2),
+    jfol = ('just followers',FL_GREEN,'dashed',2),
+    jfrd = ('just friends',FL_PURP,'dotted',2),
     rfrd = ('recip friends','k','solid',1),
-    jat = ('just mentioned','b','dashdot',2),
+    jat = ('just mentioned',FL_GREEN,'dashdot',2),
 )
 
 
@@ -206,7 +209,7 @@ def graph_vect_fit(vect_fit, in_paths, env):
         ax.set_xlabel('distance in miles')
         ax.set_ylabel('probability of being a contact')
 
-        colors = iter('rgbkm')
+        colors = iter([FL_PURP,FL_BLUE,FL_GREEN,'k'])
         labels = iter([
             'edges predicted in nearest 10%',
             'edges in 60th to 70th percentile',
@@ -245,19 +248,51 @@ def graph_stranger_mat(stranger_mat):
 
 
 @gob.mapper(all_items=True)
+def graph_example_probs(vect_fit, in_paths):
+    """
+    create an example of maximum likeliehood estimation for four friends
+    """
+    if in_paths[0][-1] != '0':
+        return
+    curves = [fit for vers,cutoff,fit in vect_fit if vers=='leaf']
+
+    lat_range = np.linspace(27.01,32.99,5*60)
+    lng_range = np.linspace(-100.99,-93.01,5*80)
+    lat_grid, lng_grid = np.meshgrid(lat_range, lng_range)
+    print lat_range, lng_range
+
+    probs = np.zeros_like(lat_grid)
+
+    spots = (
+        (-95.31, 29.73, 0), # Houston
+        (-96.37, 30.67, 1), # Bryan, TX
+        (-99.25, 31.25, 5), # Texas
+        (-97.74, 30.27, 3), # Austin
+    )
+    for lng, lat, curve in spots:
+        dists = utils.np_haversine(lng, lng_grid, lat, lat_grid)
+        probs+=np.log(peek.contact_curve(dists,*(curves[curve])))
+
+    clipped = 255.999*(np.max(probs)-probs)/np.ptp(probs)
+    buff = np.require(np.transpose(clipped),np.uint8,['C_CONTIGUOUS'])
+    img = PIL.Image.frombuffer('L',(clipped.shape),buff)
+    img.save('example_probs.png')
+
+
+@gob.mapper(all_items=True)
 def gr_basic(preds):
     """graph for evaluation"""
     labels = dict(
-        backstrom=("Backstrom Baseline",'r','dotted',2),
+        backstrom=("Backstrom Baseline",FL_PURP,'solid',1),
         #last="Random Contact",
         #median="Median Contact",
         #mode="Mode of Contacts",
-        nearest=("Nearest Predicted Contact",'b','dashed',2),
-        friendloc_basic=("FriendlyLocation Basic",'k','solid',1),
-        #friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',3),
+        nearest=("Nearest Predicted Contact",FL_GREEN,'solid',2),
+        friendloc_basic=("FriendlyLocation Basic",FL_BLUE,'solid',1),
+        friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',1),
         #omni="Omniscient",
     )
-    _gr_preds(preds,labels,'fl_basic.pdf')
+    _gr_preds(preds,labels,'fl_basic.png')
 
 
 @gob.mapper(all_items=True)
@@ -291,7 +326,7 @@ def _gr_preds(preds,labels,path):
             normed=True,
             label_len=True,
             kind="cumulog",
-            figsize=(12,6),
+            #figsize=(12,6),
             ylabel = "fraction of target users",
             xlabel = "error in prediction (miles)",
             bins = dist_bins(120),
@@ -315,7 +350,7 @@ def graph_edge_types_cuml(edge_dists):
         print k,sum(1.0 for x in v if x<25)/len(v)
 
     ugly_graph_hist(data,
-            "edge_types_cuml.pdf",
+            "edge_types_cuml.png",
             xlim= (1,15000),
             normed=True,
             label_len=True,
@@ -419,10 +454,10 @@ def graph_edge_count(rfr_dists):
     frd_data = defaultdict(list)
     fol_data = defaultdict(list)
     labels = ["",'1-9','10-99','100-999','1000-9999','10000+']
-    key_labels = dict(frdc='Frds',folc='Fols')
+    key_labels = dict(frdc='Friends',folc='Followers')
 
     for amigo in rfr_dists:
-        for color,key,data in (('r','folc',fol_data),('b','frdc',frd_data)):
+        for color,key,data in ((FL_PURP,'folc',fol_data),(FL_GREEN,'frdc',frd_data)):
             bin = min(5,len(str(int(amigo[key]))))
             label = '%s %s'%(labels[bin],key_labels[key])
             # 1.6**(bin-1) is the line width calculation
@@ -444,7 +479,7 @@ def graph_edge_count(rfr_dists):
             ylabel = "fraction of edges",
             )
     fig.tight_layout()
-    fig.savefig("../www/edge_counts.pdf",bbox_inches='tight')
+    fig.savefig("../www/edge_counts.png",bbox_inches='tight')
 
 
 @gob.mapper(all_items=True)
@@ -453,20 +488,25 @@ def graph_locals_10(rfr_dists):
     graph comparison of recip friends split into bins based on the friend's
     local contact ratio. (LCR is based on only 10 leafs here.)
     """
-    labels = [ ".0<=lcr<.25", ".25<=lcr<.5", ".5<=lcr<.75", ".75<=lcr<=1" ]
+    labels = [
+        (".0<=lcr<.25",FL_BLUE),
+        (".25<=lcr<.5",FL_GREEN),
+        (".5<=lcr<.75",FL_PURP),
+        (".75<=lcr<=1",'k'),
+    ]
     data = defaultdict(list)
 
     for amigo in rfr_dists:
         if amigo['dirt'] is None:
-            data[('No leafs','k','dotted',2)].append(amigo['dist'])
+            data[('No leafs','.5','dashed',2)].append(amigo['dist'])
         else:
             label = labels[min(3,int(math.floor(amigo['dirt']*4)))]
             data[label].append(amigo['dist'])
-        if amigo['dirt']==.25:
-            data['lcr==.25','.5','dashed'].append(amigo['dist'])
+        #if amigo['dirt']==.25:
+        #    data['lcr==.25','.5','dashed'].append(amigo['dist'])
 
     ugly_graph_hist(data,
-        'locals_10.pdf',
+        'locals_10.png',
         bins=dist_bins(120),
         xlim=(1,15000),
         label_len=True,
@@ -650,13 +690,13 @@ def graph_rfrd_mdist(edges_d):
         dist = coord_in_miles(edge_d['mloc'],amigo)
         bin = len(str(int(amigo['mdist'])))
         width = .3*2.5**bin
-        data[labels[bin],'b','solid',width].append(dist)
+        data[labels[bin],FL_PURP,'solid',width].append(dist)
 
     for label, dists in data.iteritems():
         print label,peek.local_ratio(dists),peek.local_ratio(dists,1000),len(dists)
 
     ugly_graph_hist(data,
-            "rfrd_mdist.pdf",
+            "rfrd_mdist.png",
             xlim= (1,15000),
             normed=True,
             label_len=True,
@@ -667,4 +707,61 @@ def graph_rfrd_mdist(edges_d):
             bins = dist_bins(120),
             key_order = sorted(data,key=itemgetter(3)),
             )
+
+@gob.mapper(all_items=True)
+def graph_example_contacts():
+    """
+    Graph the locations of all the contacts of one user. (This is for the
+    slides.)
+    """
+    points = np.array([
+            (-104.9847, 39.7392), (-97.7431, 30.2672), (-105.3505, 40.0833),
+            (-122.6762, 45.5234), (-97.7431, 30.2672), (-97.6789, 30.5083),
+            (-95.3633, 29.7633), (-97.7431, 30.2672), (-97.7431, 30.2672),
+            (-96.3344, 30.628), (-97.7431, 30.2672), (-97.0326, 32.763),
+            (-87.65, 41.85), (-118.0353, 34.1397), (-122.4194, 37.7749),
+            (-97.7431, 30.2672), (-80.0364, 26.7056), (-77.0003, 38.9171),
+            (-97.7431, 30.2672), (-76.6497, 39.4668), (-90.4001, 38.6334),
+            (-71.1787, 42.3959), (-87.7008, 30.246), (-122.0838, 37.3861),
+            (-123.1193, 49.2497), (-122.4203, 37.7767), (-97.7431, 30.2672),
+            (-74.006, 40.7143), (-95.2353, 38.9717), (-97.7431, 30.2672),
+            (-97.7431, 30.2672), (13.4105, 52.5244), (144.9633, -37.814),
+            (-122.0838, 37.3861), (-77.0003, 38.9171), (-73.9133, 40.7577),
+            (-122.3321, 47.6062), (-5.9333, 54.5833), (-122.4194, 37.7749),
+            (-97.7431, 30.2672), (-73.9524, 40.8854), (-77.0003, 38.9171),
+            (-80.0003, 35.5007), (-96.3344, 30.628), (-81.5348, 28.4956),
+            (-105.3505, 40.0833), (-75.4999, 43.0004), (-74.006, 40.7143),
+            (-75.4999, 43.0004), (-73.9496, 40.6501), (-122.4194, 37.7749),
+            (-77.6156, 43.1548), (-122.4194, 37.7749), (-77.0003, 38.9171),
+            (-122.4194, 37.7749), (-4.0, 54.0), (-97.7431, 30.2672),
+            (5.75, 5.5167), (-4.0, 54.0), (-74.006, 40.7143),
+            (-121.9747, 37.2266), (-0.1288, 51.5005), (-77.9819, 35.4971),
+            (-97.7431, 30.2672), (-87.8289, 42.1275), (-122.4194, 37.7749),
+            (24.7535, 59.437), (-121.7677, 37.2333), (-75.4999, 43.0004),
+            (-97.7431, 30.2672), (-122.0838, 37.3861), (26.0, 64.0),
+            (-95.3633, 29.7633), (-0.1288, 51.5005), (-104.9847, 39.7392),
+            (-121.95, 37.2872), (-122.3763, 37.9191), (-4.0, 54.0),
+            (-71.0598, 42.3584), (34.8, 32.0833), (-78.4767, 38.0293),
+            (-75.4999, 43.0004), (-71.0609, 42.3535), (-0.1395, 50.8284),
+            (12.5655, 55.6759), (-80.0003, 35.5007), (-104.9847, 39.7392),
+            (-105.5008, 39.0003), (-0.0918, 51.5128), (34.75, 31.5),
+    ])
+
+    with axes('contacts') as ax:
+        ax.set_xlim((-126,-66))
+        ax.set_ylim((24,50))
+        #points+= np.random.normal(0,.1,points.shape)
+        ax.plot(points[:,0],points[:,1],'x',
+                color='#1cf437',
+                markeredgewidth=5,
+                markersize=20,
+        )
+        ax.plot([-97.74],[30.27],'o',
+                color='#1875d5',
+                markeredgewidth=0,
+                markersize=15,
+        )
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.set_frame_on(False)
 

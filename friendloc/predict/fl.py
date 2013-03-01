@@ -271,7 +271,6 @@ class Predictors(object):
         self.stranger_mat = self._stranger_mat()
         self.vect_fit = tuple(self.env.load('vect_fit.'+clump))
 
-
     def predictions(self, nebrs_ds, in_paths, geo_ated, dirt_cheap_locals):
         results = defaultdict(list)
         clump = in_paths[0][-1]

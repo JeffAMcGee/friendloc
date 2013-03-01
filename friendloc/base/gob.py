@@ -6,6 +6,8 @@ import itertools
 import logging
 import sys
 import sqlite3
+import os
+import errno
 import os.path
 import traceback
 from collections import defaultdict
@@ -48,6 +50,14 @@ class StatefulIter(object):
         if self.index and self.index%1000==0:
             logging.info("Iter at %d, current is %r",self.index,self.current)
         return self.current
+
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as ex:
+        if ex.errno!=errno.EEXIST:
+            raise
 
 
 def mapper(all_items=False,merge=None,slurp=None):
@@ -251,6 +261,7 @@ class Executor(object):
             hdlr.setLevel(self._log_level)
             root.setLevel(self._log_level)
         if self._log_path is not None:
+            mkdir_p(self._log_path)
             filepath = os.path.join(self._log_path, label)
             file_hdlr = logging.FileHandler(filepath, 'a')
             fmt = logging.Formatter(

@@ -13,7 +13,7 @@ class FriendlyLocator(object):
     def __init__(self, env=None, path=None, settings=None):
         """
         """
-        if not env or not path:
+        if not env and not path:
             raise ValueError('FriendlyLocator needs a path or an env')
 
         if env:
@@ -79,7 +79,7 @@ def cheap_predict(user_ds, env):
 
 
 @gob.mapper(all_items=True)
-def crawl_predict_fast(user_ds, env, mdists):
+def crawl_predict_fast(user_ds, env):
     """
     takes a user dictionary, runs the crawler and predictor without using
     information from leafs or edges of contacts
@@ -93,7 +93,9 @@ def crawl_predict(user_ds, env, steps=2):
     takes a user dictionary, runs the crawler and predictor using information
     from leafs
     """
-    locator = FriendlyLocator()
+    locator = FriendlyLocator(env)
     for user_d in user_ds:
-        yield locator.predict(user_d,steps=steps)
+        user_d['ploc'] = locator.predict(user_d,steps=steps)
+        yield user_d
+
 
