@@ -1,5 +1,6 @@
 OUTPUT_TYPE = 'pdf'#, 'pdf', or None
 OUTPUT_TYPE = 'png'
+#OUTPUT_TYPE = None
 
 import random
 import contextlib
