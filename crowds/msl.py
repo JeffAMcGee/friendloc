@@ -3,7 +3,7 @@ import calendar
 import collections
 
 import numpy as np
-from scipy.signal import convolve2d
+from scipy import sparse
 import ImageFont, ImageDraw, Image
 
 from friendloc.base import gob, models
@@ -47,39 +47,61 @@ def msl_tweet_locs(tweets, msl_id_locs):
 
 @gob.mapper(all_items=True)
 def msl_pngs(tweet_locs):
+
     #landed  10:32 pdt -> 5:32 am utc
     LANDING = 22403852
-    TILE_SIZE = .2
-    def _msl_tile(deg):
-        return int(round(deg/TILE_SIZE))
+    WIDTH = 640
+    HEIGHT = 360
+    TILE_WIDTH = 360.0/WIDTH
+    TILE_HEIGHT = 180.0/HEIGHT
+    SHAPE = (WIDTH,HEIGHT)
 
-    frames = collections.defaultdict(lambda: np.zeros((int(360/TILE_SIZE),int(180/TILE_SIZE))))
+    def _msl_tile(loc):
+        return (
+            int(round((loc[0]+180)/TILE_WIDTH)),
+            int(round((loc[1]+90)/TILE_HEIGHT)),
+        )
 
-    for stamp,(lng,lat) in tweet_locs:
-        frame = stamp//60
-        if frame<LANDING-180: # data for t-180
-            continue
-        if frame>=LANDING+180:
-            break
+    tweets = collections.defaultdict(list)
+    for stamp,loc in tweet_locs:
+        minute = stamp//60
+        if minute<LANDING-180: continue
+        if minute>=LANDING+180: break
+        tweets[minute].append(loc)
 
-        lng_tile = _msl_tile(lng) + int(180/TILE_SIZE)
-        lat_tile = _msl_tile(lat) + int(90/TILE_SIZE)
-        try:
-            frames[frame][lng_tile,lat_tile]+=1
-        except IndexError:
-            pass
+    count = sum(len(locs) for locs in tweets.itervalues())
+    print "loaded %d tweets"% count
+    frames = dict()
 
-    for id,frame in frames.iteritems():
-        filter = [[1,2,1],[2,4,2],[1,2,1]]
-        frames[id] = convolve2d(frame,filter,mode="same")
+    for minute,locs in tweets.iteritems():
+        tiles = [_msl_tile(loc) for loc in locs]
+        counts = collections.Counter(tiles)
+        density = np.sqrt([counts[tile] for tile in tiles])
+        rand_angles = np.pi*2*np.random.random(len(locs))
+        rand_dists = np.random.random(len(locs))*density/5
+        lngs,lats = zip(*locs)
+        new_lngs = lngs + rand_dists*np.sin(rand_angles)*TILE_WIDTH
+        new_lats = lats + rand_dists*np.cos(rand_angles)*TILE_HEIGHT
+
+        frame = sparse.lil_matrix(SHAPE,dtype=np.int16)
+        for i in xrange(len(locs)):
+            new_tile = _msl_tile((new_lngs[i],new_lats[i]))
+            frame[new_tile]+=1
+        frames[minute] = frame
+    print "made frames"
+
+    first_frame = min(frames.iterkeys())+1
 
     for id,frame in frames.iteritems():
         bef = frames.get(id-1)
         aft = frames.get(id+1)
         if bef is None or aft is None:
             continue
-        scaled = np.log(bef+aft+2*frame+1)
-        data = np.minimum(scaled, 5)*51
+        scaled = bef+aft+2*frame
+        dense = np.array(scaled.todense())
+        clipped = np.minimum(dense,7)
+        nonzero = np.minimum(dense,1)
+        data = clipped*32+nonzero*31
         buff = np.require(np.transpose(data),np.uint8,['C_CONTIGUOUS'])
         img = Image.frombuffer('L',(data.shape),buff)
 
@@ -88,7 +110,6 @@ def msl_pngs(tweet_locs):
                 "after" if id>LANDING else "before",
             )
         draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype('/Library/Fonts/Arial.ttf',36)
+        font = ImageFont.truetype('/Library/Fonts/Arial.ttf',18)
         draw.text((10, 10), message, font=font, fill=192)
-        img.save("%d.png"%id)
-
+        img.save("msl%03d.png"%(id-first_frame))
