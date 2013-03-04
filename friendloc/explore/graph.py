@@ -33,10 +33,10 @@ FL_BLUE = '#1875d5'
 FL_GREEN = '#1cf437'
 FL_PURP = '#c71fe2'
 CONTACT_GROUPS = dict(
-    jfol = ('just followers',FL_GREEN,'dashed',2),
-    jfrd = ('just friends',FL_PURP,'dotted',2),
-    rfrd = ('recip friends','k','solid',1),
-    jat = ('just mentioned',FL_GREEN,'dashdot',2),
+    jfol = ('just followers',FL_PURP,'solid',2),
+    jfrd = ('just friends',FL_BLUE,'solid',2),
+    rfrd = ('recip friends','k','solid',2),
+    jat = ('just mentioned',FL_GREEN,'solid',2),
 )
 
 
@@ -228,9 +228,13 @@ def graph_vect_fit(vect_fit, in_paths, env):
             window = np.bartlett(5)
             smooth_ratio = np.convolve(ratio,window,mode='same')/sum(window)
             if label:
-                ax.plot(miles, smooth_ratio, '-', color=color, label=label)
+                ax.plot(miles, smooth_ratio, '-', color=color, label=label,
+                        linewidth=2)
             ax.plot(miles, peek.contact_curve(miles,*fit), '-',
-                    linestyle=fitstyle, color=color)
+                    linewidth=2,
+                    linestyle=fitstyle,
+                    color=color,
+                   )
 
 
 @gob.mapper(all_items=True)
@@ -283,13 +287,13 @@ def graph_example_probs(vect_fit, in_paths):
 def gr_basic(preds):
     """graph for evaluation"""
     labels = dict(
-        backstrom=("Backstrom Baseline",FL_PURP,'solid',1),
+        backstrom=("Backstrom Baseline",FL_GREEN,'solid',2),
         #last="Random Contact",
         #median="Median Contact",
         #mode="Mode of Contacts",
-        nearest=("Nearest Predicted Contact",FL_GREEN,'solid',2),
-        friendloc_basic=("FriendlyLocation Basic",FL_BLUE,'solid',1),
-        friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',1),
+        nearest=("Nearest Predicted Contact",FL_PURP,'solid',2),
+        friendloc_basic=("FriendlyLocation Basic",FL_BLUE,'solid',2),
+        friendloc_cut=("FriendlyLocation+Cutoff",'k','solid',2),
         #omni="Omniscient",
     )
     _gr_preds(preds,labels,'fl_basic.png')
@@ -355,7 +359,7 @@ def graph_edge_types_cuml(edge_dists):
             normed=True,
             label_len=True,
             kind="cumulog",
-            figsize=(12,6),
+            #figsize=(12,6),
             ylabel = "fraction of edges",
             xlabel = "length of edge in miles",
             bins = dist_bins(120),
@@ -457,13 +461,13 @@ def graph_edge_count(rfr_dists):
     key_labels = dict(frdc='Friends',folc='Followers')
 
     for amigo in rfr_dists:
-        for color,key,data in ((FL_PURP,'folc',fol_data),(FL_GREEN,'frdc',frd_data)):
+        for color,key,data in ((FL_PURP,'folc',fol_data),(FL_BLUE,'frdc',frd_data)):
             bin = min(5,len(str(int(amigo[key]))))
             label = '%s %s'%(labels[bin],key_labels[key])
             # 1.6**(bin-1) is the line width calculation
             data[label,color,'solid',1.6**(bin-2)].append(amigo['dist'])
 
-    fig = plt.figure(figsize=(18,5))
+    fig = plt.figure(figsize=(18,9))
     for spot,data in enumerate((fol_data,frd_data)):
         ax = fig.add_subplot(1,2,1+spot)
         ugly_graph_hist(data,
