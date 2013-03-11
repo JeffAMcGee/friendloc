@@ -12,7 +12,7 @@ import numpy as np
 import random
 
 from friendloc.base import gob, utils, models
-import crowds.community
+from crowds import community
 
 
 @gob.mapper(all_items=True)
@@ -170,14 +170,13 @@ def find_crowds(weak_comps):
     break up big connected components using crowd detection algorithm, add
     details to crowds
     """
-    #FIXME: I think the crowds = [] definition hides the import crowds.community
     crowds = []
     for crowd,weak_comp in enumerate(weak_comps):
         g = json_graph.adjacency_graph(weak_comp)
-        dendo = crowds.community.generate_dendogram(nx.Graph(g))
+        dendo = community.generate_dendogram(nx.Graph(g))
 
         if len(dendo)>=2:
-            partition = crowds.community.partition_at_level(dendo, 1 )
+            partition = community.partition_at_level(dendo, 1 )
             crowd_ids = collections.defaultdict(list)
             for uid,subcrowd in partition.iteritems():
                 crowd_ids[subcrowd].append(uid)
@@ -191,18 +190,27 @@ def find_crowds(weak_comps):
     def _blur(angle):
         return random.triangular(angle-.02,angle+.02)
 
-    spots = collections.defaultdict(list)
-    for index,g in enumerate(crowds):
+    big_spots = collections.defaultdict(list)
+    lil_spots = collections.defaultdict(list)
+    for g in crowds:
+        # location is location of user with greatest degree
         uid,degree = max(g.degree_iter(),key=operator.itemgetter(1))
         lng,lat = g.node[uid]['loc']
-        g.graph['loc'] = _blur(lng),_blur(lat)
-        g.graph['id'] = index
-        spots[int(lng/2),int(lat/2)].append(g)
+        big_spots[int(lng/2),int(lat/2)].append(g)
+        lil_spots[int(lng*5),int(lat*5)].append(g)
+        g.graph['loc'] = lng,lat
 
-    for lng_lat,graphs in spots.iteritems():
+    for index,g in enumerate(crowds):
+        lng,lat = g.graph['loc']
+        ang = random.random()*2*np.pi
+        dist = .002 * math.sqrt(len(lil_spots[int(lng*5),int(lat*5)]))
+        g.graph['loc'] = lng+dist*math.cos(ang), lat+dist*math.sin(ang)
+        g.graph['id'] = index
+
+    for lng_lat,graphs in big_spots.iteritems():
         graphs.sort(key=len,reverse=True)
         for index,g in enumerate(graphs):
-            g.graph['zoom'] = int(math.floor(1+math.log(index,4))) if index else 0
+            g.graph['zoom'] = int(math.floor(1+math.log(index,3))) if index else 0
 
     return (json_graph.adjacency_data(g) for g in crowds)
 
