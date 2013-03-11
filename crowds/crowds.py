@@ -192,21 +192,25 @@ def find_crowds(weak_comps):
 
     big_spots = collections.defaultdict(list)
     lil_spots = collections.defaultdict(list)
-    for g in crowds:
+    for index,g in enumerate(crowds):
         # location is location of user with greatest degree
         uid,degree = max(g.degree_iter(),key=operator.itemgetter(1))
         lng,lat = g.node[uid]['loc']
         big_spots[int(lng/2),int(lat/2)].append(g)
         lil_spots[int(lng*5),int(lat*5)].append(g)
         g.graph['loc'] = lng,lat
-
-    for index,g in enumerate(crowds):
-        lng,lat = g.graph['loc']
-        ang = random.random()*2*np.pi
-        dist = .002 * math.sqrt(len(lil_spots[int(lng*5),int(lat*5)]))
-        g.graph['loc'] = lng+dist*math.cos(ang), lat+dist*math.sin(ang)
         g.graph['id'] = index
 
+    # add noise to each location based on how popular that area is.
+    for lng_lat,graphs in lil_spots.iteritems():
+        graphs.sort(key=len,reverse=True)
+        for index,g in enumerate(graphs):
+            lng,lat = g.graph['loc']
+            ang = random.random()*2*np.pi
+            dist = .001 * math.sqrt(index)
+            g.graph['loc'] = lng+1.2*dist*math.cos(ang), lat+dist*math.sin(ang)
+
+    # pick crowds to show on map based on size
     for lng_lat,graphs in big_spots.iteritems():
         graphs.sort(key=len,reverse=True)
         for index,g in enumerate(graphs):
