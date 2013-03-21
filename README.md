@@ -6,8 +6,7 @@ a tool for estimating the locations of users on twitter
 LICENSE
 =======
 
-This falls under the Apache License, Version 2.0
-Get a copy at http://www.apache.org/licenses/LICENSE-2.0.html
+This code is released under the 2-clause BSD license.
 
 REQUIREMENTS
 ------------
